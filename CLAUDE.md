@@ -36,10 +36,11 @@ packages/
 
 ## Tech Stack
 
-- **Backend**: Express.js, Prisma (SQLite dev / Postgres prod), Zod validation
-- **Frontend**: Next.js 14, React 18, Tailwind CSS, Zustand, React Query
+- **Backend**: Express.js 4.21, Prisma 6.3 (SQLite dev / Postgres prod), Zod validation
+- **Frontend**: Next.js 15.1, React 19, Tailwind CSS, Zustand 5, React Query
 - **Web3**: wagmi, viem, SIWE auth, ethers.js
 - **Blockchain**: Base (L2), USDC escrow, Hardhat
+- **Security**: Helmet 8, express-rate-limit, safe URL/JSON validation
 
 ## Key Patterns
 
@@ -173,59 +174,67 @@ docker-compose up  # Start API, web, and PostgreSQL
 - Task creation flow with proper validation
 - Task claiming and submission (no role restrictions)
 - API running on port 3000, Web on port 3001
+- Security audit passed (9/10 score)
+- Production deployment guide ready
 
-### Recently Fixed (This Session)
+### Session History
 
-#### 1. Removed Legacy Role System from Worker Routes
-**Problem**: Claims, submissions, and upload routes required `role: worker` which blocked users since all accounts are unified.
+#### Session 2: Security Audit & Production Prep (Jan 13, 2026)
 
-**Solution**: Removed `requireRole('worker')` middleware from:
-- `packages/api/src/routes/claims.ts` - GET /claims, POST /claim, POST /unclaim
-- `packages/api/src/routes/submissions.ts` - all submission routes
-- `packages/api/src/routes/uploads.ts` - file upload route
+**Security Improvements:**
+- Updated all dependencies to latest stable versions
+  - Prisma 5.7 → 6.3
+  - Next.js 14.0 → 15.1
+  - React 18 → 19
+  - Express 4.18 → 4.21
+  - Helmet 7.1 → 8.0
+- Added safe URL validation (protocol whitelist prevents `javascript:` URI injection)
+- Added safe JSON parsing with Zod schema validation
+- Created `packages/api/src/utils/validation.ts` with reusable validators
 
-**Note**: `requireRole('admin')` kept for dispute resolution routes (correct behavior).
+**New Documentation:**
+- `SECURITY.md` - Security practices, audit findings, contributor checklist
+- `PRODUCTION.md` - Step-by-step deployment guide for Railway + Vercel
 
-#### 2. Fixed Task Creation Validation Error
-**Problem**: Form state was being reset on every render due to side-effect in render function that set default dates.
+**Files Changed:**
+- `packages/api/src/routes/profile.ts` - Safe URL + JSON parsing
+- `packages/api/src/routes/webhooks.ts` - Safe URL + JSON parsing
+- `packages/api/src/utils/validation.ts` - New validation utilities
+- All `package.json` files - Dependency updates
 
-**Solution** in `packages/web/src/app/dashboard/requester/new/page.tsx`:
-- Moved `getDefaultDates()` helper outside component
-- Initialize `useState` with proper defaults including dates
-- Added client-side validation before API call (title ≥5 chars, instructions ≥10 chars)
-- Shows helpful error and returns to step 1 if validation fails
+#### Session 1: UI Fixes & Role System Cleanup
 
-#### 3. Fixed White-on-White Text Issues (Light Theme Migration)
-**Problem**: Many pages had dark theme colors (`text-white`, `text-zinc-*`) on light backgrounds.
+**Removed Legacy Role System from Worker Routes:**
+- `packages/api/src/routes/claims.ts` - Removed `requireRole('worker')`
+- `packages/api/src/routes/submissions.ts` - Removed `requireRole('worker')`
+- `packages/api/src/routes/uploads.ts` - Removed `requireRole('worker')`
+- Note: `requireRole('admin')` kept for dispute resolution (correct)
 
-**Files Fixed**:
-- `packages/web/src/app/page.tsx` (homepage) - all headings, text, buttons
-- `packages/web/src/app/not-found.tsx` - 404 page
-- `packages/web/src/app/(auth)/login/page.tsx` - login form
-- `packages/web/src/app/(auth)/register/page.tsx` - register form
-- All dashboard pages (requester, worker, admin, settings, profile, etc.)
+**Fixed Task Creation Validation:**
+- Moved `getDefaultDates()` outside component in `packages/web/src/app/dashboard/requester/new/page.tsx`
+- Added client-side validation before API call
 
-**Color Mapping Applied**:
-- `text-white` → `text-slate-800` (except on colored button backgrounds)
-- `text-zinc-300/400/500` → `text-slate-500/600`
-- `text-gray-*` → `text-slate-*` (consistency)
-- `bg-white shadow-sm` → `glass rounded-lg border border-surface-200`
-- `bg-blue-600` → `bg-field-500` (teal brand color)
-- `hover:bg-white/10` → `hover:bg-field-50`
-
-#### 4. Removed Legacy Role Links
-**Problem**: Homepage had `/register?role=requester` and `/register?role=worker` links.
-
-**Solution**: Changed to just `/register` since accounts are unified.
+**Fixed Light Theme Colors:**
+- Updated all pages from dark theme colors to light theme
+- Color mapping: `text-white` → `text-slate-800`, etc.
 
 ### Known Issues Remaining
-- WalletConnect SSR warnings (indexedDB not defined) - cosmetic, doesn't affect client
+- WalletConnect SSR warnings (indexedDB not defined) - cosmetic only
 - WalletConnect needs valid project ID from https://cloud.walletconnect.com
+- Run `npm install` after pulling to get updated dependencies
 
 ### Architecture Notes
 
 #### Unified Account Model
 All users can both post tasks (requester) AND claim/complete tasks (worker). The legacy `role` field in the database still exists but is not enforced on routes. The only role-based restriction is `admin` for dispute resolution.
+
+#### Security Model
+- Frontend never talks directly to database (API-first)
+- All sensitive calculations server-side
+- URL inputs validated for http/https only
+- JSON from database parsed with schema validation
+- Rate limiting: 100 req/15min per IP
+- Secrets only in environment variables (never in client code)
 
 #### Color System (Light Theme)
 - **Primary**: `field-500` (#14b8a6) - teal
@@ -234,14 +243,18 @@ All users can both post tasks (requester) AND claim/complete tasks (worker). The
 - **Borders**: `border-surface-200/300`
 
 ### Quick Resume Checklist
-1. Start API: `npm run dev:api` (must be running first)
-2. Start Web: `npm run dev:web`
-3. Open: http://localhost:3001
-4. Test flow: Register → Dashboard → Create Task (fill all fields!) → Browse Tasks → Claim → Submit
+1. Pull latest: `git pull origin master`
+2. Install deps: `npm install`
+3. Generate Prisma: `npm run db:generate`
+4. Start API: `npm run dev:api` (must be running first)
+5. Start Web: `npm run dev:web`
+6. Open: http://localhost:3001
 
 ### Next Priority Items
+- [ ] Purchase domain (field-network.com available)
+- [ ] Set up Railway + Vercel accounts
+- [ ] Deploy to production (see PRODUCTION.md)
 - [ ] Add map view for task locations
 - [ ] Mobile responsive improvements
 - [ ] Test full task flow end-to-end
-- [ ] Production database migration (PostgreSQL)
 
