@@ -4,6 +4,7 @@ import { prisma } from '../services/database';
 import { authenticate } from '../middleware/auth';
 import { ValidationError, NotFoundError } from '../middleware/errorHandler';
 import { getENSProfile, suggestUsernameFromENS } from '../services/ens';
+import { safeUrl, SavedAddressesSchema, safeJsonParse } from '../utils/validation';
 
 const router = Router();
 
@@ -14,9 +15,9 @@ const router = Router();
 const UpdateProfileSchema = z.object({
   username: z.string().min(3).max(30).regex(/^[a-zA-Z0-9_]+$/, 'Username can only contain letters, numbers, and underscores').optional(),
   bio: z.string().max(500).optional(),
-  avatar_url: z.string().url().optional().nullable(),
+  avatar_url: safeUrl.optional().nullable(),
   location: z.string().max(100).optional().nullable(),
-  website: z.string().url().max(200).optional().nullable(),
+  website: safeUrl.optional().nullable(),
   twitter_handle: z.string().max(50).regex(/^[a-zA-Z0-9_]*$/).optional().nullable(),
 });
 
@@ -308,7 +309,7 @@ router.get('/me/addresses', authenticate, async (req: Request, res: Response, ne
       throw new NotFoundError('User');
     }
 
-    res.json({ addresses: JSON.parse(user.savedAddresses) });
+    res.json({ addresses: safeJsonParse(user.savedAddresses, SavedAddressesSchema, []) });
   } catch (error) {
     next(error);
   }
@@ -327,7 +328,7 @@ router.post('/me/addresses', authenticate, async (req: Request, res: Response, n
       throw new NotFoundError('User');
     }
 
-    const addresses = JSON.parse(user.savedAddresses);
+    const addresses = safeJsonParse(user.savedAddresses, SavedAddressesSchema, []);
     const newAddress = {
       id: crypto.randomUUID(),
       ...data,
@@ -359,8 +360,8 @@ router.delete('/me/addresses/:addressId', authenticate, async (req: Request, res
       throw new NotFoundError('User');
     }
 
-    const addresses = JSON.parse(user.savedAddresses);
-    const filtered = addresses.filter((a: any) => a.id !== addressId);
+    const addresses = safeJsonParse(user.savedAddresses, SavedAddressesSchema, []);
+    const filtered = addresses.filter((a) => a.id !== addressId);
 
     if (filtered.length === addresses.length) {
       throw new NotFoundError('Address');

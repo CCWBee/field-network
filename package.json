@@ -21,8 +21,8 @@
     "db:studio": "npm run db:studio -w @ground-truth/api"
   },
   "devDependencies": {
-    "concurrently": "^8.2.2",
-    "typescript": "^5.3.3"
+    "concurrently": "^9.1.2",
+    "typescript": "^5.7.3"
   },
   "engines": {
     "node": ">=18.0.0"

@@ -4,6 +4,7 @@ import { createHash, createHmac } from 'crypto';
 import { prisma } from '../services/database';
 import { authenticate, requireScope } from '../middleware/auth';
 import { NotFoundError, ValidationError } from '../middleware/errorHandler';
+import { safeUrl, WebhookEventTypesSchema, safeJsonParse } from '../utils/validation';
 
 const router = Router();
 
@@ -22,7 +23,7 @@ const WebhookEventTypes = [
 ] as const;
 
 const CreateWebhookSchema = z.object({
-  url: z.string().url(),
+  url: safeUrl,
   event_types: z.array(z.enum(WebhookEventTypes)),
 });
 
@@ -43,7 +44,7 @@ router.get('/', authenticate, async (req: Request, res: Response, next: NextFunc
     res.json({
       webhooks: webhooks.map(w => ({
         ...w,
-        eventTypes: JSON.parse(w.eventTypes),
+        eventTypes: safeJsonParse(w.eventTypes, WebhookEventTypesSchema, []),
       })),
     });
   } catch (error) {
@@ -74,7 +75,7 @@ router.post('/', authenticate, async (req: Request, res: Response, next: NextFun
     res.status(201).json({
       id: webhook.id,
       url: webhook.url,
-      event_types: JSON.parse(webhook.eventTypes),
+      event_types: safeJsonParse(webhook.eventTypes, WebhookEventTypesSchema, []),
       secret, // Only shown once at creation
       status: webhook.status,
     });
