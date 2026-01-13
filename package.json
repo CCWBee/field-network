@@ -1,0 +1,30 @@
+{
+  "name": "ground-truth-platform",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Ground Truth on Demand - A marketplace for verifiable real-world observations",
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "concurrently \"npm run dev:api\" \"npm run dev:web\"",
+    "dev:api": "npm run dev -w @ground-truth/api",
+    "dev:web": "npm run dev -w @ground-truth/web",
+    "build": "npm run build -w @ground-truth/shared && npm run build -w @ground-truth/api && npm run build -w @ground-truth/web",
+    "build:api": "npm run build -w @ground-truth/api",
+    "build:web": "npm run build -w @ground-truth/web",
+    "lint": "npm run lint --workspaces",
+    "test": "npm run test --workspaces",
+    "db:generate": "npm run db:generate -w @ground-truth/api",
+    "db:migrate": "npm run db:migrate -w @ground-truth/api",
+    "db:push": "npm run db:push -w @ground-truth/api",
+    "db:studio": "npm run db:studio -w @ground-truth/api"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2",
+    "typescript": "^5.3.3"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

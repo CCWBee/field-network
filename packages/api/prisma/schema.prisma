@@ -1,0 +1,560 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================================
+// USERS & IDENTITY
+// ============================================================================
+
+model User {
+  id              String   @id @default(uuid())
+  email           String?  @unique // Optional for wallet-only users
+  passwordHash    String?  @map("password_hash") // Optional for wallet-only users
+  primaryWalletId String?  @unique @map("primary_wallet_id") // Reference to primary wallet
+  role            String   @default("requester") // requester, worker, admin
+  status          String   @default("active") // active, suspended, banned
+
+  // Profile fields (Polymarket-style account layer)
+  username        String?  @unique // Chosen display name
+  bio             String?  // Short profile description
+  avatarUrl       String?  @map("avatar_url") // Profile picture URL
+  ensName         String?  @map("ens_name") // Cached ENS name (e.g. alice.eth)
+  ensAvatarUrl    String?  @map("ens_avatar_url") // Cached ENS avatar
+  location        String?  // City/Region for display
+  website         String?  // Personal website URL
+  twitterHandle   String?  @map("twitter_handle") // Social link
+  onboardingCompleted Boolean @default(false) @map("onboarding_completed")
+
+  // Settings (JSON strings for SQLite)
+  notificationPrefs String @default("{}") @map("notification_prefs")
+  uiSettings        String @default("{}") @map("ui_settings")
+  defaultRightsJson String @default("{}") @map("default_rights_json")
+  savedAddresses    String @default("[]") @map("saved_addresses") // JSON array of saved locations
+
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  workerProfile  WorkerProfile?
+  walletLinks    WalletLink[]
+  apiTokens      ApiToken[]
+  tasks          Task[]          @relation("TaskRequester")
+  taskClaims     TaskClaim[]
+  submissions    Submission[]
+  decisions      Decision[]
+  auditEvents    AuditEvent[]
+  webhooks       Webhook[]
+  escrowsCreated Escrow[]
+  siweNonces     SiweNonce[]
+  badges         UserBadge[]
+  stats          UserStats?
+
+  @@map("users")
+}
+
+model WorkerProfile {
+  id             String   @id @default(uuid())
+  userId         String   @unique @map("user_id")
+  displayName    String   @map("display_name")
+  radiusKm       Int      @default(50) @map("radius_km")
+  skills         String   @default("[]") // JSON array as string
+  kit            String   @default("[]") // JSON array as string
+  rating         Float    @default(0)
+  completedCount Int      @default(0) @map("completed_count")
+  strikes        Int      @default(0)
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("worker_profiles")
+}
+
+model WalletLink {
+  id            String    @id @default(uuid())
+  userId        String    @map("user_id")
+  walletAddress String    @map("wallet_address")
+  chain         String    @default("base") // base, ethereum, polygon
+  chainId       Int       @default(8453) @map("chain_id") // Base mainnet = 8453
+  isPrimary     Boolean   @default(false) @map("is_primary")
+  label         String?   // User-friendly name for wallet
+  createdAt     DateTime  @default(now()) @map("created_at")
+  verifiedAt    DateTime? @map("verified_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([walletAddress, chain])
+  @@index([userId])
+  @@map("wallet_links")
+}
+
+// SIWE nonce tracking for replay protection
+model SiweNonce {
+  id        String   @id @default(uuid())
+  userId    String?  @map("user_id") // Null for unauthenticated nonce requests
+  nonce     String   @unique
+  domain    String
+  issuedAt  DateTime @default(now()) @map("issued_at")
+  expiresAt DateTime @map("expires_at")
+  usedAt    DateTime? @map("used_at")
+
+  user User? @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([nonce])
+  @@index([expiresAt])
+  @@map("siwe_nonces")
+}
+
+// User reputation stats (computed metrics)
+model UserStats {
+  id                   String   @id @default(uuid())
+  userId               String   @unique @map("user_id")
+
+  // Task requester stats
+  tasksPosted          Int      @default(0) @map("tasks_posted")
+  tasksCompleted       Int      @default(0) @map("tasks_completed")
+  totalBountiesPaid    Float    @default(0) @map("total_bounties_paid")
+  avgResponseTimeHours Float?   @map("avg_response_time_hours")
+
+  // Worker/collector stats
+  tasksClaimed         Int      @default(0) @map("tasks_claimed")
+  tasksDelivered       Int      @default(0) @map("tasks_delivered")
+  tasksAccepted        Int      @default(0) @map("tasks_accepted")
+  tasksRejected        Int      @default(0) @map("tasks_rejected")
+  totalEarned          Float    @default(0) @map("total_earned")
+  avgDeliveryTimeHours Float?   @map("avg_delivery_time_hours")
+
+  // Reputation metrics
+  reliabilityScore     Float    @default(100) @map("reliability_score") // 0-100
+  disputeRate          Float    @default(0) @map("dispute_rate") // percentage
+  currentStreak        Int      @default(0) @map("current_streak") // consecutive completions
+  longestStreak        Int      @default(0) @map("longest_streak")
+  repeatCustomers      Int      @default(0) @map("repeat_customers")
+
+  // Verification status
+  emailVerified        Boolean  @default(false) @map("email_verified")
+  walletVerified       Boolean  @default(false) @map("wallet_verified")
+  identityVerified     Boolean  @default(false) @map("identity_verified") // KYC if needed
+
+  lastCalculatedAt     DateTime @default(now()) @map("last_calculated_at")
+  createdAt            DateTime @default(now()) @map("created_at")
+  updatedAt            DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_stats")
+}
+
+// Badges and achievements
+model UserBadge {
+  id          String   @id @default(uuid())
+  userId      String   @map("user_id")
+  badgeType   String   @map("badge_type") // early_adopter, verified, fast_responder, reliable, top_earner, etc.
+  tier        String   @default("bronze") // bronze, silver, gold, platinum
+  title       String   // Display title
+  description String   // Badge description
+  iconUrl     String?  @map("icon_url")
+  metadata    String   @default("{}") // JSON for extra badge data
+  earnedAt    DateTime @default(now()) @map("earned_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, badgeType, tier])
+  @@index([userId])
+  @@index([badgeType])
+  @@map("user_badges")
+}
+
+// Badge definitions (what badges exist)
+model BadgeDefinition {
+  id          String   @id @default(uuid())
+  type        String   @unique // Unique badge type identifier
+  name        String   // Display name
+  description String   // What this badge represents
+  category    String   // achievement, milestone, verification, streak
+  iconUrl     String?  @map("icon_url")
+  tiers       String   @default("[]") // JSON array of tier thresholds
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@map("badge_definitions")
+}
+
+// Delegated API credentials (Polymarket L2 style)
+model ApiToken {
+  id              String    @id @default(uuid())
+  userId          String    @map("user_id")
+  tokenHash       String    @unique @map("token_hash") // SHA256 of the actual token
+  apiKey          String    @unique @map("api_key") // Public identifier
+  name            String?   // User-friendly label
+
+  // Scopes and permissions
+  scopes          String    @default("[]") // JSON array: ["read:tasks", "write:tasks", "submit"]
+
+  // Spend caps for financial operations
+  spendCapAmount  Float?    @map("spend_cap_amount")
+  spendCapCurrency String?  @map("spend_cap_currency")
+  spendUsed       Float     @default(0) @map("spend_used")
+
+  // Minting proof (wallet signature that created this token)
+  mintedWithSig   String?   @map("minted_with_sig")
+  mintedFromWallet String?  @map("minted_from_wallet")
+
+  // Lifecycle
+  expiresAt       DateTime? @map("expires_at")
+  revokedAt       DateTime? @map("revoked_at")
+  lastUsedAt      DateTime? @map("last_used_at")
+  createdAt       DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([apiKey])
+  @@map("api_tokens")
+}
+
+// ============================================================================
+// TASKS & TEMPLATES
+// ============================================================================
+
+model TaskTemplate {
+  id         String   @id @default(uuid())
+  name       String   @unique
+  version    String
+  schemaJson String   @map("schema_json") // JSON object as string
+  isActive   Boolean  @default(true) @map("is_active")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  tasks Task[]
+
+  @@map("task_templates")
+}
+
+model Task {
+  id            String   @id @default(uuid())
+  requesterId   String   @map("requester_id")
+  templateId    String?  @map("template_id")
+  template      String   @default("geo_photo_v1")
+  schemaVersion String   @default("1.0") @map("schema_version")
+  title         String
+  instructions  String
+  status        String   @default("draft") // draft, posted, claimed, submitted, accepted, disputed, cancelled, expired
+
+  // Location
+  locationLat Float  @map("location_lat")
+  locationLon Float  @map("location_lon")
+  radiusM     Int    @map("radius_m")
+
+  // Time window
+  timeStart DateTime @map("time_start")
+  timeEnd   DateTime @map("time_end")
+
+  // Requirements (stored as JSON string for flexibility)
+  requirementsJson String @map("requirements_json")
+
+  // Assurance
+  assuranceMode String @default("single") @map("assurance_mode") // single, quorum
+  quorumN       Int?   @map("quorum_n")
+
+  // Bounty
+  bountyAmount Float  @map("bounty_amount")
+  currency     String @default("GBP")
+
+  // Rights
+  rightsExclusivityDays Int     @default(0) @map("rights_exclusivity_days")
+  rightsResaleAllowed   Boolean @default(false) @map("rights_resale_allowed")
+
+  // Policy
+  policyJson  String? @map("policy_json") // JSON object as string
+  policyFlags String  @default("[]") @map("policy_flags") // JSON array as string
+  riskScore   Float?  @map("risk_score")
+
+  // Timestamps
+  createdAt   DateTime  @default(now()) @map("created_at")
+  publishedAt DateTime? @map("published_at")
+  expiresAt   DateTime? @map("expires_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  requester    User          @relation("TaskRequester", fields: [requesterId], references: [id])
+  taskTemplate TaskTemplate? @relation(fields: [templateId], references: [id])
+  claims       TaskClaim[]
+  submissions  Submission[]
+  escrows      Escrow[]
+
+  @@index([status])
+  @@index([requesterId])
+  @@index([locationLat, locationLon])
+  @@index([timeEnd])
+  @@map("tasks")
+}
+
+model TaskClaim {
+  id           String   @id @default(uuid())
+  taskId       String   @map("task_id")
+  workerId     String   @map("worker_id")
+  claimedAt    DateTime @default(now()) @map("claimed_at")
+  claimedUntil DateTime @map("claimed_until")
+  status       String   @default("active") // active, released, expired, converted
+
+  task   Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  worker User @relation(fields: [workerId], references: [id])
+
+  @@index([taskId, status])
+  @@index([workerId, status])
+  @@map("task_claims")
+}
+
+// ============================================================================
+// SUBMISSIONS & ARTEFACTS
+// ============================================================================
+
+model Submission {
+  id                String    @id @default(uuid())
+  taskId            String    @map("task_id")
+  workerId          String    @map("worker_id")
+  status            String    @default("created") // created, uploading, finalised, accepted, rejected, disputed, resolved
+
+  // Proof bundle
+  proofBundleJson   String    @default("{}") @map("proof_bundle_json") // JSON object as string
+  proofBundleHash   String?   @map("proof_bundle_hash")
+
+  // Verification
+  verificationJson  String    @default("{}") @map("verification_json") // JSON object as string
+  verificationScore Int       @default(0) @map("verification_score")
+  flagsJson         String    @default("[]") @map("flags_json") // JSON array as string
+
+  // Timestamps
+  createdAt         DateTime  @default(now()) @map("created_at")
+  finalisedAt       DateTime? @map("finalised_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  task      Task       @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  worker    User       @relation(fields: [workerId], references: [id])
+  artefacts Artefact[]
+  decisions Decision[]
+  disputes  Dispute[]
+
+  @@index([taskId])
+  @@index([workerId])
+  @@index([status])
+  @@map("submissions")
+}
+
+model Artefact {
+  id           String    @id @default(uuid())
+  submissionId String    @map("submission_id")
+  type         String    @default("photo") // photo, video, audio, document
+  storageKey   String    @map("storage_key")
+  sha256       String
+  sizeBytes    Int       @default(0) @map("size_bytes")
+  widthPx      Int       @default(0) @map("width_px")
+  heightPx     Int       @default(0) @map("height_px")
+  exifJson     String    @default("{}") @map("exif_json") // JSON object as string
+  capturedAt   DateTime? @map("captured_at")
+  gpsLat       Float?    @map("gps_lat")
+  gpsLon       Float?    @map("gps_lon")
+  bearingDeg   Float?    @map("bearing_deg")
+  createdAt    DateTime  @default(now()) @map("created_at")
+
+  submission Submission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+
+  @@index([submissionId])
+  @@index([sha256])
+  @@map("artefacts")
+}
+
+// ============================================================================
+// DECISIONS & DISPUTES
+// ============================================================================
+
+model Decision {
+  id           String   @id @default(uuid())
+  submissionId String   @map("submission_id")
+  actorId      String   @map("actor_id")
+  decisionType String   @map("decision_type") // accept, reject
+  reasonCode   String?  @map("reason_code")
+  comment      String?
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  submission Submission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  actor      User       @relation(fields: [actorId], references: [id])
+
+  @@map("decisions")
+}
+
+model Dispute {
+  id                String    @id @default(uuid())
+  submissionId      String    @map("submission_id")
+  openedBy          String    @map("opened_by")
+  status            String    @default("opened") // opened, evidence_pending, under_review, resolved
+  resolutionType    String?   @map("resolution_type") // accept_pay, partial_pay, reject_refund, strike
+  resolutionComment String?   @map("resolution_comment")
+  resolverId        String?   @map("resolver_id")
+  openedAt          DateTime  @default(now()) @map("opened_at")
+  resolvedAt        DateTime? @map("resolved_at")
+
+  submission Submission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+
+  @@map("disputes")
+}
+
+// ============================================================================
+// PAYMENTS & ESCROW
+// ============================================================================
+
+model Escrow {
+  id          String    @id @default(uuid())
+  taskId      String    @map("task_id")
+  provider    String    @default("onchain") // onchain, mock (for testing)
+  providerRef String?   @map("provider_ref")
+  amount      Float
+  currency    String    @default("USDC")
+  status      String    @default("pending") // pending, funded, locked, released, refunded, disputed
+
+  // On-chain tracking (Base)
+  chainId          Int?      @map("chain_id") // 8453 for Base mainnet
+  contractAddress  String?   @map("contract_address")
+  depositTxHash    String?   @map("deposit_tx_hash")
+  depositBlock     Int?      @map("deposit_block")
+  releaseTxHash    String?   @map("release_tx_hash")
+  refundTxHash     String?   @map("refund_tx_hash")
+  requesterWallet  String?   @map("requester_wallet")
+  workerWallet     String?   @map("worker_wallet")
+
+  // Auto-release scheduling
+  autoReleaseAt    DateTime? @map("auto_release_at")
+  disputeDeadline  DateTime? @map("dispute_deadline")
+
+  // Timestamps
+  fundedAt    DateTime? @map("funded_at")
+  releasedAt  DateTime? @map("released_at")
+  refundedAt  DateTime? @map("refunded_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  createdBy   String    @map("created_by")
+
+  task    Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  creator User @relation(fields: [createdBy], references: [id])
+
+  @@index([taskId])
+  @@index([depositTxHash])
+  @@index([status])
+  @@map("escrows")
+}
+
+model LedgerEntry {
+  id             String   @id @default(uuid())
+  taskId         String?  @map("task_id")
+  submissionId   String?  @map("submission_id")
+  entryType      String   @map("entry_type") // fund, release, refund, fee, residual
+  amount         Float
+  currency       String   @default("USDC")
+  direction      String   // credit, debit
+  counterpartyId String?  @map("counterparty_id")
+  walletAddress  String?  @map("wallet_address")
+  txHash         String?  @map("tx_hash")
+  blockNumber    Int?     @map("block_number")
+  chainId        Int?     @map("chain_id")
+  metadata       String   @default("{}") // JSON object as string
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  @@index([taskId])
+  @@index([txHash])
+  @@index([walletAddress])
+  @@map("ledger_entries")
+}
+
+// Chain indexer event tracking
+model ChainEvent {
+  id            String   @id @default(uuid())
+  chainId       Int      @map("chain_id")
+  blockNumber   Int      @map("block_number")
+  txHash        String   @map("tx_hash")
+  logIndex      Int      @map("log_index")
+  contractAddress String @map("contract_address")
+  eventName     String   @map("event_name") // Deposit, Release, Refund, DisputeOpened, DisputeResolved
+  eventData     String   @map("event_data") // JSON string of decoded event args
+  processed     Boolean  @default(false)
+  processedAt   DateTime? @map("processed_at")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  @@unique([chainId, txHash, logIndex])
+  @@index([chainId, blockNumber])
+  @@index([processed])
+  @@map("chain_events")
+}
+
+// Chain indexer cursor (last processed block)
+model ChainCursor {
+  id          String   @id @default(uuid())
+  chainId     Int      @unique @map("chain_id")
+  lastBlock   Int      @map("last_block")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("chain_cursors")
+}
+
+// ============================================================================
+// WEBHOOKS & EVENTS
+// ============================================================================
+
+model Webhook {
+  id         String   @id @default(uuid())
+  userId     String   @map("user_id")
+  url        String
+  secretHash String   @map("secret_hash")
+  eventTypes String   @map("event_types") // JSON array as string
+  status     String   @default("active") // active, paused, disabled
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  user       User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  deliveries WebhookDelivery[]
+
+  @@map("webhooks")
+}
+
+model WebhookDelivery {
+  id            String   @id @default(uuid())
+  webhookId     String   @map("webhook_id")
+  eventType     String   @map("event_type")
+  attempt       Int      @default(1)
+  status        String   // pending, success, failed
+  responseCode  Int?     @map("response_code")
+  lastAttemptAt DateTime @map("last_attempt_at")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  webhook Webhook @relation(fields: [webhookId], references: [id], onDelete: Cascade)
+
+  @@map("webhook_deliveries")
+}
+
+// ============================================================================
+// AUDIT & OBSERVABILITY
+// ============================================================================
+
+model AuditEvent {
+  id          String   @id @default(uuid())
+  actorId     String?  @map("actor_id")
+  action      String
+  objectType  String   @map("object_type")
+  objectId    String   @map("object_id")
+  ip          String?
+  userAgent   String?  @map("user_agent")
+  detailsJson String   @default("{}") @map("details_json") // JSON object as string
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  actor User? @relation(fields: [actorId], references: [id])
+
+  @@index([actorId])
+  @@index([objectType, objectId])
+  @@index([createdAt])
+  @@map("audit_events")
+}
