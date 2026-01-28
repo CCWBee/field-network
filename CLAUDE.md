@@ -90,7 +90,8 @@ packages/
 - [x] Wire on-chain escrow (OnChainEscrowProvider with viem)
 - [x] EXIF metadata extraction from uploaded images (sharp + exif-reader)
 - [x] Deploy scripts and CI/CD (GitHub Actions + Docker)
-- [ ] Production database migration (PostgreSQL ready, using SQLite for dev)
+- [x] Production database migration (PostgreSQL ready with pooling)
+- [x] Background job infrastructure (BullMQ + Redis)
 - [ ] Deploy contracts to Base mainnet
 
 ## Database
@@ -257,4 +258,85 @@ All users can both post tasks (requester) AND claim/complete tasks (worker). The
 - [ ] Add map view for task locations
 - [ ] Mobile responsive improvements
 - [ ] Test full task flow end-to-end
+
+#### Session 3: Sprint 1 - Production Database & Infrastructure (Jan 19, 2026)
+
+**PostgreSQL Migration:**
+- Updated `packages/api/prisma/schema.prisma` for PostgreSQL compatibility
+  - Changed provider from `sqlite` to `postgresql`
+  - Converted String JSON fields to native `Json` type
+  - Added `@db.Text` annotations for long text fields
+- Created comprehensive seed script (`packages/api/prisma/seed.ts`)
+  - 6 test users (admin, 2 requesters, 3 workers)
+  - 10 tasks in various states (draft, posted, claimed, submitted, accepted, disputed, expired)
+  - 5 submissions with artefacts
+  - User stats, badges, escrows, and reputation events
+
+**Infrastructure:**
+- Docker Compose now includes:
+  - PostgreSQL 16 with health checks and backup volume
+  - Redis 7 for job queue persistence
+  - MinIO for S3-compatible object storage (local dev)
+  - Background worker service
+- Connection pooling configured via DATABASE_URL query params
+  - `connection_limit=10` for API
+  - `connection_limit=5` for worker
+  - `pool_timeout=30` seconds
+
+**Background Jobs (BullMQ + Redis):**
+- Created `packages/api/src/lib/queue.ts` - Job queue management
+- Created `packages/api/src/jobs/claim-expiry.ts` - Expires abandoned claims
+  - Runs every 5 minutes
+  - Updates claim status to 'expired'
+  - Reduces worker reliability score by 5 points
+  - Resets worker streak counter
+  - Creates reputation events and notifications
+- Created `packages/api/src/worker.ts` - Worker process entry point
+- Added `npm run dev:worker` command
+
+**Health Endpoints:**
+- Created `packages/api/src/routes/health.ts`
+  - `GET /health` - Full system status (db, redis)
+  - `GET /health/ready` - Kubernetes readiness probe
+  - `GET /health/live` - Kubernetes liveness probe
+- Returns 200 (ok), 503 (degraded/unhealthy)
+
+**Documentation:**
+- Created `docs/BACKUP.md` - PostgreSQL backup and recovery guide
+- Created `scripts/backup-db.sh` - Database backup script
+- Created `scripts/migrate-sqlite-to-postgres.ts` - Data migration helper
+
+**Testing:**
+- Created `packages/api/tests/integration/database.test.ts`
+  - User CRUD with relations
+  - Task lifecycle
+  - Submission flow
+  - Foreign key integrity
+  - Transaction rollback behavior
+
+**Files Created:**
+- `packages/api/src/lib/queue.ts`
+- `packages/api/src/jobs/index.ts`
+- `packages/api/src/jobs/claim-expiry.ts`
+- `packages/api/src/worker.ts`
+- `packages/api/src/routes/health.ts`
+- `packages/api/prisma/seed.ts`
+- `packages/api/.env.test`
+- `packages/api/tests/integration/database.test.ts`
+- `scripts/backup-db.sh`
+- `scripts/migrate-sqlite-to-postgres.ts`
+- `docs/BACKUP.md`
+
+**Files Modified:**
+- `docker-compose.yml` - Added Redis, MinIO, worker service
+- `packages/api/prisma/schema.prisma` - PostgreSQL + JSON types
+- `packages/api/package.json` - Added bullmq, ioredis, seed script
+- `packages/api/src/index.ts` - Health routes, graceful shutdown
+- `packages/api/src/services/database.ts` - Connection pooling, health check
+- `packages/api/.env.example` - Redis URL, storage config
+- `package.json` - Added dev:worker, db:seed scripts
+
+**New Dependencies:**
+- `bullmq` ^5.34.0 - Job queue library
+- `ioredis` ^5.4.1 - Redis client
 

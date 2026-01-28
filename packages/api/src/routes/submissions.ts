@@ -3,10 +3,23 @@ import { z } from 'zod';
 import { v4 as uuidv4 } from 'uuid';
 import { prisma } from '../services/database';
 import { releaseEscrow } from '../services/escrow';
-import { getSignedUploadUrl } from '../services/storage';
+import { recalculateUserStats } from '../services/reputation';
+import { generateUploadUrl } from '../services/storage';
 import { authenticate, requireScope } from '../middleware/auth';
 import { NotFoundError, ValidationError, StateTransitionError } from '../middleware/errorHandler';
 import { createHash } from 'crypto';
+import {
+  notifySubmissionReceived,
+  notifySubmissionAccepted,
+  notifySubmissionRejected,
+  notifyBadgeEarned,
+  notifyFeeTierUpgrade,
+} from '../services/notifications';
+import {
+  calculatePlatformFee,
+  recordFeeLedgerEntry,
+  checkTierPromotion,
+} from '../services/fees';
 
 const router = Router();
 
@@ -127,13 +140,24 @@ router.post('/:submissionId/artefacts', authenticate, requireScope('submissions:
     }
 
     // Generate signed upload URL
-    const { uploadUrl, uploadId } = await getSignedUploadUrl(storageKey, content_type || 'image/jpeg', 3600);
+    const uploadResult = await generateUploadUrl(storageKey, {
+      contentType: content_type || 'image/jpeg',
+      expiresIn: 3600,
+      expectedSizeBytes: size_bytes,
+    });
+
+    if (!uploadResult.success || !uploadResult.data) {
+      throw new Error(`Failed to generate upload URL: ${uploadResult.error}`);
+    }
 
     res.status(201).json({
       artefact_id: artefact.id,
-      upload_id: uploadId,
-      upload_url: uploadUrl,
+      upload_id: uploadResult.data.uploadId,
+      upload_url: uploadResult.data.uploadUrl,
       storage_key: storageKey,
+      upload_method: uploadResult.data.method,
+      upload_headers: uploadResult.data.headers,
+      expires_at: uploadResult.data.expiresAt.toISOString(),
     });
   } catch (error) {
     next(error);
@@ -230,6 +254,22 @@ router.post('/:submissionId/finalise', authenticate, requireScope('submissions:w
         detailsJson: JSON.stringify({ bundleHash, score: verificationResult.score }),
       },
     });
+
+    await recalculateUserStats(req.user!.userId);
+
+    // Notify the task requester that a submission was received
+    const worker = await prisma.user.findUnique({
+      where: { id: req.user!.userId },
+      select: { username: true, ensName: true, email: true },
+    });
+    const workerName = worker?.username || worker?.ensName || worker?.email?.split('@')[0] || 'A worker';
+    await notifySubmissionReceived(
+      submission.task.requesterId,
+      submission.taskId,
+      submission.task.title,
+      submission.id,
+      workerName
+    );
 
     res.json({
       submission_id: updatedSubmission.id,
@@ -341,11 +381,38 @@ router.post('/:submissionId/accept', authenticate, requireScope('decisions:accep
       });
     });
 
+    const [workerResult] = await Promise.all([
+      recalculateUserStats(submission.workerId, {
+        reason: 'task_accepted',
+        taskId: submission.taskId,
+        submissionId,
+      }),
+      recalculateUserStats(submission.task.requesterId),
+    ]);
+
     // Release escrow to worker (outside transaction for cleaner error handling)
     const escrowResult = await releaseEscrow(submission.taskId, submission.workerId);
     if (!escrowResult.success) {
       // Log but don't fail - submission is accepted, escrow release can be retried
       console.error(`Escrow release failed for task ${submission.taskId}: ${escrowResult.error}`);
+    }
+
+    // Record platform fee in ledger
+    const feeInfo = await calculatePlatformFee(submission.task.requesterId, submission.task.bountyAmount);
+    if (feeInfo.fee > 0) {
+      await recordFeeLedgerEntry({
+        taskId: submission.taskId,
+        submissionId,
+        feeType: 'platform',
+        amount: feeInfo.fee,
+        currency: submission.task.currency,
+        payerId: submission.task.requesterId,
+        metadata: {
+          tier_name: feeInfo.tierName,
+          rate: feeInfo.rate,
+          bounty_amount: submission.task.bountyAmount,
+        },
+      });
     }
 
     await prisma.auditEvent.create({
@@ -356,14 +423,54 @@ router.post('/:submissionId/accept', authenticate, requireScope('decisions:accep
         objectId: submissionId,
         ip: req.ip || 'unknown',
         userAgent: req.get('user-agent') || 'unknown',
-        detailsJson: '{}',
+        detailsJson: JSON.stringify({ fee: feeInfo.fee, tier: feeInfo.tierName }),
       },
     });
+
+    // Notify the worker that their submission was accepted
+    await notifySubmissionAccepted(
+      submission.workerId,
+      submission.taskId,
+      submission.task.title,
+      submissionId,
+      submission.task.bountyAmount,
+      submission.task.currency
+    );
+
+    // Notify about any badges earned
+    for (const badgeType of workerResult.awardedBadges) {
+      const badgeDef = await prisma.badgeDefinition.findUnique({
+        where: { type: badgeType },
+      });
+      if (badgeDef) {
+        await notifyBadgeEarned(
+          submission.workerId,
+          badgeType,
+          badgeDef.name,
+          badgeDef.description
+        );
+      }
+    }
+
+    // Check if the worker has been promoted to a new fee tier
+    const tierPromotion = await checkTierPromotion(submission.workerId);
+    if (tierPromotion?.promoted && tierPromotion.newTier) {
+      await notifyFeeTierUpgrade(
+        submission.workerId,
+        tierPromotion.newTier.name,
+        tierPromotion.newTier.rate
+      );
+    }
 
     res.json({
       submission_id: submissionId,
       status: 'accepted',
       message: 'Submission accepted, payment released',
+      fee_charged: {
+        amount: feeInfo.fee,
+        rate: feeInfo.rate,
+        tier: feeInfo.tierName,
+      },
     });
   } catch (error) {
     next(error);
@@ -414,6 +521,15 @@ router.post('/:submissionId/reject', authenticate, requireScope('decisions:rejec
       });
     });
 
+    await Promise.all([
+      recalculateUserStats(submission.workerId, {
+        reason: 'task_rejected',
+        taskId: submission.taskId,
+        submissionId,
+      }),
+      recalculateUserStats(submission.task.requesterId),
+    ]);
+
     await prisma.auditEvent.create({
       data: {
         actorId: req.user!.userId,
@@ -425,6 +541,15 @@ router.post('/:submissionId/reject', authenticate, requireScope('decisions:rejec
         detailsJson: JSON.stringify({ reason_code }),
       },
     });
+
+    // Notify the worker that their submission was rejected
+    await notifySubmissionRejected(
+      submission.workerId,
+      submission.taskId,
+      submission.task.title,
+      submissionId,
+      reason_code
+    );
 
     res.json({
       submission_id: submissionId,

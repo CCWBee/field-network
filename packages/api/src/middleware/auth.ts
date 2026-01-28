@@ -5,6 +5,11 @@ import { prisma } from '../services/database';
 import { UnauthorizedError, ForbiddenError } from './errorHandler';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-change-in-production';
+const ADMIN_SESSION_TIMEOUT_MS = 60 * 60 * 1000; // 1 hour
+const MAX_ADMIN_SESSIONS_PER_USER = 3;
+
+// Track admin session activity
+const adminSessionActivity = new Map<string, { lastActivity: number; ip: string }>();
 
 export interface TokenPayload {
   userId: string;
@@ -141,4 +146,145 @@ export function generateToken(payload: TokenPayload, expiresIn: string | number 
 
 export function generateRefreshToken(userId: string): string {
   return jwt.sign({ userId, type: 'refresh' } as object, JWT_SECRET, { expiresIn: '7d' as jwt.SignOptions['expiresIn'] });
+}
+
+/**
+ * Helper to get client IP address from request
+ */
+export function getClientIp(req: Request): string {
+  const forwarded = req.headers['x-forwarded-for'];
+  if (typeof forwarded === 'string') {
+    return forwarded.split(',')[0].trim();
+  }
+  if (Array.isArray(forwarded)) {
+    return forwarded[0];
+  }
+  return req.ip || req.socket.remoteAddress || 'unknown';
+}
+
+/**
+ * Log admin action for audit trail
+ */
+export async function logAdminAction(
+  req: Request,
+  action: string,
+  details: Record<string, any> = {}
+): Promise<void> {
+  const ip = getClientIp(req);
+  const userId = req.user?.userId;
+
+  await prisma.auditEvent.create({
+    data: {
+      actorId: userId || null,
+      action: `admin.${action}`,
+      objectType: 'admin',
+      objectId: userId || 'system',
+      ip,
+      userAgent: req.get('user-agent') || 'unknown',
+      detailsJson: JSON.stringify({
+        ...details,
+        timestamp: new Date().toISOString(),
+      }),
+    },
+  });
+}
+
+/**
+ * Middleware for admin authentication hardening
+ * - Logs all admin access with IP
+ * - Enforces session timeout after 1 hour of inactivity
+ * - Limits concurrent admin sessions
+ */
+export function adminAuthHardening(req: Request, res: Response, next: NextFunction) {
+  if (!req.user) {
+    return next(new UnauthorizedError());
+  }
+
+  if (req.user.role !== 'admin') {
+    return next(new ForbiddenError('Admin access required'));
+  }
+
+  const sessionKey = `${req.user.userId}:${getClientIp(req)}`;
+  const now = Date.now();
+
+  // Check for session timeout
+  const existingSession = adminSessionActivity.get(sessionKey);
+  if (existingSession) {
+    const timeSinceLastActivity = now - existingSession.lastActivity;
+    if (timeSinceLastActivity > ADMIN_SESSION_TIMEOUT_MS) {
+      adminSessionActivity.delete(sessionKey);
+      // Log session timeout
+      logAdminAction(req, 'session_timeout', {
+        reason: 'inactivity',
+        last_activity_ms_ago: timeSinceLastActivity,
+      }).catch(console.error);
+      return next(new UnauthorizedError('Admin session expired due to inactivity'));
+    }
+  }
+
+  // Count active sessions for this user (across all IPs)
+  const userSessions = Array.from(adminSessionActivity.entries())
+    .filter(([key]) => key.startsWith(`${req.user!.userId}:`))
+    .filter(([, data]) => now - data.lastActivity < ADMIN_SESSION_TIMEOUT_MS);
+
+  if (!existingSession && userSessions.length >= MAX_ADMIN_SESSIONS_PER_USER) {
+    // Remove oldest session to make room for new one
+    const oldestSession = userSessions.sort((a, b) => a[1].lastActivity - b[1].lastActivity)[0];
+    if (oldestSession) {
+      adminSessionActivity.delete(oldestSession[0]);
+    }
+  }
+
+  // Update session activity
+  adminSessionActivity.set(sessionKey, {
+    lastActivity: now,
+    ip: getClientIp(req),
+  });
+
+  // Log admin access (async, don't wait)
+  logAdminAction(req, 'access', {
+    endpoint: req.originalUrl,
+    method: req.method,
+  }).catch(console.error);
+
+  next();
+}
+
+/**
+ * Log failed admin login attempt
+ */
+export async function logFailedAdminLogin(
+  req: Request,
+  email: string,
+  reason: string
+): Promise<void> {
+  const ip = getClientIp(req);
+
+  await prisma.auditEvent.create({
+    data: {
+      actorId: null,
+      action: 'admin.login_failed',
+      objectType: 'admin',
+      objectId: email,
+      ip,
+      userAgent: req.get('user-agent') || 'unknown',
+      detailsJson: JSON.stringify({
+        email,
+        reason,
+        timestamp: new Date().toISOString(),
+      }),
+    },
+  });
+}
+
+/**
+ * Clean up stale admin sessions (call periodically)
+ */
+export function cleanupStaleSessions(): void {
+  const now = Date.now();
+  for (const [key, data] of adminSessionActivity.entries()) {
+    if (now - data.lastActivity > ADMIN_SESSION_TIMEOUT_MS) {
+      adminSessionActivity.delete(key);
+    }
+  }
 }

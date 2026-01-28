@@ -78,6 +78,12 @@ export default function DashboardLayout({
               >
                 My Claims
               </Link>
+              <Link
+                href="/dashboard/badges"
+                className="text-slate-600 hover:text-field-600 transition-colors"
+              >
+                Badges
+              </Link>
               {user?.role === 'admin' && (
                 <Link
                   href="/dashboard/admin"

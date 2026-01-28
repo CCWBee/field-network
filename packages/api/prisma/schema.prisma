@@ -3,7 +3,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -21,7 +21,7 @@ model User {
 
   // Profile fields (Polymarket-style account layer)
   username        String?  @unique // Chosen display name
-  bio             String?  // Short profile description
+  bio             String?  @db.Text // Short profile description
   avatarUrl       String?  @map("avatar_url") // Profile picture URL
   ensName         String?  @map("ens_name") // Cached ENS name (e.g. alice.eth)
   ensAvatarUrl    String?  @map("ens_avatar_url") // Cached ENS avatar
@@ -30,11 +30,11 @@ model User {
   twitterHandle   String?  @map("twitter_handle") // Social link
   onboardingCompleted Boolean @default(false) @map("onboarding_completed")
 
-  // Settings (JSON strings for SQLite)
-  notificationPrefs String @default("{}") @map("notification_prefs")
-  uiSettings        String @default("{}") @map("ui_settings")
-  defaultRightsJson String @default("{}") @map("default_rights_json")
-  savedAddresses    String @default("[]") @map("saved_addresses") // JSON array of saved locations
+  // Settings (JSON for PostgreSQL)
+  notificationPrefs Json @default("{}") @map("notification_prefs")
+  uiSettings        Json @default("{}") @map("ui_settings")
+  defaultRightsJson Json @default("{}") @map("default_rights_json")
+  savedAddresses    Json @default("[]") @map("saved_addresses") // JSON array of saved locations
 
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
@@ -62,8 +62,8 @@ model WorkerProfile {
   userId         String   @unique @map("user_id")
   displayName    String   @map("display_name")
   radiusKm       Int      @default(50) @map("radius_km")
-  skills         String   @default("[]") // JSON array as string
-  kit            String   @default("[]") // JSON array as string
+  skills         Json     @default("[]") // JSON array
+  kit            Json     @default("[]") // JSON array
   rating         Float    @default(0)
   completedCount Int      @default(0) @map("completed_count")
   strikes        Int      @default(0)
@@ -157,9 +157,9 @@ model UserBadge {
   badgeType   String   @map("badge_type") // early_adopter, verified, fast_responder, reliable, top_earner, etc.
   tier        String   @default("bronze") // bronze, silver, gold, platinum
   title       String   // Display title
-  description String   // Badge description
+  description String   @db.Text // Badge description
   iconUrl     String?  @map("icon_url")
-  metadata    String   @default("{}") // JSON for extra badge data
+  metadata    Json     @default("{}") // JSON for extra badge data
   earnedAt    DateTime @default(now()) @map("earned_at")
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -175,10 +175,10 @@ model BadgeDefinition {
   id          String   @id @default(uuid())
   type        String   @unique // Unique badge type identifier
   name        String   // Display name
-  description String   // What this badge represents
+  description String   @db.Text // What this badge represents
   category    String   // achievement, milestone, verification, streak
   iconUrl     String?  @map("icon_url")
-  tiers       String   @default("[]") // JSON array of tier thresholds
+  tiers       Json     @default("[]") // JSON array of tier thresholds
   isActive    Boolean  @default(true) @map("is_active")
   createdAt   DateTime @default(now()) @map("created_at")
 
@@ -194,7 +194,7 @@ model ApiToken {
   name            String?   // User-friendly label
 
   // Scopes and permissions
-  scopes          String    @default("[]") // JSON array: ["read:tasks", "write:tasks", "submit"]
+  scopes          Json      @default("[]") // JSON array: ["read:tasks", "write:tasks", "submit"]
 
   // Spend caps for financial operations
   spendCapAmount  Float?    @map("spend_cap_amount")
@@ -202,7 +202,7 @@ model ApiToken {
   spendUsed       Float     @default(0) @map("spend_used")
 
   // Minting proof (wallet signature that created this token)
-  mintedWithSig   String?   @map("minted_with_sig")
+  mintedWithSig   String?   @db.Text @map("minted_with_sig")
   mintedFromWallet String?  @map("minted_from_wallet")
 
   // Lifecycle
@@ -226,7 +226,7 @@ model TaskTemplate {
   id         String   @id @default(uuid())
   name       String   @unique
   version    String
-  schemaJson String   @map("schema_json") // JSON object as string
+  schemaJson Json     @map("schema_json") // JSON object
   isActive   Boolean  @default(true) @map("is_active")
   createdAt  DateTime @default(now()) @map("created_at")
   updatedAt  DateTime @updatedAt @map("updated_at")
@@ -243,7 +243,7 @@ model Task {
   template      String   @default("geo_photo_v1")
   schemaVersion String   @default("1.0") @map("schema_version")
   title         String
-  instructions  String
+  instructions  String   @db.Text
   status        String   @default("draft") // draft, posted, claimed, submitted, accepted, disputed, cancelled, expired
 
   // Location
@@ -255,8 +255,8 @@ model Task {
   timeStart DateTime @map("time_start")
   timeEnd   DateTime @map("time_end")
 
-  // Requirements (stored as JSON string for flexibility)
-  requirementsJson String @map("requirements_json")
+  // Requirements (stored as JSON for flexibility)
+  requirementsJson Json @map("requirements_json")
 
   // Assurance
   assuranceMode String @default("single") @map("assurance_mode") // single, quorum
@@ -271,8 +271,8 @@ model Task {
   rightsResaleAllowed   Boolean @default(false) @map("rights_resale_allowed")
 
   // Policy
-  policyJson  String? @map("policy_json") // JSON object as string
-  policyFlags String  @default("[]") @map("policy_flags") // JSON array as string
+  policyJson  Json?   @map("policy_json") // JSON object
+  policyFlags Json    @default("[]") @map("policy_flags") // JSON array
   riskScore   Float?  @map("risk_score")
 
   // Timestamps
@@ -322,13 +322,13 @@ model Submission {
   status            String    @default("created") // created, uploading, finalised, accepted, rejected, disputed, resolved
 
   // Proof bundle
-  proofBundleJson   String    @default("{}") @map("proof_bundle_json") // JSON object as string
+  proofBundleJson   Json      @default("{}") @map("proof_bundle_json") // JSON object
   proofBundleHash   String?   @map("proof_bundle_hash")
 
   // Verification
-  verificationJson  String    @default("{}") @map("verification_json") // JSON object as string
+  verificationJson  Json      @default("{}") @map("verification_json") // JSON object
   verificationScore Int       @default(0) @map("verification_score")
-  flagsJson         String    @default("[]") @map("flags_json") // JSON array as string
+  flagsJson         Json      @default("[]") @map("flags_json") // JSON array
 
   // Timestamps
   createdAt         DateTime  @default(now()) @map("created_at")
@@ -357,7 +357,7 @@ model Artefact {
   sizeBytes    Int       @default(0) @map("size_bytes")
   widthPx      Int       @default(0) @map("width_px")
   heightPx     Int       @default(0) @map("height_px")
-  exifJson     String    @default("{}") @map("exif_json") // JSON object as string
+  exifJson     Json      @default("{}") @map("exif_json") // JSON object
   capturedAt   DateTime? @map("captured_at")
   gpsLat       Float?    @map("gps_lat")
   gpsLon       Float?    @map("gps_lon")
@@ -381,7 +381,7 @@ model Decision {
   actorId      String   @map("actor_id")
   decisionType String   @map("decision_type") // accept, reject
   reasonCode   String?  @map("reason_code")
-  comment      String?
+  comment      String?  @db.Text
   createdAt    DateTime @default(now()) @map("created_at")
 
   submission Submission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
@@ -396,14 +396,34 @@ model Dispute {
   openedBy          String    @map("opened_by")
   status            String    @default("opened") // opened, evidence_pending, under_review, resolved
   resolutionType    String?   @map("resolution_type") // accept_pay, partial_pay, reject_refund, strike
-  resolutionComment String?   @map("resolution_comment")
+  resolutionComment String?   @db.Text @map("resolution_comment")
+  splitPercentage   Int?      @map("split_percentage") // 0-100, worker's share when outcome is 'split'
   resolverId        String?   @map("resolver_id")
   openedAt          DateTime  @default(now()) @map("opened_at")
   resolvedAt        DateTime? @map("resolved_at")
 
-  submission Submission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  submission Submission        @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  auditLogs  DisputeAuditLog[]
 
+  @@index([status])
+  @@index([openedAt])
   @@map("disputes")
+}
+
+// Dispute audit log - tracks all dispute actions with timestamps and actor
+model DisputeAuditLog {
+  id          String   @id @default(uuid())
+  disputeId   String   @map("dispute_id")
+  action      String   // created, evidence_added, status_changed, resolved
+  actorId     String?  @map("actor_id")
+  detailsJson Json     @default("{}") @map("details_json") // JSON for action details
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  dispute Dispute @relation(fields: [disputeId], references: [id], onDelete: Cascade)
+
+  @@index([disputeId])
+  @@index([createdAt])
+  @@map("dispute_audit_logs")
 }
 
 // ============================================================================
@@ -462,7 +482,7 @@ model LedgerEntry {
   txHash         String?  @map("tx_hash")
   blockNumber    Int?     @map("block_number")
   chainId        Int?     @map("chain_id")
-  metadata       String   @default("{}") // JSON object as string
+  metadata       Json     @default("{}") // JSON object
   createdAt      DateTime @default(now()) @map("created_at")
 
   @@index([taskId])
@@ -480,7 +500,7 @@ model ChainEvent {
   logIndex      Int      @map("log_index")
   contractAddress String @map("contract_address")
   eventName     String   @map("event_name") // Deposit, Release, Refund, DisputeOpened, DisputeResolved
-  eventData     String   @map("event_data") // JSON string of decoded event args
+  eventData     Json     @map("event_data") // JSON of decoded event args
   processed     Boolean  @default(false)
   processedAt   DateTime? @map("processed_at")
   createdAt     DateTime @default(now()) @map("created_at")
@@ -510,7 +530,7 @@ model Webhook {
   userId     String   @map("user_id")
   url        String
   secretHash String   @map("secret_hash")
-  eventTypes String   @map("event_types") // JSON array as string
+  eventTypes Json     @map("event_types") // JSON array
   status     String   @default("active") // active, paused, disabled
   createdAt  DateTime @default(now()) @map("created_at")
   updatedAt  DateTime @updatedAt @map("updated_at")
@@ -547,8 +567,8 @@ model AuditEvent {
   objectType  String   @map("object_type")
   objectId    String   @map("object_id")
   ip          String?
-  userAgent   String?  @map("user_agent")
-  detailsJson String   @default("{}") @map("details_json") // JSON object as string
+  userAgent   String?  @db.Text @map("user_agent")
+  detailsJson Json     @default("{}") @map("details_json") // JSON object
   createdAt   DateTime @default(now()) @map("created_at")
 
   actor User? @relation(fields: [actorId], references: [id])
@@ -557,4 +577,79 @@ model AuditEvent {
   @@index([objectType, objectId])
   @@index([createdAt])
   @@map("audit_events")
+}
+
+// ============================================================================
+// REPUTATION HISTORY
+// ============================================================================
+
+model ReputationEvent {
+  id            String   @id @default(uuid())
+  userId        String   @map("user_id")
+  previousScore Float    @map("previous_score")
+  newScore      Float    @map("new_score")
+  reason        String   // task_accepted, task_rejected, dispute_resolved, claim_abandoned, badge_earned, streak_bonus
+  taskId        String?  @map("task_id")
+  submissionId  String?  @map("submission_id")
+  badgeType     String?  @map("badge_type")
+  metadata      Json     @default("{}") // JSON for additional context
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  @@index([userId])
+  @@index([userId, createdAt])
+  @@index([taskId])
+  @@map("reputation_events")
+}
+
+// ============================================================================
+// NOTIFICATIONS
+// ============================================================================
+
+model Notification {
+  id        String    @id @default(uuid())
+  userId    String    @map("user_id")
+  type      String    // task_claimed, submission_received, submission_accepted, submission_rejected, dispute_resolved, badge_earned, streak_milestone
+  title     String
+  body      String    @db.Text
+  data      Json      @default("{}") // JSON for related IDs and context
+  read      Boolean   @default(false)
+  readAt    DateTime? @map("read_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  @@index([userId])
+  @@index([userId, read])
+  @@index([createdAt])
+  @@map("notifications")
+}
+
+// ============================================================================
+// FEE CONFIGURATION
+// ============================================================================
+
+// Fee configuration stored in database (allows admin to adjust without code changes)
+model FeeConfig {
+  id              String   @id @default(uuid())
+  feeType         String   @map("fee_type") // platform, arbitration
+  name            String   // Display name for this config
+  description     String?  // Description of this fee tier
+
+  // Tier requirements (for platform fees)
+  tierOrder       Int      @default(0) @map("tier_order") // Lower = checked first (higher priority)
+  minAccountDays  Int      @default(0) @map("min_account_days")
+  minTasksAccepted Int     @default(0) @map("min_tasks_accepted")
+  minReliability  Float    @default(0) @map("min_reliability") // 0-100
+
+  // Fee calculation
+  rate            Float    // Percentage as decimal (e.g., 0.10 = 10%)
+  minFee          Float?   @map("min_fee") // Minimum fee amount
+  maxFee          Float?   @map("max_fee") // Maximum fee amount (cap)
+
+  // Status
+  isActive        Boolean  @default(true) @map("is_active")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  @@unique([feeType, tierOrder])
+  @@index([feeType, isActive])
+  @@map("fee_configs")
 }

@@ -430,6 +430,496 @@ class ApiClient {
       member_since: string;
     }>(`/v1/profile/${encodeURIComponent(usernameOrId)}`);
   }
+
+  // Admin endpoints
+  async getAdminStats() {
+    return this.request<{
+      open_disputes: number;
+      total_tasks: number;
+      active_claims: number;
+      active_workers: number;
+      pending_submissions: number;
+      total_users: number;
+    }>('/v1/admin/stats');
+  }
+
+  async getAdminUsers(filters?: {
+    status?: string;
+    role?: string;
+    query?: string;
+    limit?: number;
+    offset?: number;
+  }) {
+    const params = new URLSearchParams();
+    if (filters) {
+      Object.entries(filters).forEach(([key, value]) => {
+        if (value !== undefined && value !== null && value !== '') {
+          params.append(key, String(value));
+        }
+      });
+    }
+    return this.request<{
+      users: Array<{
+        id: string;
+        email: string | null;
+        username: string | null;
+        role: string;
+        status: string;
+        ens_name: string | null;
+        created_at: string;
+        stats: {
+          reliability_score: number;
+          dispute_rate: number;
+          tasks_completed: number;
+          tasks_accepted: number;
+          total_earned: number;
+        } | null;
+      }>;
+      total: number;
+      limit: number;
+      offset: number;
+    }>(`/v1/admin/users?${params.toString()}`);
+  }
+
+  async updateUserStatus(userId: string, status: 'active' | 'suspended' | 'banned') {
+    return this.request<{ id: string; status: string }>(`/v1/admin/users/${userId}/status`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status }),
+    });
+  }
+
+  async getDisputes(filters?: { status?: string; limit?: number; offset?: number }) {
+    const params = new URLSearchParams();
+    if (filters) {
+      Object.entries(filters).forEach(([key, value]) => {
+        if (value !== undefined && value !== null && value !== '') {
+          params.append(key, String(value));
+        }
+      });
+    }
+    return this.request<{
+      disputes: any[];
+      total: number;
+      limit: number;
+      offset: number;
+    }>(`/v1/disputes?${params.toString()}`);
+  }
+
+  async getDispute(disputeId: string) {
+    return this.request<any>(`/v1/disputes/${disputeId}`);
+  }
+
+  async resolveDispute(disputeId: string, data: {
+    resolution_type: string;
+    worker_payout_percent?: number;
+    comment?: string;
+  }) {
+    return this.request<{ dispute_id: string; status: string }>(`/v1/disputes/${disputeId}/resolve`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async getResaleInventory(mine?: boolean) {
+    const params = new URLSearchParams();
+    if (mine) params.set('mine', 'true');
+    return this.request<{
+      items: Array<{
+        task_id: string;
+        title: string;
+        location: { lat: number; lon: number; radius_m: number };
+        bounty: { currency: string; amount: number };
+        accepted_at: string;
+        resale_available_at: string;
+        status: 'exclusive' | 'resale_ready';
+        royalty_rate: number;
+      }>;
+    }>(`/v1/marketplace/inventory?${params.toString()}`);
+  }
+
+  async getRoyaltySummary() {
+    return this.request<{
+      total_earned: number;
+      pending: number;
+      last_payout_at: string | null;
+      items: Array<{
+        task_id: string;
+        amount: number;
+        paid_at: string;
+      }>;
+    }>('/v1/marketplace/royalties');
+  }
+
+  async getBadges() {
+    return this.request<{
+      badges: Array<{
+        type: string;
+        name: string;
+        description: string;
+        category: string;
+        icon_url: string | null;
+        tiers: any[];
+      }>;
+    }>('/v1/badges');
+  }
+
+  async getMyBadges() {
+    return this.request<{
+      badges: Array<{
+        badge_type: string;
+        tier: string;
+        title: string;
+        description: string;
+        icon_url: string | null;
+        earned_at: string;
+      }>;
+    }>('/v1/badges/me');
+  }
+
+  // Stats endpoints
+  async getWorkerStats() {
+    return this.request<{
+      summary: {
+        tasks_claimed: number;
+        tasks_delivered: number;
+        tasks_accepted: number;
+        tasks_rejected: number;
+        total_earned: number;
+        reliability_score: number;
+        dispute_rate: number;
+        current_streak: number;
+        longest_streak: number;
+        avg_completion_hours: number | null;
+      };
+      active: {
+        claims: number;
+        pending_submissions: number;
+      };
+      earnings_chart: Array<{
+        month: string;
+        label: string;
+        amount: number;
+      }>;
+      completed_tasks: Array<{
+        id: string;
+        title: string;
+        lat: number;
+        lon: number;
+        bounty: { amount: number; currency: string };
+        template: string;
+        completed_at: string | null;
+      }>;
+      recent_activity: Array<{
+        submission_id: string;
+        task_id: string;
+        task_title: string;
+        bounty: { amount: number; currency: string };
+        status: string;
+        updated_at: string;
+      }>;
+    }>('/v1/users/me/stats/worker');
+  }
+
+  async getRequesterStats() {
+    return this.request<{
+      summary: {
+        tasks_posted: number;
+        tasks_completed: number;
+        total_bounties_paid: number;
+        fulfillment_rate: number;
+        avg_response_hours: number | null;
+        repeat_workers: number;
+      };
+      tasks_by_status: {
+        draft: number;
+        posted: number;
+        claimed: number;
+        submitted: number;
+        accepted: number;
+        disputed: number;
+        cancelled: number;
+        expired: number;
+      };
+      pending_reviews: Array<{
+        submission_id: string;
+        task_id: string;
+        task_title: string;
+        bounty: { amount: number; currency: string };
+        worker: { id: string; username: string | null };
+        submitted_at: string | null;
+      }>;
+      spending_chart: Array<{
+        month: string;
+        label: string;
+        amount: number;
+      }>;
+      tasks_map: Array<{
+        id: string;
+        title: string;
+        status: string;
+        lat: number;
+        lon: number;
+        bounty: { amount: number; currency: string };
+        template: string;
+        created_at: string;
+      }>;
+      template_usage: Array<{
+        template: string;
+        count: number;
+      }>;
+    }>('/v1/users/me/stats/requester');
+  }
+
+  // Fee endpoints
+  async previewFees(amount: number, currency?: string) {
+    const params = new URLSearchParams();
+    params.set('amount', String(amount));
+    if (currency) params.set('currency', currency);
+    return this.request<{
+      bounty_amount: number;
+      platform_fee: {
+        amount: number;
+        rate: number;
+        rate_percent: string;
+        tier: string;
+      };
+      arbitration_fee: {
+        amount: number;
+        rate: number;
+        rate_percent: string;
+      };
+      total_cost: number;
+      worker_payout: number;
+      currency: string;
+    }>(`/v1/fees/preview?${params.toString()}`);
+  }
+
+  async getFeeTiers() {
+    return this.request<{
+      tiers: Array<{
+        name: string;
+        rate: number;
+        rate_percent: string;
+        requirements: {
+          min_account_days: number;
+          min_tasks_accepted: number;
+          min_reliability: number;
+        };
+      }>;
+    }>('/v1/fees/tiers');
+  }
+
+  async getMyFeeTier() {
+    return this.request<{
+      current_tier: {
+        name: string;
+        rate: number;
+        rate_percent: string;
+      };
+      next_tier: {
+        name: string;
+        rate: number;
+        rate_percent: string;
+        savings_percent: string;
+      } | null;
+      progress: {
+        account_days: { current: number; required: number; met: boolean };
+        tasks_accepted: { current: number; required: number; met: boolean };
+        reliability: { current: number; required: number; met: boolean };
+      } | null;
+    }>('/v1/fees/my-tier');
+  }
+
+  async getFeeHistory(options?: { limit?: number; offset?: number }) {
+    const params = new URLSearchParams();
+    if (options?.limit) params.set('limit', String(options.limit));
+    if (options?.offset) params.set('offset', String(options.offset));
+    return this.request<{
+      entries: Array<{
+        id: string;
+        task_id: string | null;
+        fee_type: string;
+        amount: number;
+        currency: string;
+        created_at: string;
+      }>;
+      total: number;
+      total_fees_paid: number;
+      limit: number;
+      offset: number;
+    }>(`/v1/fees/history?${params.toString()}`);
+  }
+
+  // Admin fee endpoints
+  async getAdminFeeConfigs() {
+    return this.request<{
+      configs: Array<{
+        id: string;
+        fee_type: string;
+        name: string;
+        description: string | null;
+        tier_order: number;
+        rate: number;
+        rate_percent: string;
+        min_fee: number | null;
+        max_fee: number | null;
+        requirements: {
+          min_account_days: number;
+          min_tasks_accepted: number;
+          min_reliability: number;
+        };
+        is_active: boolean;
+        created_at: string;
+        updated_at: string;
+      }>;
+    }>('/v1/fees/admin/configs');
+  }
+
+  async updateFeeConfig(configId: string, updates: {
+    name?: string;
+    description?: string;
+    rate?: number;
+    min_fee?: number;
+    max_fee?: number;
+    min_account_days?: number;
+    min_tasks_accepted?: number;
+    min_reliability?: number;
+    is_active?: boolean;
+  }) {
+    return this.request<{
+      id: string;
+      fee_type: string;
+      name: string;
+      rate: number;
+      is_active: boolean;
+      updated_at: string;
+    }>(`/v1/fees/admin/configs/${configId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(updates),
+    });
+  }
+
+  async getAdminFeeStats(options?: { start_date?: string; end_date?: string }) {
+    const params = new URLSearchParams();
+    if (options?.start_date) params.set('start_date', options.start_date);
+    if (options?.end_date) params.set('end_date', options.end_date);
+    return this.request<{
+      total_platform_fees: number;
+      total_arbitration_fees: number;
+      total_fees: number;
+      fees_by_tier: Record<string, number>;
+      transaction_count: number;
+      period: {
+        start: string | null;
+        end: string | null;
+      };
+    }>(`/v1/fees/admin/stats?${params.toString()}`);
+  }
+
+  async seedFeeConfigs() {
+    return this.request<{ message: string }>('/v1/fees/admin/seed', {
+      method: 'POST',
+    });
+  }
+
+  // Notification endpoints
+  async getNotifications(options?: { limit?: number; offset?: number; unread_only?: boolean }) {
+    const params = new URLSearchParams();
+    if (options?.limit) params.set('limit', String(options.limit));
+    if (options?.offset) params.set('offset', String(options.offset));
+    if (options?.unread_only) params.set('unread_only', 'true');
+    return this.request<{
+      notifications: Array<{
+        id: string;
+        type: string;
+        title: string;
+        body: string;
+        data: Record<string, any>;
+        read: boolean;
+        created_at: string;
+      }>;
+      total: number;
+      unread_count: number;
+      limit: number;
+      offset: number;
+    }>(`/v1/notifications?${params.toString()}`);
+  }
+
+  async getNotificationUnreadCount() {
+    return this.request<{ unread_count: number }>('/v1/notifications/unread-count');
+  }
+
+  async markNotificationAsRead(notificationId: string) {
+    return this.request<{ message: string }>(`/v1/notifications/${notificationId}/read`, {
+      method: 'POST',
+    });
+  }
+
+  async markAllNotificationsAsRead() {
+    return this.request<{ message: string; count: number }>('/v1/notifications/read-all', {
+      method: 'POST',
+    });
+  }
+
+  async getNotificationPreferences() {
+    return this.request<{
+      preferences: Record<string, boolean>;
+      available_types: string[];
+    }>('/v1/notifications/preferences');
+  }
+
+  async updateNotificationPreferences(prefs: Record<string, boolean>) {
+    return this.request<{
+      preferences: Record<string, boolean>;
+      message: string;
+    }>('/v1/notifications/preferences', {
+      method: 'PUT',
+      body: JSON.stringify(prefs),
+    });
+  }
+
+  // Reputation history endpoints
+  async getMyReputationHistory(options?: { limit?: number; offset?: number }) {
+    const params = new URLSearchParams();
+    if (options?.limit) params.set('limit', String(options.limit));
+    if (options?.offset) params.set('offset', String(options.offset));
+    return this.request<{
+      events: Array<{
+        id: string;
+        previous_score: number;
+        new_score: number;
+        score_change: number;
+        reason: string;
+        task_id: string | null;
+        badge_type: string | null;
+        metadata: Record<string, any>;
+        created_at: string;
+      }>;
+      total: number;
+      limit: number;
+      offset: number;
+    }>(`/v1/profile/me/reputation-history?${params.toString()}`);
+  }
+
+  async getPublicReputationHistory(usernameOrId: string, options?: { limit?: number; offset?: number }) {
+    const params = new URLSearchParams();
+    if (options?.limit) params.set('limit', String(options.limit));
+    if (options?.offset) params.set('offset', String(options.offset));
+    return this.request<{
+      events: Array<{
+        id: string;
+        previous_score: number;
+        new_score: number;
+        score_change: number;
+        reason: string;
+        badge_type: string | null;
+        created_at: string;
+      }>;
+      total: number;
+      limit: number;
+      offset: number;
+    }>(`/v1/profile/${encodeURIComponent(usernameOrId)}/reputation-history?${params.toString()}`);
+  }
 }
 
 export const api = new ApiClient(API_BASE);

@@ -32,12 +32,11 @@ export default function AdminDashboard() {
   const loadStats = async () => {
     api.setToken(token);
     try {
-      // In a real app, you'd have a stats endpoint
-      // For now, we'll just show placeholders
+      const data = await api.getAdminStats();
       setStats({
-        openDisputes: 0,
-        totalTasks: 0,
-        activeWorkers: 0,
+        openDisputes: data.open_disputes,
+        totalTasks: data.total_tasks,
+        activeWorkers: data.active_workers,
       });
     } catch (error) {
       console.error('Failed to load stats:', error);

@@ -1,160 +1,117 @@
 /**
- * Storage Service
+ * Storage Service (Compatibility Layer)
  *
- * For mk0: Mock storage with local file system.
- * For production: Swap to S3, Azure Blob, or similar with signed URLs.
+ * This file provides backward compatibility with the old storage API
+ * while delegating to the new storage provider abstraction layer.
+ *
+ * For new code, prefer importing directly from './storage/index'.
  */
 
-import { createHash, randomBytes } from 'crypto';
-import * as fs from 'fs';
-import * as path from 'path';
+// Re-export everything from the new storage module
+export * from './storage/index';
 
-export interface StorageProvider {
-  generateUploadUrl(key: string, contentType: string, expiresIn?: number): Promise<{ uploadUrl: string; uploadId: string }>;
-  generateDownloadUrl(key: string, expiresIn?: number): Promise<string>;
-  getFileHash(key: string): Promise<string | null>;
-  fileExists(key: string): Promise<boolean>;
-}
-
-// Local storage directory
-const STORAGE_DIR = process.env.STORAGE_DIR || path.join(process.cwd(), 'uploads');
-
-// Ensure storage directory exists
-if (!fs.existsSync(STORAGE_DIR)) {
-  fs.mkdirSync(STORAGE_DIR, { recursive: true });
-}
-
-// In-memory upload tokens for mock signed URLs
-const uploadTokens = new Map<string, { key: string; expiresAt: Date; contentType: string }>();
+// Legacy exports for backward compatibility
+import {
+  getStorageProvider,
+  generateUploadUrl as newGenerateUploadUrl,
+  generateDownloadUrl as newGenerateDownloadUrl,
+  uploadFile,
+  downloadFile,
+  deleteFile as newDeleteFile,
+  deleteFiles,
+  getFileHash as newGetFileHash,
+  fileExists as newFileExists,
+  validateUploadToken as newValidateUploadToken,
+  consumeToken,
+  LocalStorageProvider,
+} from './storage/index';
 
 /**
- * Mock Storage Provider
- * Uses local file system with signed URL simulation.
+ * @deprecated Use generateUploadUrl from './storage' instead
  */
-class MockStorageProvider implements StorageProvider {
-  async generateUploadUrl(key: string, contentType: string, expiresIn = 3600): Promise<{ uploadUrl: string; uploadId: string }> {
-    const uploadId = randomBytes(16).toString('hex');
-    const expiresAt = new Date(Date.now() + expiresIn * 1000);
-
-    // Store upload token
-    uploadTokens.set(uploadId, { key, expiresAt, contentType });
-
-    // Clean expired tokens periodically
-    this.cleanExpiredTokens();
-
-    // Return URL that points to our upload endpoint
-    const baseUrl = process.env.API_BASE_URL || 'http://localhost:3001';
-    const uploadUrl = `${baseUrl}/v1/uploads/${uploadId}`;
-
-    return { uploadUrl, uploadId };
-  }
-
-  async generateDownloadUrl(key: string, expiresIn = 3600): Promise<string> {
-    const downloadId = randomBytes(16).toString('hex');
-    const expiresAt = new Date(Date.now() + expiresIn * 1000);
-
-    // Store download token
-    uploadTokens.set(downloadId, { key, expiresAt, contentType: '' });
-
-    const baseUrl = process.env.API_BASE_URL || 'http://localhost:3001';
-    return `${baseUrl}/v1/downloads/${downloadId}`;
-  }
-
-  async getFileHash(key: string): Promise<string | null> {
-    const filePath = this.getFilePath(key);
-    if (!fs.existsSync(filePath)) {
-      return null;
-    }
-
-    const fileBuffer = fs.readFileSync(filePath);
-    return createHash('sha256').update(fileBuffer).digest('hex');
-  }
-
-  async fileExists(key: string): Promise<boolean> {
-    const filePath = this.getFilePath(key);
-    return fs.existsSync(filePath);
-  }
-
-  // Helper to validate and consume upload token
-  validateUploadToken(uploadId: string): { key: string; contentType: string } | null {
-    const token = uploadTokens.get(uploadId);
-    if (!token) return null;
-    if (token.expiresAt < new Date()) {
-      uploadTokens.delete(uploadId);
-      return null;
-    }
-    return { key: token.key, contentType: token.contentType };
-  }
-
-  consumeUploadToken(uploadId: string): void {
-    uploadTokens.delete(uploadId);
-  }
-
-  // Save file to local storage
-  async saveFile(key: string, data: Buffer): Promise<void> {
-    const filePath = this.getFilePath(key);
-    const dir = path.dirname(filePath);
-
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true });
-    }
-
-    fs.writeFileSync(filePath, data);
-  }
-
-  // Read file from local storage
-  async readFile(key: string): Promise<Buffer | null> {
-    const filePath = this.getFilePath(key);
-    if (!fs.existsSync(filePath)) {
-      return null;
-    }
-    return fs.readFileSync(filePath);
-  }
-
-  private getFilePath(key: string): string {
-    // Sanitize key to prevent directory traversal
-    const sanitizedKey = key.replace(/\.\./g, '').replace(/^\//, '');
-    return path.join(STORAGE_DIR, sanitizedKey);
-  }
-
-  private cleanExpiredTokens(): void {
-    const now = new Date();
-    for (const [id, token] of uploadTokens.entries()) {
-      if (token.expiresAt < now) {
-        uploadTokens.delete(id);
-      }
-    }
-  }
-}
-
-// Export singleton instance
-export const storageProvider = new MockStorageProvider();
-
-// Helper functions for routes
 export async function getSignedUploadUrl(key: string, contentType: string, expiresIn?: number) {
-  return storageProvider.generateUploadUrl(key, contentType, expiresIn);
+  const result = await newGenerateUploadUrl(key, { contentType, expiresIn });
+  if (!result.success || !result.data) {
+    throw new Error(result.error || 'Failed to generate upload URL');
+  }
+  return {
+    uploadUrl: result.data.uploadUrl,
+    uploadId: result.data.uploadId,
+  };
 }
 
-export async function getSignedDownloadUrl(key: string, expiresIn?: number) {
-  return storageProvider.generateDownloadUrl(key, expiresIn);
+/**
+ * @deprecated Use generateDownloadUrl from './storage' instead
+ */
+export async function getSignedDownloadUrl(key: string, expiresIn?: number): Promise<string> {
+  const result = await newGenerateDownloadUrl(key, { expiresIn });
+  if (!result.success || !result.data) {
+    throw new Error(result.error || 'Failed to generate download URL');
+  }
+  return result.data.downloadUrl;
 }
 
-export function validateUploadToken(uploadId: string) {
-  return storageProvider.validateUploadToken(uploadId);
+/**
+ * @deprecated Use validateUploadToken from './storage' instead
+ */
+export function validateUploadToken(uploadId: string): { key: string; contentType: string } | null {
+  return newValidateUploadToken(uploadId);
 }
 
-export function consumeUploadToken(uploadId: string) {
-  return storageProvider.consumeUploadToken(uploadId);
+/**
+ * @deprecated Use consumeToken from './storage' instead
+ */
+export function consumeUploadToken(uploadId: string): void {
+  consumeToken(uploadId);
 }
 
-export async function saveFile(key: string, data: Buffer) {
-  return storageProvider.saveFile(key, data);
+/**
+ * @deprecated Use uploadFile from './storage' instead
+ */
+export async function saveFile(key: string, data: Buffer): Promise<void> {
+  const result = await uploadFile(key, data, 'application/octet-stream');
+  if (!result.success) {
+    throw new Error(result.error || 'Failed to save file');
+  }
 }
 
-export async function readFile(key: string) {
-  return storageProvider.readFile(key);
+/**
+ * @deprecated Use downloadFile from './storage' instead
+ */
+export async function readFile(key: string): Promise<Buffer | null> {
+  const result = await downloadFile(key);
+  if (!result.success) {
+    return null;
+  }
+  return result.data || null;
 }
 
-export async function getFileHash(key: string) {
-  return storageProvider.getFileHash(key);
+/**
+ * @deprecated Use getFileHash from './storage' instead
+ */
+export async function getFileHash(key: string): Promise<string | null> {
+  return newGetFileHash(key);
 }
+
+/**
+ * @deprecated Use deleteFile from './storage' instead
+ */
+export async function deleteFile(key: string): Promise<boolean> {
+  const result = await newDeleteFile(key, { ignoreNotFound: true });
+  return result.success;
+}
+
+/**
+ * Delete multiple artefacts from storage
+ * Used for cleanup when submissions are rejected or disputes resolved against worker
+ */
+export async function deleteArtefacts(keys: string[]): Promise<{ deleted: string[]; failed: string[] }> {
+  const result = await deleteFiles(keys, { ignoreNotFound: true });
+  return {
+    deleted: keys.filter(k => !result.data?.failed.includes(k)),
+    failed: result.data?.failed || [],
+  };
+}
+
+// Export the storage provider getter for routes that need direct access
+export { getStorageProvider, LocalStorageProvider };

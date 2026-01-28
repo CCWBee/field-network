@@ -1,15 +1,68 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { prisma } from '../services/database';
+import { recalculateUserStats } from '../services/reputation';
 import { authenticate, requireScope } from '../middleware/auth';
 import { NotFoundError, ValidationError, StateTransitionError } from '../middleware/errorHandler';
+import { notifyTaskClaimed } from '../services/notifications';
 
 const router = Router();
 
 const CLAIM_TTL_HOURS = 4; // Claims expire after 4 hours
 
+async function expireClaimsForUser(userId: string) {
+  const now = new Date();
+  const expiredClaims = await prisma.taskClaim.findMany({
+    where: {
+      workerId: userId,
+      status: 'active',
+      claimedUntil: { lt: now },
+    },
+    include: { task: true },
+  });
+
+  if (expiredClaims.length === 0) {
+    return;
+  }
+
+  for (const claim of expiredClaims) {
+    await prisma.$transaction(async (tx) => {
+      await tx.taskClaim.update({
+        where: { id: claim.id },
+        data: { status: 'expired' },
+      });
+
+      if (claim.task.status === 'claimed') {
+        await tx.task.update({
+          where: { id: claim.taskId },
+          data: { status: 'posted' },
+        });
+      }
+
+      await tx.workerProfile.updateMany({
+        where: { userId },
+        data: { strikes: { increment: 1 } },
+      });
+
+      await tx.auditEvent.create({
+        data: {
+          actorId: userId,
+          action: 'claim.expired',
+          objectType: 'claim',
+          objectId: claim.id,
+          detailsJson: JSON.stringify({ taskId: claim.taskId }),
+        },
+      });
+    });
+  }
+
+  await recalculateUserStats(userId);
+}
+
 // GET /v1/claims - List my active claims
 router.get('/', authenticate, async (req: Request, res: Response, next: NextFunction) => {
   try {
+    await expireClaimsForUser(req.user!.userId);
+
     const claims = await prisma.taskClaim.findMany({
       where: {
         workerId: req.user!.userId,
@@ -54,6 +107,8 @@ router.get('/', authenticate, async (req: Request, res: Response, next: NextFunc
 router.post('/:taskId/claim', authenticate, requireScope('claims:write'), async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { taskId } = req.params;
+
+    await expireClaimsForUser(req.user!.userId);
 
     // Check task exists and is claimable
     const task = await prisma.task.findUnique({
@@ -129,6 +184,16 @@ router.post('/:taskId/claim', authenticate, requireScope('claims:write'), async 
         detailsJson: JSON.stringify({ claimId: claim.id }),
       },
     });
+
+    await recalculateUserStats(req.user!.userId);
+
+    // Notify the task requester that their task was claimed
+    const user = await prisma.user.findUnique({
+      where: { id: req.user!.userId },
+      select: { username: true, ensName: true, email: true },
+    });
+    const workerName = user?.username || user?.ensName || user?.email?.split('@')[0] || 'A worker';
+    await notifyTaskClaimed(task.requesterId, taskId, task.title, workerName);
 
     res.status(201).json({
       claim_id: claim.id,

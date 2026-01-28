@@ -1,8 +1,11 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import { prisma } from '../services/database';
+import { calculateArbitrationFee } from '../services/fees';
+import { recalculateUserStats } from '../services/reputation';
 import { authenticate, requireRole, requireScope } from '../middleware/auth';
 import { NotFoundError, ValidationError, ForbiddenError } from '../middleware/errorHandler';
+import { notifyDisputeOpened, notifyDisputeResolved } from '../services/notifications';
 
 const router = Router();
 
@@ -121,6 +124,22 @@ router.post('/submissions/:submissionId/dispute', authenticate, async (req: Requ
       where: { id: submissionId },
       data: { status: 'disputed' },
     });
+
+    await recalculateUserStats(submission.workerId);
+
+    // Notify both parties about the dispute
+    await notifyDisputeOpened(
+      submission.workerId,
+      dispute.id,
+      submission.task.title,
+      false // Not the requester
+    );
+    await notifyDisputeOpened(
+      submission.task.requesterId,
+      dispute.id,
+      submission.task.title,
+      true // Is the requester
+    );
 
     res.status(201).json({
       dispute_id: dispute.id,
@@ -298,6 +317,70 @@ router.post('/:disputeId/resolve', authenticate, requireRole('admin'), async (re
       });
     }
 
+    const { fee: arbitrationFee, rate: arbitrationRate } = calculateArbitrationFee(
+      dispute.submission.task.bountyAmount
+    );
+
+    const feeMetadata = JSON.stringify({
+      dispute_id: disputeId,
+      fee_type: 'arbitration',
+      fee_rate: arbitrationRate,
+      resolution_type: data.resolution_type,
+    });
+
+    const feeEntries: any[] = [];
+    if (data.resolution_type === 'accept_pay') {
+      feeEntries.push({
+        taskId: dispute.submission.taskId,
+        submissionId: dispute.submissionId,
+        entryType: 'fee',
+        amount: arbitrationFee,
+        currency: dispute.submission.task.currency,
+        direction: 'debit',
+        counterpartyId: dispute.submission.task.requesterId,
+        metadata: feeMetadata,
+      });
+    } else if (data.resolution_type === 'reject_refund' || data.resolution_type === 'strike') {
+      feeEntries.push({
+        taskId: dispute.submission.taskId,
+        submissionId: dispute.submissionId,
+        entryType: 'fee',
+        amount: arbitrationFee,
+        currency: dispute.submission.task.currency,
+        direction: 'debit',
+        counterpartyId: dispute.submission.workerId,
+        metadata: feeMetadata,
+      });
+    } else if (data.resolution_type === 'partial_pay') {
+      const halfFee = arbitrationFee / 2;
+      feeEntries.push(
+        {
+          taskId: dispute.submission.taskId,
+          submissionId: dispute.submissionId,
+          entryType: 'fee',
+          amount: halfFee,
+          currency: dispute.submission.task.currency,
+          direction: 'debit',
+          counterpartyId: dispute.submission.workerId,
+          metadata: feeMetadata,
+        },
+        {
+          taskId: dispute.submission.taskId,
+          submissionId: dispute.submissionId,
+          entryType: 'fee',
+          amount: arbitrationFee - halfFee,
+          currency: dispute.submission.task.currency,
+          direction: 'debit',
+          counterpartyId: dispute.submission.task.requesterId,
+          metadata: feeMetadata,
+        }
+      );
+    }
+
+    if (feeEntries.length > 0) {
+      await prisma.ledgerEntry.createMany({ data: feeEntries });
+    }
+
     // Create audit event
     await prisma.auditEvent.create({
       data: {
@@ -311,6 +394,32 @@ router.post('/:disputeId/resolve', authenticate, requireRole('admin'), async (re
         }),
       },
     });
+
+    await Promise.all([
+      recalculateUserStats(dispute.submission.workerId, {
+        reason: 'dispute_resolved',
+        taskId: dispute.submission.taskId,
+        submissionId: dispute.submissionId,
+      }),
+      recalculateUserStats(dispute.submission.task.requesterId),
+    ]);
+
+    // Notify both parties about the resolution
+    const taskTitle = dispute.submission.task.title;
+    await notifyDisputeResolved(
+      dispute.submission.workerId,
+      disputeId,
+      taskTitle,
+      data.resolution_type,
+      true // Is worker
+    );
+    await notifyDisputeResolved(
+      dispute.submission.task.requesterId,
+      disputeId,
+      taskTitle,
+      data.resolution_type,
+      false // Is requester
+    );
 
     res.json({
       dispute_id: updatedDispute.id,

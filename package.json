@@ -10,6 +10,7 @@
     "dev": "concurrently \"npm run dev:api\" \"npm run dev:web\"",
     "dev:api": "npm run dev -w @ground-truth/api",
     "dev:web": "npm run dev -w @ground-truth/web",
+    "dev:worker": "npm run worker -w @ground-truth/api",
     "build": "npm run build -w @ground-truth/shared && npm run build -w @ground-truth/api && npm run build -w @ground-truth/web",
     "build:api": "npm run build -w @ground-truth/api",
     "build:web": "npm run build -w @ground-truth/web",
@@ -18,6 +19,7 @@
     "db:generate": "npm run db:generate -w @ground-truth/api",
     "db:migrate": "npm run db:migrate -w @ground-truth/api",
     "db:push": "npm run db:push -w @ground-truth/api",
+    "db:seed": "npm run db:seed -w @ground-truth/api",
     "db:studio": "npm run db:studio -w @ground-truth/api"
   },
   "devDependencies": {

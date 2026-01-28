@@ -5,6 +5,7 @@ import { authenticate } from '../middleware/auth';
 import { ValidationError, NotFoundError } from '../middleware/errorHandler';
 import { getENSProfile, suggestUsernameFromENS } from '../services/ens';
 import { safeUrl, SavedAddressesSchema, safeJsonParse } from '../utils/validation';
+import { getReputationHistory } from '../services/reputation';
 
 const router = Router();
 
@@ -373,6 +374,87 @@ router.delete('/me/addresses/:addressId', authenticate, async (req: Request, res
     });
 
     res.json({ message: 'Address removed' });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// ============================================================================
+// REPUTATION HISTORY
+// ============================================================================
+
+// GET /v1/profile/me/reputation-history - Get own reputation history (detailed)
+router.get('/me/reputation-history', authenticate, async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { limit = '50', offset = '0' } = req.query;
+
+    const result = await getReputationHistory(req.user!.userId, {
+      limit: Math.min(parseInt(limit as string) || 50, 100),
+      offset: parseInt(offset as string) || 0,
+    });
+
+    res.json({
+      events: result.events.map((e) => ({
+        id: e.id,
+        previous_score: e.previousScore,
+        new_score: e.newScore,
+        score_change: e.newScore - e.previousScore,
+        reason: e.reason,
+        task_id: e.taskId,
+        badge_type: e.badgeType,
+        metadata: e.metadata,
+        created_at: e.createdAt.toISOString(),
+      })),
+      total: result.total,
+      limit: parseInt(limit as string) || 50,
+      offset: parseInt(offset as string) || 0,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// GET /v1/profile/:usernameOrId/reputation-history - Get public reputation history (summary)
+router.get('/:usernameOrId/reputation-history', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { usernameOrId } = req.params;
+    const { limit = '20', offset = '0' } = req.query;
+
+    // Find user by username or ID
+    const user = await prisma.user.findFirst({
+      where: {
+        OR: [
+          { username: usernameOrId },
+          { id: usernameOrId },
+        ],
+        status: 'active',
+      },
+    });
+
+    if (!user) {
+      throw new NotFoundError('User');
+    }
+
+    const result = await getReputationHistory(user.id, {
+      limit: Math.min(parseInt(limit as string) || 20, 50),
+      offset: parseInt(offset as string) || 0,
+    });
+
+    // Public view: less detail, no task IDs
+    res.json({
+      events: result.events.map((e) => ({
+        id: e.id,
+        previous_score: e.previousScore,
+        new_score: e.newScore,
+        score_change: e.newScore - e.previousScore,
+        reason: e.reason,
+        badge_type: e.badgeType,
+        created_at: e.createdAt.toISOString(),
+      })),
+      total: result.total,
+      limit: parseInt(limit as string) || 20,
+      offset: parseInt(offset as string) || 0,
+    });
   } catch (error) {
     next(error);
   }

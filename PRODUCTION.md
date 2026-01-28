@@ -289,3 +289,126 @@ Update API to use KMS for signing instead of raw private key. This ensures the p
 8. [ ] Contract deployed to Base Mainnet
 9. [ ] `ESCROW_PROVIDER=onchain` enabled
 10. [ ] Monitor first real transactions
+
+---
+
+## Complete Environment Variables Reference
+
+### API Service (Railway)
+
+#### Required Variables
+
+| Variable | Description | Example |
+|----------|-------------|---------|
+| `DATABASE_URL` | PostgreSQL connection string | `postgresql://user:pass@host:5432/db` |
+| `JWT_SECRET` | Secret for signing JWT tokens (32+ bytes) | `openssl rand -hex 32` |
+| `CORS_ORIGINS` | Allowed frontend origins (comma-separated) | `https://field-network.com` |
+
+#### Escrow Configuration
+
+| Variable | Description | Example |
+|----------|-------------|---------|
+| `ESCROW_PROVIDER` | Provider type: `mock` or `onchain` | `onchain` |
+| `CHAIN_ID` | Blockchain chain ID | `8453` (mainnet), `84532` (testnet) |
+| `BASE_RPC_URL` | Base RPC endpoint | `https://mainnet.base.org` |
+| `ESCROW_CONTRACT_ADDRESS` | Deployed escrow contract | `0x...` |
+| `OPERATOR_PRIVATE_KEY` | Operator wallet private key | `0x...` |
+| `USDC_ADDRESS` | USDC token address (optional, auto-detected) | `0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913` |
+
+#### Storage Configuration
+
+| Variable | Description | Example |
+|----------|-------------|---------|
+| `STORAGE_PROVIDER` | Provider type: `local` or `s3` | `s3` |
+| `S3_BUCKET` | S3 bucket name | `field-network-uploads` |
+| `S3_REGION` | AWS region | `us-east-1` |
+| `S3_ACCESS_KEY_ID` | AWS access key | `AKIA...` |
+| `S3_SECRET_ACCESS_KEY` | AWS secret key | `...` |
+| `S3_ENDPOINT` | Custom S3 endpoint (for R2/MinIO) | `https://xyz.r2.cloudflarestorage.com` |
+
+#### Rate Limiting
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `RATE_LIMIT_WINDOW_MS` | Window duration in ms | `900000` (15 min) |
+| `RATE_LIMIT_MAX` | Max requests per window (anon) | `100` |
+| `RATE_LIMIT_MAX_AUTH` | Max requests per window (auth) | `500` |
+| `TRUST_PROXY` | Trust X-Forwarded-For header | `true` |
+
+#### Monitoring & Alerts
+
+| Variable | Description | Example |
+|----------|-------------|---------|
+| `ALERT_WEBHOOK_URL` | Slack/Discord webhook for alerts | `https://hooks.slack.com/...` |
+| `ALERT_MIN_OPERATOR_BALANCE` | Balance threshold for alerts (ETH) | `0.01` |
+| `LOG_LEVEL` | Logging level | `info` |
+| `LOG_FORMAT` | Log format: `text` or `json` | `json` |
+
+### Frontend Service (Vercel)
+
+| Variable | Description | Example |
+|----------|-------------|---------|
+| `NEXT_PUBLIC_API_URL` | API base URL | `https://api.field-network.com` |
+| `NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID` | WalletConnect project ID | `abc123...` |
+| `NEXT_PUBLIC_CHAIN_ID` | Target chain ID | `8453` |
+
+### Contract Deployment (Local/CI)
+
+| Variable | Description | Example |
+|----------|-------------|---------|
+| `DEPLOYER_PRIVATE_KEY` | Deployer wallet private key | `0x...` |
+| `BASESCAN_API_KEY` | Basescan API key for verification | `...` |
+| `FEE_RECIPIENT` | Platform fee recipient address | `0x...` |
+| `PLATFORM_FEE_BPS` | Platform fee in basis points | `250` (2.5%) |
+| `AUTO_RELEASE_HOURS` | Auto-release delay in hours | `24` |
+
+---
+
+## Network Configuration Reference
+
+### Base Mainnet (Production)
+
+| Setting | Value |
+|---------|-------|
+| Chain ID | `8453` |
+| RPC URL | `https://mainnet.base.org` |
+| Explorer | `https://basescan.org` |
+| USDC Address | `0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913` |
+
+### Base Sepolia (Testnet)
+
+| Setting | Value |
+|---------|-------|
+| Chain ID | `84532` |
+| RPC URL | `https://sepolia.base.org` |
+| Explorer | `https://sepolia.basescan.org` |
+| USDC Address | `0x036CbD53842c5426634e7929541eC2318f3dCF7e` |
+
+---
+
+## Quick Commands
+
+```bash
+# Generate secure JWT secret
+openssl rand -hex 32
+
+# Generate wallet private key
+node -e "console.log(require('ethers').Wallet.createRandom().privateKey)"
+
+# Deploy contract (testnet)
+cd packages/contracts
+npx hardhat run scripts/deploy.ts --network base-sepolia
+
+# Deploy contract (mainnet)
+cd packages/contracts
+DRY_RUN=true npx hardhat run scripts/deploy.ts --network base
+
+# Verify contract
+ESCROW_CONTRACT_ADDRESS=0x... npx hardhat run scripts/verify.ts --network base
+
+# Run security scan
+./scripts/security-scan.sh
+
+# Run smoke tests
+npx ts-node scripts/smoke-test.ts --env=production
+```

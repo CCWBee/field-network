@@ -1,21 +1,33 @@
 'use client';
 
 import Link from 'next/link';
+import dynamic from 'next/dynamic';
+
+const HeightMapBackground = dynamic(() => import('@/components/HeightMapBackground'), {
+  ssr: false,
+});
 
 export default function HomePage() {
   return (
     <div className="min-h-screen bg-surface">
       {/* Navigation */}
-      <nav className="fixed top-0 left-0 right-0 z-50 glass">
+      <nav className="fixed top-0 left-0 right-0 z-50 bg-[#050607]/80 backdrop-blur-md border-b border-teal-500/20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16">
-            <div className="flex items-center">
-              <span className="text-xl font-bold text-gradient">Field Network</span>
+            <div className="flex items-center gap-3">
+              <img src="/icon.svg" alt="Field Network" className="h-12 w-12" />
+              <span className="text-3xl font-bold bg-gradient-to-r from-teal-400 to-cyan-300 bg-clip-text text-transparent">Field Network</span>
             </div>
             <div className="flex items-center space-x-4">
               <Link
+                href="/docs"
+                className="text-teal-100/70 hover:text-teal-300 px-3 py-2 transition-colors"
+              >
+                Docs
+              </Link>
+              <Link
                 href="/login"
-                className="text-slate-600 hover:text-field-600 px-3 py-2 transition-colors"
+                className="text-teal-100/70 hover:text-teal-300 px-3 py-2 transition-colors"
               >
                 Sign In
               </Link>
@@ -30,22 +42,22 @@ export default function HomePage() {
         </div>
       </nav>
 
-      {/* Hero Section */}
-      <div className="relative min-h-screen flex items-center bg-gradient-mesh">
-        <div className="absolute inset-0 bg-surface/50"></div>
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-32 pt-40">
+      {/* Hero Section with HeightMap Background */}
+      <div className="relative min-h-screen flex items-center bg-[#050607] overflow-hidden">
+        <HeightMapBackground />
+        <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-32 pt-40">
           <div className="text-center">
-            <div className="inline-flex items-center px-4 py-2 rounded-full glass-light text-sm text-slate-600 mb-8">
-              <span className="w-2 h-2 bg-field-400 rounded-full mr-2 animate-pulse"></span>
-              Decentralized observation network
+            <div className="inline-flex items-center px-4 py-2 rounded-full bg-teal-500/10 border border-teal-500/30 text-sm text-teal-100/70 mb-8">
+              <span className="w-2 h-2 bg-teal-400 rounded-full mr-2 animate-pulse"></span>
+              Decentralized Observation Network
             </div>
-            <h1 className="text-5xl md:text-7xl font-bold mb-6 text-slate-800">
+            <h1 className="text-5xl md:text-7xl font-bold mb-6 text-white">
               Real-world data
               <br />
-              <span className="text-gradient">on demand</span>
+              <span className="bg-gradient-to-r from-teal-400 to-cyan-300 bg-clip-text text-transparent">on demand</span>
             </h1>
-            <p className="text-xl md:text-2xl text-slate-600 max-w-3xl mx-auto mb-10">
-              A distributed network of collectors gathering verifiable observations.
+            <p className="text-xl md:text-2xl text-teal-100/70 max-w-3xl mx-auto mb-10">
+              Harvest real-world data with Field Network.
               Post tasks, set bounties, get proof.
             </p>
             <div className="flex flex-col sm:flex-row justify-center gap-4">
@@ -57,7 +69,7 @@ export default function HomePage() {
               </Link>
               <Link
                 href="/register"
-                className="glass-light text-slate-700 px-8 py-4 rounded-lg font-semibold hover:bg-field-50 transition-colors border border-field-200"
+                className="bg-teal-500/10 border border-teal-500/30 text-teal-100 px-8 py-4 rounded-lg font-semibold hover:bg-teal-500/20 transition-colors"
               >
                 Join the Network
               </Link>
@@ -67,16 +79,16 @@ export default function HomePage() {
           {/* Stats bar */}
           <div className="mt-20 grid grid-cols-3 gap-8 max-w-2xl mx-auto">
             <div className="text-center">
-              <div className="text-3xl font-bold text-slate-800">--</div>
-              <div className="text-sm text-slate-500">Active collectors</div>
+              <div className="text-3xl font-bold text-white">--</div>
+              <div className="text-sm text-teal-100/50">Active collectors</div>
             </div>
             <div className="text-center">
-              <div className="text-3xl font-bold text-slate-800">--</div>
-              <div className="text-sm text-slate-500">Tasks completed</div>
+              <div className="text-3xl font-bold text-white">--</div>
+              <div className="text-sm text-teal-100/50">Tasks completed</div>
             </div>
             <div className="text-center">
-              <div className="text-3xl font-bold text-slate-800">--</div>
-              <div className="text-sm text-slate-500">Locations covered</div>
+              <div className="text-3xl font-bold text-white">--</div>
+              <div className="text-sm text-teal-100/50">Locations covered</div>
             </div>
           </div>
         </div>
@@ -86,7 +98,7 @@ export default function HomePage() {
       <div className="py-24 bg-surface-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <h2 className="text-3xl font-bold text-center text-slate-800 mb-4">
-            How it works
+            How It Works
           </h2>
           <p className="text-slate-600 text-center mb-16 max-w-2xl mx-auto">
             Three steps from question to verified answer
@@ -100,8 +112,8 @@ export default function HomePage() {
               </div>
               <h3 className="text-xl font-semibold text-slate-800 mb-4">1. Define</h3>
               <p className="text-slate-600">
-                Specify location, time window, requirements, and bounty.
-                Fund escrow with USDC.
+                Describe the place, time window, and evidence needed.
+                Set a bounty and fund escrow in minutes.
               </p>
             </div>
             <div className="glass rounded-xl p-8 text-center">
@@ -113,8 +125,8 @@ export default function HomePage() {
               </div>
               <h3 className="text-xl font-semibold text-slate-800 mb-4">2. Collect</h3>
               <p className="text-slate-600">
-                Network collectors claim tasks, capture photos
-                with verified timestamps and GPS.
+                Field operators claim the task and capture what you asked for.
+                Submissions include GPS, timestamps, and proof bundles.
               </p>
             </div>
             <div className="glass rounded-xl p-8 text-center">
@@ -125,8 +137,8 @@ export default function HomePage() {
               </div>
               <h3 className="text-xl font-semibold text-slate-800 mb-4">3. Verify</h3>
               <p className="text-slate-600">
-                Automated checks validate submissions.
-                Accept and escrow releases payment.
+                Automated checks score every submission.
+                Accept the result and escrow releases payment.
               </p>
             </div>
           </div>
@@ -137,19 +149,19 @@ export default function HomePage() {
       <div className="py-24 bg-surface">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <h2 className="text-3xl font-bold text-center text-slate-800 mb-4">
-            Use cases
+            Use Cases
           </h2>
           <p className="text-slate-600 text-center mb-16 max-w-2xl mx-auto">
             When you need eyes on the ground
           </p>
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
             {[
-              { title: 'Property & Insurance', desc: 'Storm damage, rebuild progress, occupancy verification', icon: '🏠' },
-              { title: 'Construction', desc: 'Site progress, compliance checks, safety signage', icon: '🏗️' },
-              { title: 'Retail', desc: 'Shelf audits, price checks, promo compliance', icon: '🏪' },
-              { title: 'Logistics', desc: 'Gate status, queue length, delivery conditions', icon: '📦' },
-              { title: 'Environment', desc: 'Pollution readings, drainage, wildlife surveys', icon: '🌿' },
-              { title: 'Research', desc: 'Fieldwork data, standardized measurements', icon: '🔬' },
+              { title: 'Research Without Borders', desc: 'Anyone can commission real-world measurements anywhere and the planet becomes your lab.', icon: 'LAB' },
+              { title: 'Engineering and Urban Studies', desc: 'Run traffic, crowd, and safety studies by scripting time-windowed, angle-specific observation tasks.', icon: 'CITY' },
+              { title: 'Property and Insurance', desc: 'Verify storm damage and rebuild progress with escrowed, timestamped evidence from the field.', icon: 'HOME' },
+              { title: 'Retail and Market Intel', desc: 'See the real shelf, real price, real promo across cities and across weeks.', icon: 'RETAIL' },
+              { title: 'Environment and Climate', desc: 'Commission drainage checks, pollution readings, and wildlife surveys with verifiable proof.', icon: 'EARTH' },
+              { title: 'AI Field Operations', desc: 'Let AI define the data it needs, commission tasks, and return evidence-backed answers.', icon: 'AI' },
             ].map((item, i) => (
               <div key={i} className="glass-light rounded-xl p-6 hover:bg-field-50 transition-colors">
                 <span className="text-2xl mb-3 block">{item.icon}</span>
@@ -240,7 +252,7 @@ export default function HomePage() {
               Create Account
             </Link>
             <Link
-              href="#"
+              href="/docs"
               className="glass-light text-slate-800 px-8 py-4 rounded-lg font-semibold hover:bg-field-50 transition-colors"
             >
               Read the Docs
@@ -255,10 +267,12 @@ export default function HomePage() {
           <div className="flex flex-col md:flex-row justify-between items-center gap-4">
             <span className="text-gradient font-bold">Field Network</span>
             <div className="flex space-x-6">
-              <a href="#" className="text-slate-500 hover:text-slate-600 transition-colors">API</a>
-              <a href="#" className="text-slate-500 hover:text-slate-600 transition-colors">Docs</a>
-              <a href="#" className="text-slate-500 hover:text-slate-600 transition-colors">Terms</a>
-              <a href="#" className="text-slate-500 hover:text-slate-600 transition-colors">Privacy</a>
+              <Link href="/api" className="text-slate-500 hover:text-slate-600 transition-colors">API</Link>
+              <Link href="/docs" className="text-slate-500 hover:text-slate-600 transition-colors">Docs</Link>
+              <Link href="/terms" className="text-slate-500 hover:text-slate-600 transition-colors">Terms</Link>
+              <Link href="/privacy" className="text-slate-500 hover:text-slate-600 transition-colors">Privacy</Link>
+              <Link href="/usage" className="text-slate-500 hover:text-slate-600 transition-colors">Usage</Link>
+              <Link href="/eula" className="text-slate-500 hover:text-slate-600 transition-colors">EULA</Link>
             </div>
           </div>
         </div>

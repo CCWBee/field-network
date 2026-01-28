@@ -3,13 +3,46 @@
 import { useState, useEffect } from 'react';
 import { useAuthStore } from '@/lib/store';
 import { api } from '@/lib/api';
+import ReputationChart from '@/components/ReputationChart';
+
+interface FeeTierInfo {
+  current_tier: {
+    name: string;
+    rate: number;
+    rate_percent: string;
+  };
+  next_tier: {
+    name: string;
+    rate: number;
+    rate_percent: string;
+    savings_percent: string;
+  } | null;
+  progress: {
+    account_days: { current: number; required: number; met: boolean };
+    tasks_accepted: { current: number; required: number; met: boolean };
+    reliability: { current: number; required: number; met: boolean };
+  } | null;
+}
+
+interface FeeHistoryEntry {
+  id: string;
+  task_id: string | null;
+  fee_type: string;
+  amount: number;
+  currency: string;
+  created_at: string;
+}
 
 export default function ProfilePage() {
-  const { user, loadUser } = useAuthStore();
+  const { user, loadUser, token } = useAuthStore();
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [feeTier, setFeeTier] = useState<FeeTierInfo | null>(null);
+  const [feeHistory, setFeeHistory] = useState<FeeHistoryEntry[]>([]);
+  const [totalFeesPaid, setTotalFeesPaid] = useState(0);
+  const [feeLoading, setFeeLoading] = useState(false);
 
   const [formData, setFormData] = useState({
     username: '',
@@ -18,6 +51,11 @@ export default function ProfilePage() {
     website: '',
     twitter_handle: '',
   });
+
+  // Notification preferences
+  const [notificationPrefs, setNotificationPrefs] = useState<Record<string, boolean>>({});
+  const [isLoadingPrefs, setIsLoadingPrefs] = useState(false);
+  const [prefsSuccess, setPrefsSuccess] = useState<string | null>(null);
 
   useEffect(() => {
     if (user) {
@@ -30,6 +68,48 @@ export default function ProfilePage() {
       });
     }
   }, [user]);
+
+  // Load fee tier and history
+  useEffect(() => {
+    const loadFeeData = async () => {
+      if (!token) return;
+
+      setFeeLoading(true);
+      try {
+        api.setToken(token);
+        const [tierData, historyData] = await Promise.all([
+          api.getMyFeeTier(),
+          api.getFeeHistory({ limit: 5 }),
+        ]);
+        setFeeTier(tierData);
+        setFeeHistory(historyData.entries);
+        setTotalFeesPaid(historyData.total_fees_paid);
+      } catch (err) {
+        console.error('Failed to load fee data:', err);
+      } finally {
+        setFeeLoading(false);
+      }
+    };
+
+    loadFeeData();
+  }, [token]);
+
+  // Load notification preferences
+  useEffect(() => {
+    const loadNotificationPrefs = async () => {
+      if (!token) return;
+
+      try {
+        api.setToken(token);
+        const result = await api.getNotificationPreferences();
+        setNotificationPrefs(result.preferences);
+      } catch (err) {
+        console.error('Failed to load notification preferences:', err);
+      }
+    };
+
+    loadNotificationPrefs();
+  }, [token]);
 
   const handleSave = async () => {
     setIsSaving(true);
@@ -45,6 +125,22 @@ export default function ProfilePage() {
       setError(err instanceof Error ? err.message : 'Failed to update profile');
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleNotificationPrefChange = async (key: string, value: boolean) => {
+    setIsLoadingPrefs(true);
+    setPrefsSuccess(null);
+
+    try {
+      const result = await api.updateNotificationPreferences({ [key]: value });
+      setNotificationPrefs(result.preferences);
+      setPrefsSuccess('Notification preferences updated');
+      setTimeout(() => setPrefsSuccess(null), 3000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to update preferences');
+    } finally {
+      setIsLoadingPrefs(false);
     }
   };
 
@@ -66,6 +162,17 @@ export default function ProfilePage() {
   const primaryWallet = user?.wallets?.find(w => w.isPrimary) || user?.wallets?.[0];
   const displayName = user?.username || user?.ensName || user?.email?.split('@')[0] || 'Anonymous';
   const avatarUrl = user?.ensAvatarUrl || user?.avatarUrl;
+  const reliabilityScore = user?.stats?.reliabilityScore ?? 0;
+  const disputeRate = user?.stats?.disputeRate ?? 0;
+  const lifetimeEarned = user?.stats?.totalEarned ?? 0;
+  const totalAccepted = user?.stats?.tasksAccepted ?? 0;
+  const ranks = [
+    { min: 95, label: 'Prime Operator' },
+    { min: 85, label: 'Vector Elite' },
+    { min: 70, label: 'Field Specialist' },
+    { min: 0, label: 'Rookie' },
+  ];
+  const rank = ranks.find((tier) => reliabilityScore >= tier.min)?.label ?? 'Rookie';
 
   return (
     <div className="max-w-4xl mx-auto space-y-8">
@@ -93,6 +200,173 @@ export default function ProfilePage() {
           {success}
         </div>
       )}
+
+      {/* Field ID */}
+      <div className="glass rounded-xl p-6 border border-surface-200">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <p className="text-sm uppercase tracking-[0.35em] text-slate-400">Field ID</p>
+            <h2 className="text-2xl font-semibold text-slate-800">{rank}</h2>
+            <p className="text-sm text-slate-500 mt-1">Reliability drives access tiers, fee reductions, and priority claims.</p>
+          </div>
+          <div className="flex items-center gap-6">
+            <div className="text-center">
+              <p className="text-xs uppercase tracking-wide text-slate-400">Reliability</p>
+              <p className="text-2xl font-semibold text-slate-800">{reliabilityScore.toFixed(0)}%</p>
+            </div>
+            <div className="text-center">
+              <p className="text-xs uppercase tracking-wide text-slate-400">Dispute Rate</p>
+              <p className="text-2xl font-semibold text-slate-800">{disputeRate.toFixed(1)}%</p>
+            </div>
+            <div className="text-center">
+              <p className="text-xs uppercase tracking-wide text-slate-400">Accepted</p>
+              <p className="text-2xl font-semibold text-slate-800">{totalAccepted}</p>
+            </div>
+            <div className="text-center">
+              <p className="text-xs uppercase tracking-wide text-slate-400">Lifetime Earned</p>
+              <p className="text-2xl font-semibold text-slate-800">USDC {lifetimeEarned.toFixed(2)}</p>
+            </div>
+          </div>
+        </div>
+        {user?.badges?.length ? (
+          <div className="mt-6 flex flex-wrap gap-3">
+            {user.badges.slice(0, 4).map((badge, i) => (
+              <div key={`${badge.badgeType}-${i}`} className="flex items-center gap-2 px-3 py-2 rounded-full bg-slate-50 text-xs text-slate-600 border border-surface-200">
+                <span className="text-field-600">*</span>
+                {badge.title}
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="mt-6 rounded-lg border border-dashed border-surface-300 p-4 text-sm text-slate-500">
+            Badges will appear as you complete missions, resolve disputes cleanly, and maintain streaks.
+          </div>
+        )}
+      </div>
+
+      {/* Fee Tier & Progress */}
+      <div className="glass rounded-xl p-6 border border-surface-200">
+        <h3 className="text-lg font-semibold text-slate-800 mb-4">Fee Tier & Progress</h3>
+        {feeLoading ? (
+          <p className="text-sm text-slate-500">Loading fee information...</p>
+        ) : feeTier ? (
+          <div className="space-y-6">
+            {/* Current Tier */}
+            <div className="flex items-center justify-between p-4 bg-field-50 rounded-lg">
+              <div>
+                <p className="text-sm text-slate-500">Current Fee Tier</p>
+                <p className="text-xl font-semibold text-slate-800">{feeTier.current_tier.name}</p>
+              </div>
+              <div className="text-right">
+                <p className="text-sm text-slate-500">Platform Fee Rate</p>
+                <p className="text-2xl font-bold text-field-600">{feeTier.current_tier.rate_percent}</p>
+              </div>
+            </div>
+
+            {/* Next Tier Progress */}
+            {feeTier.next_tier && feeTier.progress && (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm font-medium text-slate-700">
+                    Progress to {feeTier.next_tier.name} tier
+                  </p>
+                  <p className="text-sm text-field-600">
+                    Save {feeTier.next_tier.savings_percent} on fees
+                  </p>
+                </div>
+
+                {/* Account Age Progress */}
+                <div className="space-y-1">
+                  <div className="flex justify-between text-xs text-slate-500">
+                    <span>Account Age</span>
+                    <span>{feeTier.progress.account_days.current} / {feeTier.progress.account_days.required} days</span>
+                  </div>
+                  <div className="h-2 bg-slate-200 rounded-full overflow-hidden">
+                    <div
+                      className={`h-full rounded-full transition-all ${feeTier.progress.account_days.met ? 'bg-green-500' : 'bg-field-500'}`}
+                      style={{ width: `${Math.min(100, (feeTier.progress.account_days.current / feeTier.progress.account_days.required) * 100)}%` }}
+                    />
+                  </div>
+                </div>
+
+                {/* Tasks Accepted Progress */}
+                <div className="space-y-1">
+                  <div className="flex justify-between text-xs text-slate-500">
+                    <span>Tasks Accepted</span>
+                    <span>{feeTier.progress.tasks_accepted.current} / {feeTier.progress.tasks_accepted.required}</span>
+                  </div>
+                  <div className="h-2 bg-slate-200 rounded-full overflow-hidden">
+                    <div
+                      className={`h-full rounded-full transition-all ${feeTier.progress.tasks_accepted.met ? 'bg-green-500' : 'bg-field-500'}`}
+                      style={{ width: `${Math.min(100, (feeTier.progress.tasks_accepted.current / feeTier.progress.tasks_accepted.required) * 100)}%` }}
+                    />
+                  </div>
+                </div>
+
+                {/* Reliability Progress */}
+                <div className="space-y-1">
+                  <div className="flex justify-between text-xs text-slate-500">
+                    <span>Reliability Score</span>
+                    <span>{feeTier.progress.reliability.current.toFixed(0)}% / {feeTier.progress.reliability.required}%</span>
+                  </div>
+                  <div className="h-2 bg-slate-200 rounded-full overflow-hidden">
+                    <div
+                      className={`h-full rounded-full transition-all ${feeTier.progress.reliability.met ? 'bg-green-500' : 'bg-field-500'}`}
+                      style={{ width: `${Math.min(100, (feeTier.progress.reliability.current / feeTier.progress.reliability.required) * 100)}%` }}
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {!feeTier.next_tier && (
+              <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
+                <p className="text-sm text-green-700">
+                  Congratulations! You have reached the highest fee tier ({feeTier.current_tier.name}).
+                </p>
+              </div>
+            )}
+          </div>
+        ) : (
+          <p className="text-sm text-slate-500">Unable to load fee tier information</p>
+        )}
+      </div>
+
+      {/* Fee History */}
+      <div className="glass rounded-xl p-6 border border-surface-200">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold text-slate-800">Fee History</h3>
+          <div className="text-right">
+            <p className="text-xs text-slate-500">Total Fees Paid</p>
+            <p className="text-lg font-semibold text-slate-800">USDC {totalFeesPaid.toFixed(2)}</p>
+          </div>
+        </div>
+
+        {feeHistory.length > 0 ? (
+          <div className="space-y-2">
+            {feeHistory.map((entry) => (
+              <div key={entry.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
+                <div>
+                  <p className="text-sm font-medium text-slate-700">
+                    {entry.fee_type === 'platform' ? 'Platform Fee' : 'Arbitration Fee'}
+                  </p>
+                  <p className="text-xs text-slate-500">
+                    {new Date(entry.created_at).toLocaleDateString()}
+                    {entry.task_id && ` - Task ${entry.task_id.slice(0, 8)}...`}
+                  </p>
+                </div>
+                <p className="text-sm font-medium text-slate-800">
+                  {entry.currency} {entry.amount.toFixed(2)}
+                </p>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="p-4 border border-dashed border-surface-300 rounded-lg text-center">
+            <p className="text-sm text-slate-500">No fee transactions yet</p>
+          </div>
+        )}
+      </div>
 
       {/* Profile Card */}
       <div className="glass rounded-xl p-6 border border-surface-200">
@@ -395,6 +669,136 @@ export default function ProfilePage() {
             ) : (
               <span className="text-sm text-slate-400">Optional</span>
             )}
+          </div>
+        </div>
+      </div>
+
+      {/* Reputation History Chart */}
+      <ReputationChart />
+
+      {/* Notification Preferences */}
+      <div className="glass rounded-xl p-6 border border-surface-200">
+        <h3 className="text-lg font-semibold text-slate-800 mb-4">Notification Preferences</h3>
+        {prefsSuccess && (
+          <div className="mb-4 p-3 bg-green-50 border border-green-200 text-green-700 rounded-lg text-sm">
+            {prefsSuccess}
+          </div>
+        )}
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="font-medium text-slate-700">Task Claimed</p>
+              <p className="text-sm text-slate-500">When someone claims your posted task</p>
+            </div>
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                checked={notificationPrefs.task_claimed ?? true}
+                onChange={(e) => handleNotificationPrefChange('task_claimed', e.target.checked)}
+                disabled={isLoadingPrefs}
+                className="sr-only peer"
+              />
+              <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-field-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-field-500"></div>
+            </label>
+          </div>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="font-medium text-slate-700">Submission Received</p>
+              <p className="text-sm text-slate-500">When a worker submits work for your task</p>
+            </div>
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                checked={notificationPrefs.submission_received ?? true}
+                onChange={(e) => handleNotificationPrefChange('submission_received', e.target.checked)}
+                disabled={isLoadingPrefs}
+                className="sr-only peer"
+              />
+              <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-field-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-field-500"></div>
+            </label>
+          </div>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="font-medium text-slate-700">Submission Accepted</p>
+              <p className="text-sm text-slate-500">When your work is accepted and payment released</p>
+            </div>
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                checked={notificationPrefs.submission_accepted ?? true}
+                onChange={(e) => handleNotificationPrefChange('submission_accepted', e.target.checked)}
+                disabled={isLoadingPrefs}
+                className="sr-only peer"
+              />
+              <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-field-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-field-500"></div>
+            </label>
+          </div>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="font-medium text-slate-700">Submission Rejected</p>
+              <p className="text-sm text-slate-500">When your work is rejected</p>
+            </div>
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                checked={notificationPrefs.submission_rejected ?? true}
+                onChange={(e) => handleNotificationPrefChange('submission_rejected', e.target.checked)}
+                disabled={isLoadingPrefs}
+                className="sr-only peer"
+              />
+              <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-field-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-field-500"></div>
+            </label>
+          </div>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="font-medium text-slate-700">Dispute Updates</p>
+              <p className="text-sm text-slate-500">When disputes are opened or resolved</p>
+            </div>
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                checked={notificationPrefs.dispute_resolved ?? true}
+                onChange={(e) => {
+                  handleNotificationPrefChange('dispute_opened', e.target.checked);
+                  handleNotificationPrefChange('dispute_resolved', e.target.checked);
+                }}
+                disabled={isLoadingPrefs}
+                className="sr-only peer"
+              />
+              <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-field-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-field-500"></div>
+            </label>
+          </div>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="font-medium text-slate-700">Badge Earned</p>
+              <p className="text-sm text-slate-500">When you earn a new badge or achievement</p>
+            </div>
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                checked={notificationPrefs.badge_earned ?? true}
+                onChange={(e) => handleNotificationPrefChange('badge_earned', e.target.checked)}
+                disabled={isLoadingPrefs}
+                className="sr-only peer"
+              />
+              <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-field-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-field-500"></div>
+            </label>
+          </div>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="font-medium text-slate-700">Fee Tier Upgrades</p>
+              <p className="text-sm text-slate-500">When you qualify for a lower fee tier</p>
+            </div>
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                checked={notificationPrefs.fee_tier_upgrade ?? true}
+                onChange={(e) => handleNotificationPrefChange('fee_tier_upgrade', e.target.checked)}
+                disabled={isLoadingPrefs}
+                className="sr-only peer"
+              />
+              <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-field-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-field-500"></div>
+            </label>
           </div>
         </div>
       </div>

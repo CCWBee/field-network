@@ -1,3 +1,5 @@
+@import 'leaflet/dist/leaflet.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -9,7 +11,12 @@
 
 body {
   color: rgb(var(--foreground-rgb));
-  background: linear-gradient(135deg, #ffffff 0%, #f0fdfa 50%, #f8fafc 100%);
+  background:
+    repeating-linear-gradient(0deg, rgba(15, 23, 42, 0.05) 0, rgba(15, 23, 42, 0.05) 1px, transparent 1px, transparent 48px),
+    repeating-linear-gradient(90deg, rgba(15, 23, 42, 0.05) 0, rgba(15, 23, 42, 0.05) 1px, transparent 1px, transparent 48px),
+    linear-gradient(140deg, rgba(15, 23, 42, 0.04) 0%, transparent 35%),
+    linear-gradient(320deg, rgba(59, 130, 246, 0.04) 0%, transparent 40%),
+    linear-gradient(135deg, #ffffff 0%, #f8fafc 55%, #f1f5f9 100%);
   min-height: 100vh;
 }
 
@@ -83,4 +90,89 @@ body {
 .animate-mesh {
   animation: mesh-shift 15s ease infinite;
   background-size: 200% 200%;
+}
+
+/* Hero mesh background */
+.bg-gradient-mesh {
+  background:
+    repeating-linear-gradient(0deg, rgba(15, 23, 42, 0.06) 0, rgba(15, 23, 42, 0.06) 1px, transparent 1px, transparent 56px),
+    repeating-linear-gradient(90deg, rgba(15, 23, 42, 0.06) 0, rgba(15, 23, 42, 0.06) 1px, transparent 1px, transparent 56px),
+    linear-gradient(140deg, rgba(15, 23, 42, 0.05) 0%, transparent 40%),
+    linear-gradient(320deg, rgba(59, 130, 246, 0.05) 0%, transparent 45%),
+    linear-gradient(135deg, #ffffff 0%, #f8fafc 55%, #f1f5f9 100%);
+}
+
+.bg-field-network {
+  background:
+    repeating-linear-gradient(0deg, rgba(15, 23, 42, 0.07) 0, rgba(15, 23, 42, 0.07) 1px, transparent 1px, transparent 44px),
+    repeating-linear-gradient(90deg, rgba(15, 23, 42, 0.07) 0, rgba(15, 23, 42, 0.07) 1px, transparent 1px, transparent 44px),
+    linear-gradient(140deg, rgba(15, 23, 42, 0.06) 0%, transparent 45%),
+    linear-gradient(320deg, rgba(59, 130, 246, 0.06) 0%, transparent 45%),
+    linear-gradient(135deg, #ffffff 0%, #f8fafc 55%, #f1f5f9 100%);
+}
+
+/* Mobile responsive utilities */
+@media (max-width: 640px) {
+  /* Ensure cards don't overflow on mobile */
+  .glass {
+    overflow-x: auto;
+  }
+
+  /* Reduce padding on mobile for stat cards */
+  .stat-card-compact {
+    padding: 0.75rem;
+  }
+
+  /* Stack tabs horizontally with scroll on mobile */
+  .dashboard-tabs {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+
+  .dashboard-tabs::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Reduce map height on mobile */
+  .leaflet-container {
+    min-height: 250px;
+  }
+
+  /* Full width tables on mobile with horizontal scroll */
+  .table-responsive {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+/* Ensure charts are responsive */
+.recharts-responsive-container {
+  width: 100% !important;
+}
+
+/* Task cards mobile layout */
+@media (max-width: 768px) {
+  .task-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Safe area padding for mobile devices with notches */
+@supports (padding: env(safe-area-inset-bottom)) {
+  .safe-area-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
+
+/* Touch-friendly button sizes on mobile */
+@media (max-width: 640px) {
+  button, [role="button"], a.button {
+    min-height: 44px;
+  }
+
+  input, select, textarea {
+    min-height: 44px;
+    font-size: 16px; /* Prevents zoom on iOS */
+  }
 }

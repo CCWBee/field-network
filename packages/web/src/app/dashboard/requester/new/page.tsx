@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/lib/store';
@@ -18,12 +18,32 @@ function getDefaultDates() {
   };
 }
 
+interface FeePreview {
+  bounty_amount: number;
+  platform_fee: {
+    amount: number;
+    rate: number;
+    rate_percent: string;
+    tier: string;
+  };
+  arbitration_fee: {
+    amount: number;
+    rate: number;
+    rate_percent: string;
+  };
+  total_cost: number;
+  worker_payout: number;
+  currency: string;
+}
+
 export default function CreateTaskPage() {
   const router = useRouter();
   const { token } = useAuthStore();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [step, setStep] = useState(1);
+  const [feePreview, setFeePreview] = useState<FeePreview | null>(null);
+  const [feeLoading, setFeeLoading] = useState(false);
 
   // Get default dates once at initialization
   const defaultDates = getDefaultDates();
@@ -55,6 +75,32 @@ export default function CreateTaskPage() {
   const updateForm = (field: string, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
+
+  // Debounced fee preview fetch
+  const fetchFeePreview = useCallback(async (amount: number) => {
+    if (!token || amount <= 0) return;
+
+    setFeeLoading(true);
+    try {
+      api.setToken(token);
+      const preview = await api.previewFees(amount);
+      setFeePreview(preview);
+    } catch (err) {
+      console.error('Failed to fetch fee preview:', err);
+    } finally {
+      setFeeLoading(false);
+    }
+  }, [token]);
+
+  // Fetch fee preview when bounty amount changes and on step 4
+  useEffect(() => {
+    if (step === 4 && formData.bountyAmount > 0) {
+      const timer = setTimeout(() => {
+        fetchFeePreview(formData.bountyAmount);
+      }, 300); // Debounce
+      return () => clearTimeout(timer);
+    }
+  }, [formData.bountyAmount, step, fetchFeePreview]);
 
   const handleSubmit = async (publish: boolean) => {
     setIsLoading(true);
@@ -412,9 +458,52 @@ export default function CreateTaskPage() {
               </label>
             </div>
 
+            {/* Fee Breakdown */}
+            <div className="bg-field-50 border border-field-200 p-4 rounded-lg mt-6">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="font-medium text-slate-900">Fee Breakdown</h3>
+                {feeLoading && (
+                  <span className="text-xs text-slate-500">Calculating...</span>
+                )}
+              </div>
+              {feePreview ? (
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-slate-600">Worker Bounty</span>
+                    <span className="text-slate-900">{formData.currency} {feePreview.bounty_amount.toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-600">
+                      Platform Fee ({feePreview.platform_fee.rate_percent})
+                      <span className="ml-1 text-xs text-field-600">({feePreview.platform_fee.tier} tier)</span>
+                    </span>
+                    <span className="text-slate-900">{formData.currency} {feePreview.platform_fee.amount.toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-600">
+                      Arbitration Reserve ({feePreview.arbitration_fee.rate_percent})
+                    </span>
+                    <span className="text-slate-900">{formData.currency} {feePreview.arbitration_fee.amount.toFixed(2)}</span>
+                  </div>
+                  <div className="border-t border-field-200 pt-2 mt-2">
+                    <div className="flex justify-between font-medium">
+                      <span className="text-slate-900">Total Cost</span>
+                      <span className="text-field-600">{formData.currency} {feePreview.total_cost.toFixed(2)}</span>
+                    </div>
+                  </div>
+                  <p className="text-xs text-slate-500 mt-2">
+                    Worker receives the full bounty ({formData.currency} {feePreview.worker_payout.toFixed(2)}).
+                    Fees are charged separately to requesters.
+                  </p>
+                </div>
+              ) : (
+                <p className="text-sm text-slate-500">Enter a bounty amount to see fee breakdown</p>
+              )}
+            </div>
+
             {/* Summary */}
             <div className="bg-slate-50 p-4 rounded-lg mt-6">
-              <h3 className="font-medium text-slate-900 mb-2">Summary</h3>
+              <h3 className="font-medium text-slate-900 mb-2">Task Summary</h3>
               <dl className="grid grid-cols-2 gap-2 text-sm">
                 <dt className="text-slate-500">Title:</dt>
                 <dd className="text-slate-900">{formData.title || '-'}</dd>
@@ -422,8 +511,14 @@ export default function CreateTaskPage() {
                 <dd className="text-slate-900">{formData.lat.toFixed(4)}, {formData.lon.toFixed(4)}</dd>
                 <dt className="text-slate-500">Photos Required:</dt>
                 <dd className="text-slate-900">{formData.photoCount}</dd>
-                <dt className="text-slate-500">Bounty:</dt>
+                <dt className="text-slate-500">Worker Bounty:</dt>
                 <dd className="text-slate-900 font-medium">{formData.currency} {formData.bountyAmount.toFixed(2)}</dd>
+                {feePreview && (
+                  <>
+                    <dt className="text-slate-500">Total Cost:</dt>
+                    <dd className="text-field-600 font-medium">{formData.currency} {feePreview.total_cost.toFixed(2)}</dd>
+                  </>
+                )}
               </dl>
             </div>
           </div>

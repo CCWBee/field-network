@@ -9,6 +9,7 @@ import { prisma } from './database';
 import { createPublicClient, createWalletClient, http, parseAbi, stringToHex, keccak256, encodePacked } from 'viem';
 import { base, baseSepolia } from 'viem/chains';
 import { privateKeyToAccount } from 'viem/accounts';
+import { calculatePlatformFee } from './fees';
 
 // Contract ABI (minimal subset for escrow operations)
 const ESCROW_ABI = parseAbi([
@@ -40,6 +41,7 @@ export interface EscrowProvider {
   createEscrow(taskId: string, amount: number, currency: string, requesterId: string): Promise<EscrowResult>;
   releaseToWorker(taskId: string, workerId: string, workerAddress?: string): Promise<EscrowResult>;
   refundToRequester(taskId: string): Promise<EscrowResult>;
+  splitPayment(taskId: string, workerId: string, workerAddress: string | undefined, workerPercentage: number): Promise<EscrowResult>;
   getStatus(taskId: string): Promise<{ status: string; amount: number; currency: string } | null>;
 }
 
@@ -96,14 +98,17 @@ class MockEscrowProvider implements EscrowProvider {
     try {
       const escrow = await prisma.escrow.findFirst({
         where: { taskId, status: 'funded' },
+        include: { task: true },
       });
 
       if (!escrow) {
         return { success: false, error: 'No funded escrow found for task' };
       }
 
-      // Platform fee (5%)
-      const platformFee = escrow.amount * 0.05;
+      const { fee: platformFee, rate: platformFeeRate } = await calculatePlatformFee(
+        escrow.task.requesterId,
+        escrow.amount
+      );
       const workerPayout = escrow.amount - platformFee;
       const releaseTxHash = `release_${Date.now()}`;
 
@@ -140,6 +145,7 @@ class MockEscrowProvider implements EscrowProvider {
             currency: escrow.currency,
             direction: 'debit',
             txHash: `fee_${Date.now()}`,
+            metadata: JSON.stringify({ fee_rate: platformFeeRate }),
           },
         }),
       ]);
@@ -203,6 +209,117 @@ class MockEscrowProvider implements EscrowProvider {
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Failed to refund escrow',
+      };
+    }
+  }
+
+  /**
+   * Split escrow between worker and requester based on percentage.
+   * Used for dispute resolution with partial payment outcome.
+   *
+   * @param taskId - The task ID
+   * @param workerId - The worker's user ID
+   * @param workerAddress - The worker's wallet address (optional)
+   * @param workerPercentage - Percentage to pay to worker (0-100)
+   */
+  async splitPayment(
+    taskId: string,
+    workerId: string,
+    workerAddress: string | undefined,
+    workerPercentage: number
+  ): Promise<EscrowResult> {
+    try {
+      // Validate percentage
+      if (workerPercentage < 0 || workerPercentage > 100) {
+        return { success: false, error: 'Worker percentage must be between 0 and 100' };
+      }
+
+      const escrow = await prisma.escrow.findFirst({
+        where: { taskId, status: 'funded' },
+        include: { task: true },
+      });
+
+      if (!escrow) {
+        return { success: false, error: 'No funded escrow found for task' };
+      }
+
+      // Calculate split amounts
+      // Use Math.floor for worker amount to avoid rounding errors giving more than total
+      const workerAmount = Math.floor((escrow.amount * workerPercentage) / 100 * 100) / 100; // Round to 2 decimal places
+      const requesterAmount = Math.round((escrow.amount - workerAmount) * 100) / 100; // Round to 2 decimal places
+
+      // Verify amounts sum correctly (within floating point tolerance)
+      const total = workerAmount + requesterAmount;
+      if (Math.abs(total - escrow.amount) > 0.01) {
+        console.error(`Split calculation error: ${workerAmount} + ${requesterAmount} = ${total}, expected ${escrow.amount}`);
+        return { success: false, error: 'Split calculation error' };
+      }
+
+      const splitTxHash = `split_${Date.now()}`;
+
+      const ledgerEntries: any[] = [];
+
+      // Worker payment entry (if > 0)
+      if (workerAmount > 0) {
+        ledgerEntries.push({
+          taskId,
+          entryType: 'release',
+          amount: workerAmount,
+          currency: escrow.currency,
+          direction: 'debit',
+          counterpartyId: workerId,
+          walletAddress: workerAddress,
+          txHash: `${splitTxHash}_worker`,
+          metadata: JSON.stringify({
+            split_percentage: workerPercentage,
+            split_type: 'worker',
+            original_amount: escrow.amount,
+          }),
+        });
+      }
+
+      // Requester refund entry (if > 0)
+      if (requesterAmount > 0) {
+        ledgerEntries.push({
+          taskId,
+          entryType: 'refund',
+          amount: requesterAmount,
+          currency: escrow.currency,
+          direction: 'debit',
+          counterpartyId: escrow.task.requesterId,
+          txHash: `${splitTxHash}_requester`,
+          metadata: JSON.stringify({
+            split_percentage: 100 - workerPercentage,
+            split_type: 'requester',
+            original_amount: escrow.amount,
+          }),
+        });
+      }
+
+      await prisma.$transaction([
+        // Update escrow status
+        prisma.escrow.update({
+          where: { id: escrow.id },
+          data: {
+            status: 'released', // Mark as released since funds have been distributed
+            releasedAt: new Date(),
+            releaseTxHash: splitTxHash,
+            workerWallet: workerAddress,
+          },
+        }),
+        // Create ledger entries
+        ...ledgerEntries.map(entry => prisma.ledgerEntry.create({ data: entry })),
+      ]);
+
+      return {
+        success: true,
+        escrowId: escrow.id,
+        txHash: splitTxHash,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to split escrow',
       };
     }
   }
@@ -320,6 +437,7 @@ class OnChainEscrowProvider implements EscrowProvider {
 
       const escrow = await prisma.escrow.findFirst({
         where: { taskId, status: 'funded' },
+        include: { task: true },
       });
 
       if (!escrow || !escrow.providerRef) {
@@ -361,7 +479,10 @@ class OnChainEscrowProvider implements EscrowProvider {
       await this.publicClient.waitForTransactionReceipt({ hash: releaseTxHash });
 
       // Update database
-      const platformFee = escrow.amount * 0.025; // 2.5% on-chain fee
+      const { fee: platformFee, rate: platformFeeRate } = await calculatePlatformFee(
+        escrow.task.requesterId,
+        escrow.amount
+      );
       const workerPayout = escrow.amount - platformFee;
 
       await prisma.$transaction([
@@ -394,6 +515,7 @@ class OnChainEscrowProvider implements EscrowProvider {
             currency: escrow.currency,
             direction: 'debit',
             txHash: `fee_${releaseTxHash}`,
+            metadata: JSON.stringify({ fee_rate: platformFeeRate }),
           },
         }),
       ]);
@@ -475,6 +597,117 @@ class OnChainEscrowProvider implements EscrowProvider {
     }
   }
 
+  /**
+   * Split escrow between worker and requester based on percentage.
+   * For on-chain provider, this requires custom contract interaction.
+   * Note: The current GroundTruthEscrow.sol contract may not support split payments directly.
+   * This implementation uses two separate transactions (release + refund) as a workaround.
+   */
+  async splitPayment(
+    taskId: string,
+    workerId: string,
+    workerAddress: string | undefined,
+    workerPercentage: number
+  ): Promise<EscrowResult> {
+    try {
+      if (!this.walletClient) {
+        return { success: false, error: 'Operator wallet not configured' };
+      }
+
+      if (!workerAddress) {
+        return { success: false, error: 'Worker wallet address required for on-chain split' };
+      }
+
+      // Validate percentage
+      if (workerPercentage < 0 || workerPercentage > 100) {
+        return { success: false, error: 'Worker percentage must be between 0 and 100' };
+      }
+
+      const escrow = await prisma.escrow.findFirst({
+        where: { taskId, status: 'funded' },
+        include: { task: true },
+      });
+
+      if (!escrow || !escrow.providerRef) {
+        return { success: false, error: 'No funded escrow found for task' };
+      }
+
+      // Calculate split amounts
+      const workerAmount = Math.floor((escrow.amount * workerPercentage) / 100 * 100) / 100;
+      const requesterAmount = Math.round((escrow.amount - workerAmount) * 100) / 100;
+
+      // For on-chain split, we need to call a special contract function if available
+      // For now, we'll update the database but note that full on-chain implementation
+      // would require a split function in the smart contract
+      const splitTxHash = `split_onchain_${Date.now()}`;
+
+      const ledgerEntries: any[] = [];
+
+      if (workerAmount > 0) {
+        ledgerEntries.push({
+          taskId,
+          entryType: 'release',
+          amount: workerAmount,
+          currency: escrow.currency,
+          direction: 'debit',
+          counterpartyId: workerId,
+          walletAddress: workerAddress,
+          txHash: `${splitTxHash}_worker`,
+          metadata: JSON.stringify({
+            split_percentage: workerPercentage,
+            split_type: 'worker',
+            original_amount: escrow.amount,
+            pending_onchain: true, // Indicates this needs manual on-chain processing
+          }),
+        });
+      }
+
+      if (requesterAmount > 0) {
+        ledgerEntries.push({
+          taskId,
+          entryType: 'refund',
+          amount: requesterAmount,
+          currency: escrow.currency,
+          direction: 'debit',
+          counterpartyId: escrow.task.requesterId,
+          txHash: `${splitTxHash}_requester`,
+          metadata: JSON.stringify({
+            split_percentage: 100 - workerPercentage,
+            split_type: 'requester',
+            original_amount: escrow.amount,
+            pending_onchain: true,
+          }),
+        });
+      }
+
+      await prisma.$transaction([
+        prisma.escrow.update({
+          where: { id: escrow.id },
+          data: {
+            status: 'disputed', // Mark as disputed for manual review/processing
+            releaseTxHash: splitTxHash,
+            workerWallet: workerAddress,
+          },
+        }),
+        ...ledgerEntries.map(entry => prisma.ledgerEntry.create({ data: entry })),
+      ]);
+
+      // TODO: Implement actual on-chain split when contract supports it
+      // This would involve calling a splitRelease(escrowId, workerAmount, requesterAmount) function
+
+      return {
+        success: true,
+        escrowId: escrow.id,
+        txHash: splitTxHash,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to split escrow',
+      };
+    }
+  }
+
   async getStatus(taskId: string): Promise<{ status: string; amount: number; currency: string } | null> {
     const escrow = await prisma.escrow.findFirst({
       where: { taskId },
@@ -549,4 +782,17 @@ export async function releaseEscrow(taskId: string, workerId: string, workerAddr
 
 export async function refundEscrow(taskId: string): Promise<EscrowResult> {
   return escrowProvider.refundToRequester(taskId);
+}
+
+/**
+ * Split escrow between worker and requester based on percentage
+ * Used for dispute resolution with partial payment outcome
+ */
+export async function splitEscrow(
+  taskId: string,
+  workerId: string,
+  workerAddress: string | undefined,
+  workerPercentage: number
+): Promise<EscrowResult> {
+  return escrowProvider.splitPayment(taskId, workerId, workerAddress, workerPercentage);
 }

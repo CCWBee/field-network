@@ -2,6 +2,7 @@ import { Router, Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import { prisma } from '../services/database';
 import { fundTaskEscrow, refundEscrow } from '../services/escrow';
+import { recalculateUserStats } from '../services/reputation';
 import { authenticate, requireScope } from '../middleware/auth';
 import { NotFoundError, ValidationError, StateTransitionError } from '../middleware/errorHandler';
 import { TaskStatus, TASK_TRANSITIONS } from '../types/stateMachine';
@@ -301,6 +302,8 @@ router.post('/:taskId/publish', authenticate, requireScope('tasks:publish'), asy
         detailsJson: '{}',
       },
     });
+
+    await recalculateUserStats(req.user!.userId);
 
     res.json({
       id: updatedTask.id,

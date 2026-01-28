@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(powershell -NoProfile -Command \"Remove-Item -LiteralPath ''\\\\?\\\\E:\\\\my-project\\\\nul'' -Force\")",
+      "Bash(python -c \"import os; os.remove\\(r''\\\\\\\\?\\\\E:\\\\my-project\\\\nul''\\)\")",
+      "Bash(python -c \"import pathlib; pathlib.Path\\(r''E:/my-project/nul''\\).unlink\\(\\)\")"
+    ]
+  }
+}
