@@ -72,17 +72,17 @@ describe("GroundTruthEscrow", function () {
     return { ...base, escrowId, taskId };
   }
 
-  // Fixture with worker assigned
+  // Fixture with worker assigned (now permissionless - anyone can assign)
   async function workerAssignedFixture() {
     const base = await loadFixture(fundedEscrowFixture);
-    await base.escrow.connect(base.operator).assignWorker(base.escrowId, base.worker.address);
+    await base.escrow.connect(base.worker).assignWorker(base.escrowId, base.worker.address);
     return base;
   }
 
-  // Fixture with accepted escrow
+  // Fixture with accepted escrow (now requester-only)
   async function acceptedEscrowFixture() {
     const base = await loadFixture(workerAssignedFixture);
-    await base.escrow.connect(base.operator).accept(base.escrowId);
+    await base.escrow.connect(base.requester).accept(base.escrowId);
     return base;
   }
 
@@ -215,42 +215,53 @@ describe("GroundTruthEscrow", function () {
     });
   });
 
-  // ==================== ASSIGN WORKER TESTS ====================
+  // ==================== ASSIGN WORKER TESTS (PERMISSIONLESS) ====================
   describe("Assign Worker", function () {
-    it("should assign worker to escrow", async function () {
-      const { escrow, operator, worker, escrowId } = await loadFixture(fundedEscrowFixture);
+    it("should assign worker to escrow (permissionless)", async function () {
+      const { escrow, worker, escrowId } = await loadFixture(fundedEscrowFixture);
 
-      await escrow.connect(operator).assignWorker(escrowId, worker.address);
+      await escrow.connect(worker).assignWorker(escrowId, worker.address);
+
+      const escrowData = await escrow.getEscrow(escrowId);
+      expect(escrowData.worker).to.equal(worker.address);
+    });
+
+    it("should allow anyone to assign worker", async function () {
+      const { escrow, other, worker, escrowId } = await loadFixture(fundedEscrowFixture);
+
+      await escrow.connect(other).assignWorker(escrowId, worker.address);
 
       const escrowData = await escrow.getEscrow(escrowId);
       expect(escrowData.worker).to.equal(worker.address);
     });
 
     it("should emit WorkerAssigned event", async function () {
-      const { escrow, operator, worker, escrowId } = await loadFixture(fundedEscrowFixture);
+      const { escrow, worker, escrowId } = await loadFixture(fundedEscrowFixture);
 
-      await expect(escrow.connect(operator).assignWorker(escrowId, worker.address))
+      await expect(escrow.connect(worker).assignWorker(escrowId, worker.address))
         .to.emit(escrow, "WorkerAssigned")
         .withArgs(escrowId, worker.address);
     });
 
-    it("should revert if caller is not operator", async function () {
-      const { escrow, other, worker, escrowId } = await loadFixture(fundedEscrowFixture);
+    it("should revert if worker already assigned", async function () {
+      const { escrow, worker, other, escrowId } = await loadFixture(fundedEscrowFixture);
 
-      await expect(escrow.connect(other).assignWorker(escrowId, worker.address))
-        .to.be.revertedWithCustomError(escrow, "AccessControlUnauthorizedAccount");
+      await escrow.connect(worker).assignWorker(escrowId, worker.address);
+
+      await expect(escrow.connect(other).assignWorker(escrowId, other.address))
+        .to.be.revertedWithCustomError(escrow, "WorkerAlreadyAssigned");
     });
 
     it("should revert if escrow does not exist", async function () {
-      const { escrow, operator, worker } = await loadFixture(deployFixture);
+      const { escrow, worker } = await loadFixture(deployFixture);
       const fakeEscrowId = generateEscrowId();
 
-      await expect(escrow.connect(operator).assignWorker(fakeEscrowId, worker.address))
+      await expect(escrow.connect(worker).assignWorker(fakeEscrowId, worker.address))
         .to.be.revertedWithCustomError(escrow, "EscrowNotFound");
     });
   });
 
-  // ==================== ACCEPT TESTS ====================
+  // ==================== ACCEPT TESTS (REQUESTER-ONLY) ====================
   describe("Accept", function () {
     it("should set escrow status to Accepted", async function () {
       const { escrow, escrowId } = await loadFixture(workerAssignedFixture);
@@ -260,10 +271,10 @@ describe("GroundTruthEscrow", function () {
     });
 
     it("should set releaseAfter timestamp", async function () {
-      const { escrow, operator, worker, escrowId } = await loadFixture(fundedEscrowFixture);
-      await escrow.connect(operator).assignWorker(escrowId, worker.address);
+      const { escrow, requester, worker, escrowId } = await loadFixture(fundedEscrowFixture);
+      await escrow.connect(worker).assignWorker(escrowId, worker.address);
 
-      const tx = await escrow.connect(operator).accept(escrowId);
+      const tx = await escrow.connect(requester).accept(escrowId);
       const block = await tx.getBlock();
       const expectedReleaseAfter = BigInt(block!.timestamp) + AUTO_RELEASE_DELAY;
 
@@ -272,36 +283,41 @@ describe("GroundTruthEscrow", function () {
     });
 
     it("should emit Accepted event", async function () {
-      const { escrow, operator, worker, escrowId } = await loadFixture(fundedEscrowFixture);
-      await escrow.connect(operator).assignWorker(escrowId, worker.address);
+      const { escrow, requester, worker, escrowId } = await loadFixture(fundedEscrowFixture);
+      await escrow.connect(worker).assignWorker(escrowId, worker.address);
 
-      await expect(escrow.connect(operator).accept(escrowId))
+      await expect(escrow.connect(requester).accept(escrowId))
         .to.emit(escrow, "Accepted");
     });
 
-    it("should revert if caller is not operator", async function () {
-      const { escrow, other, escrowId } = await loadFixture(workerAssignedFixture);
+    it("should revert if caller is not requester", async function () {
+      const { escrow, worker, other, escrowId } = await loadFixture(fundedEscrowFixture);
+      await escrow.connect(worker).assignWorker(escrowId, worker.address);
 
-      // Reset to funded state for this test
-      const base = await loadFixture(fundedEscrowFixture);
-      await base.escrow.connect(base.operator).assignWorker(base.escrowId, base.worker.address);
+      await expect(escrow.connect(other).accept(escrowId))
+        .to.be.revertedWithCustomError(escrow, "UnauthorizedCaller");
+    });
 
-      await expect(base.escrow.connect(other).accept(base.escrowId))
-        .to.be.revertedWithCustomError(base.escrow, "AccessControlUnauthorizedAccount");
+    it("should revert if worker tries to accept", async function () {
+      const { escrow, worker, escrowId } = await loadFixture(fundedEscrowFixture);
+      await escrow.connect(worker).assignWorker(escrowId, worker.address);
+
+      await expect(escrow.connect(worker).accept(escrowId))
+        .to.be.revertedWithCustomError(escrow, "UnauthorizedCaller");
     });
 
     it("should revert if worker not assigned", async function () {
-      const { escrow, operator, escrowId } = await loadFixture(fundedEscrowFixture);
+      const { escrow, requester, escrowId } = await loadFixture(fundedEscrowFixture);
 
-      await expect(escrow.connect(operator).accept(escrowId))
+      await expect(escrow.connect(requester).accept(escrowId))
         .to.be.revertedWithCustomError(escrow, "UnauthorizedCaller");
     });
 
     it("should revert if escrow does not exist", async function () {
-      const { escrow, operator } = await loadFixture(deployFixture);
+      const { escrow, requester } = await loadFixture(deployFixture);
       const fakeEscrowId = generateEscrowId();
 
-      await expect(escrow.connect(operator).accept(fakeEscrowId))
+      await expect(escrow.connect(requester).accept(fakeEscrowId))
         .to.be.revertedWithCustomError(escrow, "EscrowNotFound");
     });
   });
@@ -309,46 +325,46 @@ describe("GroundTruthEscrow", function () {
   // ==================== RELEASE TESTS ====================
   describe("Release", function () {
     it("should transfer correct amount to worker (minus fee)", async function () {
-      const { escrow, usdc, operator, worker, escrowId } = await loadFixture(acceptedEscrowFixture);
+      const { escrow, usdc, requester, worker, escrowId } = await loadFixture(acceptedEscrowFixture);
 
       const expectedFee = (BOUNTY_AMOUNT * PLATFORM_FEE_BPS) / 10000n;
       const expectedWorkerAmount = BOUNTY_AMOUNT - expectedFee;
       const workerBalanceBefore = await usdc.balanceOf(worker.address);
 
-      await escrow.connect(operator).release(escrowId);
+      await escrow.connect(requester).release(escrowId);
 
       const workerBalanceAfter = await usdc.balanceOf(worker.address);
       expect(workerBalanceAfter - workerBalanceBefore).to.equal(expectedWorkerAmount);
     });
 
     it("should transfer platform fee to fee recipient", async function () {
-      const { escrow, usdc, operator, feeRecipient, escrowId } = await loadFixture(acceptedEscrowFixture);
+      const { escrow, usdc, requester, feeRecipient, escrowId } = await loadFixture(acceptedEscrowFixture);
 
       const expectedFee = (BOUNTY_AMOUNT * PLATFORM_FEE_BPS) / 10000n;
       const feeBalanceBefore = await usdc.balanceOf(feeRecipient.address);
 
-      await escrow.connect(operator).release(escrowId);
+      await escrow.connect(requester).release(escrowId);
 
       const feeBalanceAfter = await usdc.balanceOf(feeRecipient.address);
       expect(feeBalanceAfter - feeBalanceBefore).to.equal(expectedFee);
     });
 
     it("should set escrow status to Released", async function () {
-      const { escrow, operator, escrowId } = await loadFixture(acceptedEscrowFixture);
+      const { escrow, requester, escrowId } = await loadFixture(acceptedEscrowFixture);
 
-      await escrow.connect(operator).release(escrowId);
+      await escrow.connect(requester).release(escrowId);
 
       const escrowData = await escrow.getEscrow(escrowId);
       expect(escrowData.status).to.equal(3n); // Released
     });
 
     it("should emit Released event with correct amounts", async function () {
-      const { escrow, operator, worker, escrowId } = await loadFixture(acceptedEscrowFixture);
+      const { escrow, requester, worker, escrowId } = await loadFixture(acceptedEscrowFixture);
 
       const expectedFee = (BOUNTY_AMOUNT * PLATFORM_FEE_BPS) / 10000n;
       const expectedWorkerAmount = BOUNTY_AMOUNT - expectedFee;
 
-      await expect(escrow.connect(operator).release(escrowId))
+      await expect(escrow.connect(requester).release(escrowId))
         .to.emit(escrow, "Released")
         .withArgs(escrowId, worker.address, expectedWorkerAmount, expectedFee);
     });
@@ -358,6 +374,16 @@ describe("GroundTruthEscrow", function () {
 
       const workerBalanceBefore = await usdc.balanceOf(worker.address);
       await escrow.connect(requester).release(escrowId);
+      const workerBalanceAfter = await usdc.balanceOf(worker.address);
+
+      expect(workerBalanceAfter).to.be.greaterThan(workerBalanceBefore);
+    });
+
+    it("should allow worker to release immediately", async function () {
+      const { escrow, usdc, worker, escrowId } = await loadFixture(acceptedEscrowFixture);
+
+      const workerBalanceBefore = await usdc.balanceOf(worker.address);
+      await escrow.connect(worker).release(escrowId);
       const workerBalanceAfter = await usdc.balanceOf(worker.address);
 
       expect(workerBalanceAfter).to.be.greaterThan(workerBalanceBefore);
@@ -384,26 +410,26 @@ describe("GroundTruthEscrow", function () {
     });
 
     it("should revert if escrow not in Accepted status", async function () {
-      const { escrow, operator, escrowId } = await loadFixture(fundedEscrowFixture);
+      const { escrow, requester, escrowId } = await loadFixture(fundedEscrowFixture);
 
-      await expect(escrow.connect(operator).release(escrowId))
+      await expect(escrow.connect(requester).release(escrowId))
         .to.be.revertedWithCustomError(escrow, "InvalidEscrowStatus");
     });
 
     it("should revert on double release", async function () {
-      const { escrow, operator, escrowId } = await loadFixture(acceptedEscrowFixture);
+      const { escrow, requester, escrowId } = await loadFixture(acceptedEscrowFixture);
 
-      await escrow.connect(operator).release(escrowId);
+      await escrow.connect(requester).release(escrowId);
 
-      await expect(escrow.connect(operator).release(escrowId))
+      await expect(escrow.connect(requester).release(escrowId))
         .to.be.revertedWithCustomError(escrow, "InvalidEscrowStatus");
     });
 
     it("should revert if escrow does not exist", async function () {
-      const { escrow, operator } = await loadFixture(deployFixture);
+      const { escrow, requester } = await loadFixture(deployFixture);
       const fakeEscrowId = generateEscrowId();
 
-      await expect(escrow.connect(operator).release(fakeEscrowId))
+      await expect(escrow.connect(requester).release(fakeEscrowId))
         .to.be.revertedWithCustomError(escrow, "EscrowNotFound");
     });
   });
@@ -970,13 +996,13 @@ describe("GroundTruthEscrow", function () {
       expect(escrowData.platformFee).to.equal(0n);
 
       // Complete the flow
-      await escrow.connect(operator).assignWorker(escrowId, worker.address);
-      await escrow.connect(operator).accept(escrowId);
+      await escrow.connect(worker).assignWorker(escrowId, worker.address);
+      await escrow.connect(requester).accept(escrowId);
 
       const workerBalanceBefore = await usdc.balanceOf(worker.address);
       const feeBalanceBefore = await usdc.balanceOf(feeRecipient.address);
 
-      await escrow.connect(operator).release(escrowId);
+      await escrow.connect(requester).release(escrowId);
 
       // Worker gets full amount
       expect(await usdc.balanceOf(worker.address) - workerBalanceBefore).to.equal(BOUNTY_AMOUNT);
@@ -1004,18 +1030,18 @@ describe("GroundTruthEscrow", function () {
     });
 
     it("should return different statuses throughout lifecycle", async function () {
-      const { escrow, operator, requester, worker, escrowId } =
+      const { escrow, requester, worker, escrowId } =
         await loadFixture(fundedEscrowFixture);
 
       // Funded
       expect(await escrow.getEscrowStatus(escrowId)).to.equal(1n);
 
       // Assign worker (still Funded)
-      await escrow.connect(operator).assignWorker(escrowId, worker.address);
+      await escrow.connect(worker).assignWorker(escrowId, worker.address);
       expect(await escrow.getEscrowStatus(escrowId)).to.equal(1n);
 
       // Accept -> Accepted
-      await escrow.connect(operator).accept(escrowId);
+      await escrow.connect(requester).accept(escrowId);
       expect(await escrow.getEscrowStatus(escrowId)).to.equal(2n);
 
       // Open dispute -> Disputed

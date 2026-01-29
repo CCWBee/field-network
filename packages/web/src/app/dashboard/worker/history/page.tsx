@@ -6,6 +6,15 @@ import { api } from '@/lib/api';
 import { useAuthStore } from '@/lib/store';
 import PublicProfileCard from '@/components/PublicProfileCard';
 import ReviewSubmitForm from '@/components/ReviewSubmitForm';
+import { VerificationBreakdown } from '@/components/disputes/VerificationBreakdown';
+
+interface VerificationCheck {
+  check: string;
+  passed: boolean;
+  message: string;
+  actual?: string | number;
+  expected?: string | number;
+}
 
 interface SubmissionHistory {
   submission_id: string;
@@ -26,6 +35,11 @@ interface SubmissionHistory {
   };
 }
 
+interface VerificationData {
+  score: number;
+  checks: VerificationCheck[];
+}
+
 const statusColors: Record<string, string> = {
   draft: 'bg-slate-100 text-slate-600',
   uploading: 'bg-blue-100 text-blue-700',
@@ -42,6 +56,9 @@ export default function WorkerHistoryPage() {
   const [error, setError] = useState('');
   const [showReviewForm, setShowReviewForm] = useState<string | null>(null);
   const [reviewedRequesters, setReviewedRequesters] = useState<Set<string>>(new Set());
+  const [expandedSubmission, setExpandedSubmission] = useState<string | null>(null);
+  const [verificationData, setVerificationData] = useState<Record<string, VerificationData>>({});
+  const [loadingVerification, setLoadingVerification] = useState<string | null>(null);
 
   useEffect(() => {
     fetchHistory();
@@ -62,6 +79,40 @@ export default function WorkerHistoryPage() {
   const handleReviewSuccess = (requesterId: string) => {
     setShowReviewForm(null);
     setReviewedRequesters(prev => new Set([...prev, requesterId]));
+  };
+
+  const toggleVerification = async (submissionId: string) => {
+    if (expandedSubmission === submissionId) {
+      setExpandedSubmission(null);
+      return;
+    }
+
+    setExpandedSubmission(submissionId);
+
+    // If we already have the data, don't fetch again
+    if (verificationData[submissionId]) {
+      return;
+    }
+
+    // Fetch verification details
+    setLoadingVerification(submissionId);
+    try {
+      api.setToken(token);
+      const result = await api.getSubmission(submissionId);
+      if (result.verification_details && result.verification_score !== undefined) {
+        setVerificationData(prev => ({
+          ...prev,
+          [submissionId]: {
+            score: result.verification_score,
+            checks: result.verification_details,
+          },
+        }));
+      }
+    } catch (err) {
+      console.error('Failed to load verification details:', err);
+    } finally {
+      setLoadingVerification(null);
+    }
   };
 
   return (
@@ -125,6 +176,46 @@ export default function WorkerHistoryPage() {
                     {submission.bounty.currency} {submission.bounty.amount.toFixed(2)}
                   </span>
                 </div>
+
+                {/* Verification Score Toggle */}
+                {(submission.status === 'finalised' || submission.status === 'accepted' || submission.status === 'rejected') && (
+                  <div className="mb-4">
+                    <button
+                      onClick={() => toggleVerification(submission.submission_id)}
+                      className="flex items-center gap-2 text-sm text-slate-600 hover:text-slate-800"
+                    >
+                      <svg
+                        className={`w-4 h-4 transition-transform ${expandedSubmission === submission.submission_id ? 'rotate-90' : ''}`}
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                      </svg>
+                      View Verification Details
+                    </button>
+
+                    {expandedSubmission === submission.submission_id && (
+                      <div className="mt-3">
+                        {loadingVerification === submission.submission_id ? (
+                          <div className="flex items-center justify-center py-4">
+                            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-field-500"></div>
+                            <span className="ml-2 text-sm text-slate-500">Loading verification details...</span>
+                          </div>
+                        ) : verificationData[submission.submission_id] ? (
+                          <VerificationBreakdown
+                            checks={verificationData[submission.submission_id].checks}
+                            score={verificationData[submission.submission_id].score}
+                          />
+                        ) : (
+                          <p className="text-sm text-slate-500 py-2">
+                            No verification data available for this submission.
+                          </p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 {/* Requester Profile */}
                 {submission.requester && (
