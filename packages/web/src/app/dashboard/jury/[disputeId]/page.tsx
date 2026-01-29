@@ -4,6 +4,8 @@ import { useEffect, useState, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuthStore } from '@/lib/store';
+import { EvidenceTimeline } from '@/components/disputes/EvidenceTimeline';
+import { AutoScoreBreakdown } from '@/components/disputes/AutoScoreBreakdown';
 
 interface Artefact {
   id: string;
@@ -20,6 +22,7 @@ interface Evidence {
     email: string;
     username: string | null;
   };
+  party: 'worker' | 'requester';
   type: 'text' | 'image' | 'document';
   description: string;
   storage_key: string | null;
@@ -29,19 +32,42 @@ interface Evidence {
   created_at: string;
 }
 
+interface AutoScoreCheck {
+  name: string;
+  passed: boolean;
+  score: number;
+  weight: number;
+  details?: string;
+}
+
+interface AutoScoreResult {
+  totalScore: number;
+  checks: AutoScoreCheck[];
+  recommendation: 'worker_wins' | 'requester_wins' | 'escalate';
+  timestamp: string;
+}
+
 interface DisputeDetail {
   id: string;
   status: string;
   opened_at: string;
   evidence_deadline: string | null;
+  evidence_deadline_passed: boolean;
   current_tier: number;
   tier2_deadline: string | null;
+  auto_score_result: AutoScoreResult | null;
+  evidence_count?: {
+    total: number;
+    worker: number;
+    requester: number;
+  };
   submission: {
     id: string;
     task_id: string;
     worker_id: string;
     status: string;
     verification_score: number;
+    flags?: string[];
     task: {
       id: string;
       title: string;
@@ -338,38 +364,18 @@ export default function JuryVotePage() {
             </div>
           </div>
 
-          {/* Evidence */}
-          {dispute.evidence && dispute.evidence.length > 0 && (
-            <div className="glass rounded-lg border border-surface-200 p-4">
-              <h3 className="text-sm font-semibold text-slate-700 mb-3">
-                Evidence Submitted ({dispute.evidence.length})
-              </h3>
-              <div className="space-y-3">
-                {dispute.evidence.map((evidence) => (
-                  <div
-                    key={evidence.id}
-                    className={`p-3 rounded-lg border text-sm ${
-                      evidence.submitted_by === dispute.submission.worker_id
-                        ? 'bg-green-50 border-green-200'
-                        : 'bg-blue-50 border-blue-200'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between mb-1">
-                      <span className={`text-xs font-medium ${
-                        evidence.submitted_by === dispute.submission.worker_id
-                          ? 'text-green-700'
-                          : 'text-blue-700'
-                      }`}>
-                        {evidence.submitted_by === dispute.submission.worker_id ? 'Worker' : 'Requester'}
-                      </span>
-                      <span className="text-xs text-slate-400">{formatDate(evidence.created_at)}</span>
-                    </div>
-                    <p className="text-slate-700 whitespace-pre-wrap">{evidence.description}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
+          {/* Tier 1 Auto Score (if available) */}
+          {dispute.auto_score_result && (
+            <AutoScoreBreakdown autoScoreResult={dispute.auto_score_result} />
           )}
+
+          {/* Evidence Timeline */}
+          <EvidenceTimeline
+            evidence={dispute.evidence || []}
+            evidenceDeadline={dispute.evidence_deadline}
+            evidenceDeadlinePassed={dispute.evidence_deadline_passed}
+            evidenceCount={dispute.evidence_count}
+          />
         </div>
 
         {/* Voting Panel */}

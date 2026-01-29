@@ -448,6 +448,18 @@ class OnChainEscrowProvider implements EscrowProvider {
     }
   }
 
+  /**
+   * Release escrow to worker.
+   *
+   * NOTE: With permissionless contracts:
+   * - assignWorker is now permissionless (worker calls directly from frontend)
+   * - accept is now requester-only (requester calls from frontend)
+   * - release can be called by requester/worker immediately, or anyone after delay
+   *
+   * This backend function serves as a "release helper" that triggers release
+   * after the requester has already accepted on-chain. It can be called
+   * by the backend to ensure release happens even if no one triggers it manually.
+   */
   async releaseToWorker(taskId: string, workerId: string, workerAddress?: string): Promise<EscrowResult> {
     try {
       if (!this.walletClient) {
@@ -455,38 +467,18 @@ class OnChainEscrowProvider implements EscrowProvider {
       }
 
       const escrow = await prisma.escrow.findFirst({
-        where: { taskId, status: 'funded' },
+        where: { taskId, status: { in: ['funded', 'accepted'] } },
         include: { task: true },
       });
 
       if (!escrow || !escrow.providerRef) {
-        return { success: false, error: 'No funded escrow found for task' };
+        return { success: false, error: 'No escrow found for task' };
       }
 
       const escrowIdBytes = escrow.providerRef as `0x${string}`;
 
-      // First assign worker if needed
-      if (workerAddress) {
-        await this.walletClient.writeContract({
-          address: this.contractAddress,
-          abi: ESCROW_ABI,
-          functionName: 'assignWorker',
-          args: [escrowIdBytes, workerAddress as `0x${string}`],
-        });
-      }
-
-      // Mark as accepted on-chain
-      const acceptTxHash = await this.walletClient.writeContract({
-        address: this.contractAddress,
-        abi: ESCROW_ABI,
-        functionName: 'accept',
-        args: [escrowIdBytes],
-      });
-
-      // Wait for confirmation
-      await this.publicClient.waitForTransactionReceipt({ hash: acceptTxHash });
-
-      // Release funds
+      // Try to release (will work if escrow is in Accepted status and delay passed,
+      // or if caller is requester/worker)
       const releaseTxHash = await this.walletClient.writeContract({
         address: this.contractAddress,
         abi: ESCROW_ABI,

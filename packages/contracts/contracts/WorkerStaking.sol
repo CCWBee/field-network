@@ -49,6 +49,9 @@ contract WorkerStaking is AccessControl, ReentrancyGuard, Pausable {
     // Platform share of slashed stakes (basis points, e.g., 5000 = 50%)
     uint256 public platformSlashShareBps;
 
+    // Time delay before anyone can release a stake (worker can release immediately)
+    uint256 public stakeReleaseDelay;
+
     struct Stake {
         bytes32 taskId;         // Off-chain task ID
         address worker;         // Worker who staked
@@ -102,6 +105,7 @@ contract WorkerStaking is AccessControl, ReentrancyGuard, Pausable {
     error UnauthorizedCaller();
     error StakeAlreadyExists();
     error InvalidPercentage();
+    error StakeNotReady();
 
     constructor(
         address _usdc,
@@ -125,6 +129,7 @@ contract WorkerStaking is AccessControl, ReentrancyGuard, Pausable {
         highReputationThreshold = 9000;  // 90 out of 100 (scaled)
         reputationDiscountBps = 500;     // -5% for high-rep workers
         platformSlashShareBps = 5000;    // 50% of slash goes to platform
+        stakeReleaseDelay = 24 hours;    // 24 hour delay for non-worker release
 
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
         _grantRole(OPERATOR_ROLE, msg.sender);
@@ -261,14 +266,15 @@ contract WorkerStaking is AccessControl, ReentrancyGuard, Pausable {
     }
 
     /**
-     * @notice Release stake back to worker (successful submission or rejection)
+     * @notice Release stake back to worker (permissionless)
+     * @dev Worker can release immediately, anyone else after stakeReleaseDelay
      * @param taskId Task ID
      * @param worker Worker address
      */
     function releaseStake(
         bytes32 taskId,
         address worker
-    ) external onlyRole(OPERATOR_ROLE) nonReentrant {
+    ) external nonReentrant {
         bytes32 stakeId = keccak256(abi.encodePacked(taskId, worker));
         Stake storage stakeInfo = stakes[stakeId];
 
@@ -277,6 +283,14 @@ contract WorkerStaking is AccessControl, ReentrancyGuard, Pausable {
         }
         if (stakeInfo.status != StakeStatus.Active) {
             revert InvalidStakeStatus();
+        }
+
+        // Worker can release immediately, anyone else after delay
+        bool isWorker = msg.sender == worker;
+        bool delayPassed = block.timestamp >= stakeInfo.createdAt + stakeReleaseDelay;
+
+        if (!isWorker && !delayPassed) {
+            revert StakeNotReady();
         }
 
         stakeInfo.status = StakeStatus.Released;
@@ -404,14 +418,6 @@ contract WorkerStaking is AccessControl, ReentrancyGuard, Pausable {
     }
 
     /**
-     * @notice Record a strike without slashing (e.g., abandoned claim)
-     */
-    function recordStrike(address worker) external onlyRole(OPERATOR_ROLE) {
-        workerStrikes[worker] += 1;
-        emit StrikeRecorded(worker, workerStrikes[worker]);
-    }
-
-    /**
      * @notice Reset strikes for a worker (admin function for rehabilitation)
      */
     function resetStrikes(address worker) external onlyRole(DEFAULT_ADMIN_ROLE) {
@@ -481,6 +487,12 @@ contract WorkerStaking is AccessControl, ReentrancyGuard, Pausable {
         require(_shareBps <= 10000, "Share must be <= 100%");
         platformSlashShareBps = _shareBps;
         emit ConfigUpdated("platformSlashShareBps", _shareBps);
+    }
+
+    function setStakeReleaseDelay(uint256 _delay) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        require(_delay <= 7 days, "Delay cannot exceed 7 days");
+        stakeReleaseDelay = _delay;
+        emit ConfigUpdated("stakeReleaseDelay", _delay);
     }
 
     function pause() external onlyRole(DEFAULT_ADMIN_ROLE) {

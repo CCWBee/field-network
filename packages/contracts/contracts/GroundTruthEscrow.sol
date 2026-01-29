@@ -67,6 +67,7 @@ contract GroundTruthEscrow is AccessControl, ReentrancyGuard, Pausable {
     error InvalidAmount();
     error ReleaseNotReady();
     error TransferFailed();
+    error WorkerAlreadyAssigned();
 
     constructor(
         address _usdc,
@@ -118,17 +119,18 @@ contract GroundTruthEscrow is AccessControl, ReentrancyGuard, Pausable {
     }
 
     /**
-     * @notice Assign worker to escrow (called by operator when claim is made)
+     * @notice Assign worker to escrow (permissionless - anyone can claim if no worker assigned)
      * @param escrowId Escrow identifier
      * @param worker Worker's wallet address
      */
     function assignWorker(
         bytes32 escrowId,
         address worker
-    ) external onlyRole(OPERATOR_ROLE) {
+    ) external {
         Escrow storage escrow = escrows[escrowId];
         if (escrow.createdAt == 0) revert EscrowNotFound();
         if (escrow.status != EscrowStatus.Funded) revert InvalidEscrowStatus();
+        if (escrow.worker != address(0)) revert WorkerAlreadyAssigned();
 
         escrow.worker = worker;
         emit WorkerAssigned(escrowId, worker);
@@ -136,13 +138,15 @@ contract GroundTruthEscrow is AccessControl, ReentrancyGuard, Pausable {
 
     /**
      * @notice Mark submission as accepted (starts auto-release timer)
+     * @dev Only the requester can accept a submission
      * @param escrowId Escrow identifier
      */
-    function accept(bytes32 escrowId) external onlyRole(OPERATOR_ROLE) {
+    function accept(bytes32 escrowId) external {
         Escrow storage escrow = escrows[escrowId];
         if (escrow.createdAt == 0) revert EscrowNotFound();
         if (escrow.status != EscrowStatus.Funded) revert InvalidEscrowStatus();
         if (escrow.worker == address(0)) revert UnauthorizedCaller();
+        if (msg.sender != escrow.requester) revert UnauthorizedCaller();
 
         escrow.status = EscrowStatus.Accepted;
         escrow.acceptedAt = block.timestamp;
@@ -152,7 +156,7 @@ contract GroundTruthEscrow is AccessControl, ReentrancyGuard, Pausable {
     }
 
     /**
-     * @notice Release funds to worker (after auto-release delay or immediately by requester)
+     * @notice Release funds to worker (after auto-release delay or immediately by requester/worker)
      * @param escrowId Escrow identifier
      */
     function release(bytes32 escrowId) external nonReentrant {
@@ -160,12 +164,12 @@ contract GroundTruthEscrow is AccessControl, ReentrancyGuard, Pausable {
         if (escrow.createdAt == 0) revert EscrowNotFound();
         if (escrow.status != EscrowStatus.Accepted) revert InvalidEscrowStatus();
 
-        // Allow immediate release by requester, or anyone after delay
+        // Allow immediate release by requester or worker, or anyone after delay
         bool isRequester = msg.sender == escrow.requester;
-        bool isOperator = hasRole(OPERATOR_ROLE, msg.sender);
+        bool isWorker = msg.sender == escrow.worker;
         bool delayPassed = block.timestamp >= escrow.releaseAfter;
 
-        if (!isRequester && !isOperator && !delayPassed) {
+        if (!isRequester && !isWorker && !delayPassed) {
             revert ReleaseNotReady();
         }
 

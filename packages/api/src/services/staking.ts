@@ -694,12 +694,19 @@ class OnChainStakingProvider implements StakingProvider {
     }
   }
 
+  /**
+   * Release stake back to worker.
+   *
+   * NOTE: With permissionless contracts:
+   * - Worker can release their own stake immediately
+   * - Anyone can release after 24h delay
+   *
+   * This backend function serves as a "release helper" that can trigger release.
+   * Workers should typically call releaseStake directly from the frontend for
+   * immediate release, but this can be used as a fallback or for automated release.
+   */
   async releaseStake(taskId: string, workerId: string): Promise<StakeResult> {
     try {
-      if (!this.walletClient) {
-        return { success: false, error: 'Operator wallet not configured' };
-      }
-
       const stake = await prisma.stake.findUnique({
         where: { taskId_workerId: { taskId, workerId } },
       });
@@ -721,47 +728,67 @@ class OnChainStakingProvider implements StakingProvider {
         return { success: false, error: 'Worker wallet not found' };
       }
 
-      const taskIdBytes = this.uuidToBytes32(taskId);
+      // For on-chain release, we try to call releaseStake
+      // This will succeed if: worker calls it, or 24h delay has passed
+      if (this.walletClient) {
+        try {
+          const taskIdBytes = this.uuidToBytes32(taskId);
 
-      const txHash = await this.walletClient.writeContract({
-        address: this.contractAddress,
-        abi: STAKING_ABI,
-        functionName: 'releaseStake',
-        args: [taskIdBytes, workerWallet.walletAddress as `0x${string}`],
-      });
+          const txHash = await this.walletClient.writeContract({
+            address: this.contractAddress,
+            abi: STAKING_ABI,
+            functionName: 'releaseStake',
+            args: [taskIdBytes, workerWallet.walletAddress as `0x${string}`],
+          });
 
-      await this.publicClient.waitForTransactionReceipt({ hash: txHash });
+          await this.publicClient.waitForTransactionReceipt({ hash: txHash });
 
-      await prisma.$transaction([
-        prisma.stake.update({
-          where: { id: stake.id },
-          data: {
-            status: 'released',
-            releaseTxHash: txHash,
-            releasedAt: new Date(),
-          },
-        }),
-        prisma.ledgerEntry.create({
-          data: {
-            taskId,
-            entryType: 'stake_release',
+          await prisma.$transaction([
+            prisma.stake.update({
+              where: { id: stake.id },
+              data: {
+                status: 'released',
+                releaseTxHash: txHash,
+                releasedAt: new Date(),
+              },
+            }),
+            prisma.ledgerEntry.create({
+              data: {
+                taskId,
+                entryType: 'stake_release',
+                amount: stake.amount,
+                currency: 'USDC',
+                direction: 'debit',
+                counterpartyId: workerId,
+                walletAddress: workerWallet.walletAddress,
+                txHash,
+                chainId: parseInt(process.env.CHAIN_ID || '84532'),
+                metadata: JSON.stringify({ stake_id: stake.id }),
+              },
+            }),
+          ]);
+
+          return {
+            success: true,
+            stakeId: stake.id,
             amount: stake.amount,
-            currency: 'USDC',
-            direction: 'debit',
-            counterpartyId: workerId,
-            walletAddress: workerWallet.walletAddress,
             txHash,
-            chainId: parseInt(process.env.CHAIN_ID || '84532'),
-            metadata: JSON.stringify({ stake_id: stake.id }),
-          },
-        }),
-      ]);
+          };
+        } catch (error) {
+          // If on-chain release fails (e.g., delay not passed and not worker),
+          // we mark it for later processing
+          console.warn(`On-chain stake release failed, will retry later: ${error}`);
+          return {
+            success: false,
+            error: 'Stake release pending - worker can release immediately from wallet, or anyone after 24h delay',
+          };
+        }
+      }
 
+      // No wallet client - mark as pending release
       return {
-        success: true,
-        stakeId: stake.id,
-        amount: stake.amount,
-        txHash,
+        success: false,
+        error: 'On-chain release not configured - worker should release directly from frontend',
       };
     } catch (error) {
       return {

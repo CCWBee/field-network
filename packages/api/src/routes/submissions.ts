@@ -22,6 +22,7 @@ import {
 } from '../services/fees';
 import { dispatchWebhookEvent } from '../jobs/webhook-delivery';
 import { releaseTaskStake } from '../services/staking';
+import { formatVerificationResult } from '../services/verificationFormatter';
 
 // Helper to safely extract string from query/param
 function qs(param: any): string | undefined {
@@ -335,6 +336,16 @@ router.get('/:submissionId', authenticate, requireScope('submissions:read'), asy
       throw new NotFoundError('Submission');
     }
 
+    // Format verification details for transparency
+    const verificationJson = typeof submission.verificationJson === 'string'
+      ? JSON.parse(submission.verificationJson)
+      : (submission.verificationJson || {});
+    const verificationDetails = formatVerificationResult(
+      verificationJson,
+      submission.task,
+      submission.artefacts
+    );
+
     res.json({
       id: submission.id,
       task_id: submission.taskId,
@@ -344,6 +355,7 @@ router.get('/:submissionId', authenticate, requireScope('submissions:read'), asy
       finalised_at: submission.finalisedAt?.toISOString(),
       proof_bundle_hash: submission.proofBundleHash,
       verification_score: submission.verificationScore,
+      verification_details: verificationDetails.checks,
       flags: JSON.parse(typeof submission.flagsJson === 'string' ? submission.flagsJson : JSON.stringify(submission.flagsJson || [])),
       artefacts: submission.artefacts.map((a: any) => ({
         id: a.id,

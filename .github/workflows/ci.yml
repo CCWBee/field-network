@@ -92,11 +92,39 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Verify WorkerStaking tests exist
+        run: |
+          if [ ! -f packages/contracts/test/WorkerStaking.test.ts ]; then
+            echo "ERROR: WorkerStaking.test.ts is missing!"
+            echo "All staking contract functionality must have corresponding tests."
+            exit 1
+          fi
+
       - name: Compile contracts
         run: npm run compile --workspace=@ground-truth/contracts
 
       - name: Run contract tests
         run: npm run test --workspace=@ground-truth/contracts
+
+  boundaries:
+    name: Architecture Boundaries
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check Prisma boundary in web package
+        run: |
+          echo "Checking that web package does not import Prisma directly..."
+          if grep -rE "from ['\"]@prisma|from ['\"].*prisma" packages/web/src/ 2>/dev/null; then
+            echo ""
+            echo "ERROR: Direct Prisma imports found in web package!"
+            echo "The web package should only access the database through the API layer."
+            echo "Move database queries to packages/api and call them via HTTP."
+            exit 1
+          fi
+          echo "Prisma boundary check passed."
 
   deploy-contracts-sepolia:
     name: Deploy to Base Sepolia
