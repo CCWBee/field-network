@@ -3,8 +3,14 @@
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
+import dynamic from 'next/dynamic';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/lib/store';
+import PublicProfileCard from '@/components/PublicProfileCard';
+import ReviewSubmitForm from '@/components/ReviewSubmitForm';
+
+// Dynamic import for TaskDetailMap to avoid SSR issues with Leaflet
+const TaskDetailMap = dynamic(() => import('@/components/TaskDetailMap'), { ssr: false });
 
 const statusColors: Record<string, string> = {
   draft: 'bg-slate-100 text-slate-800',
@@ -27,6 +33,8 @@ export default function TaskDetailPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
   const [error, setError] = useState('');
+  const [showReviewForm, setShowReviewForm] = useState<string | null>(null); // worker ID to review
+  const [reviewedWorkers, setReviewedWorkers] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     const fetchTask = async () => {
@@ -206,20 +214,10 @@ export default function TaskDetailPage() {
               <div className="space-y-4">
                 {task.submissions.map((sub: any) => (
                   <div key={sub.id} className="border rounded-lg p-4">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <span className={`px-2 py-1 text-xs rounded-full ${statusColors[sub.status]}`}>
-                          {sub.status}
-                        </span>
-                        <p className="text-sm text-slate-500 mt-2">
-                          {sub.artefacts?.length || 0} artefacts uploaded
-                        </p>
-                        {sub.verificationScore !== undefined && (
-                          <p className="text-sm text-slate-500">
-                            Verification score: {sub.verificationScore}%
-                          </p>
-                        )}
-                      </div>
+                    <div className="flex justify-between items-start mb-3">
+                      <span className={`px-2 py-1 text-xs rounded-full ${statusColors[sub.status]}`}>
+                        {sub.status}
+                      </span>
                       {sub.status === 'finalised' && (
                         <div className="space-x-2">
                           <button
@@ -239,6 +237,68 @@ export default function TaskDetailPage() {
                         </div>
                       )}
                     </div>
+
+                    {/* Worker Profile Card */}
+                    {sub.worker && (
+                      <div className="mb-3">
+                        <PublicProfileCard
+                          user={{
+                            id: sub.worker.id,
+                            username: sub.worker.username,
+                            avatar_url: sub.worker.avatar_url,
+                            ens_name: sub.worker.ens_name,
+                            stats: sub.worker.stats ? {
+                              reliability_score: sub.worker.stats.reliability_score,
+                              tasks_accepted: sub.worker.stats.tasks_accepted,
+                            } : undefined,
+                          }}
+                          size="sm"
+                          showRating={false}
+                          showBadges={false}
+                        />
+                      </div>
+                    )}
+
+                    <div className="text-sm text-slate-500 space-y-1">
+                      <p>{sub.artefacts?.length || 0} artefacts uploaded</p>
+                      {sub.verificationScore !== undefined && (
+                        <p>Verification score: {sub.verificationScore}%</p>
+                      )}
+                    </div>
+
+                    {/* Review Section for Accepted Submissions */}
+                    {sub.status === 'accepted' && sub.worker && !reviewedWorkers.has(sub.worker.id) && (
+                      <div className="mt-4 pt-4 border-t border-surface-200">
+                        {showReviewForm === sub.worker.id ? (
+                          <ReviewSubmitForm
+                            userId={sub.worker.id}
+                            username={sub.worker.username}
+                            taskId={task.id}
+                            role="requester"
+                            onSuccess={() => {
+                              setShowReviewForm(null);
+                              setReviewedWorkers(prev => new Set([...prev, sub.worker.id]));
+                            }}
+                            onCancel={() => setShowReviewForm(null)}
+                          />
+                        ) : (
+                          <button
+                            onClick={() => setShowReviewForm(sub.worker.id)}
+                            className="w-full py-2 px-4 border border-field-300 text-field-600 rounded-lg hover:bg-field-50 transition-colors text-sm"
+                          >
+                            Leave a review for {sub.worker.username || 'this collector'}
+                          </button>
+                        )}
+                      </div>
+                    )}
+                    {sub.status === 'accepted' && sub.worker && reviewedWorkers.has(sub.worker.id) && (
+                      <div className="mt-4 pt-4 border-t border-surface-200 text-sm text-green-600 flex items-center gap-2">
+                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                        </svg>
+                        Review submitted
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
@@ -248,6 +308,53 @@ export default function TaskDetailPage() {
 
         {/* Sidebar */}
         <div className="space-y-6">
+          {/* Location Map */}
+          {task.location && (
+            <div className="glass rounded-lg border border-surface-200 overflow-hidden">
+              <div className="p-4 border-b border-surface-200">
+                <h2 className="text-lg font-medium text-slate-900">Location</h2>
+                <p className="text-sm text-slate-500 mt-1">
+                  {task.location?.lat?.toFixed(4)}, {task.location?.lon?.toFixed(4)} ({task.location?.radius_m}m radius)
+                </p>
+              </div>
+              <TaskDetailMap
+                taskLocation={{
+                  lat: task.location.lat,
+                  lon: task.location.lon,
+                  radius_m: task.location.radius_m,
+                }}
+                submissions={task.submissions?.map((sub: any) => ({
+                  id: sub.id,
+                  status: sub.status,
+                  location: sub.location || null,
+                  artefacts: sub.artefacts,
+                  createdAt: sub.created_at,
+                })) || []}
+                height="250px"
+                showRadius={true}
+                showSubmissionLines={true}
+              />
+              {task.submissions && task.submissions.length > 0 && (
+                <div className="p-3 bg-slate-50 border-t border-surface-200">
+                  <div className="flex items-center gap-4 text-xs">
+                    <div className="flex items-center gap-1.5">
+                      <div className="w-2.5 h-2.5 rounded-full bg-[#14b8a6]" />
+                      <span className="text-slate-500">Task center</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <div className="w-2.5 h-2.5 rounded-full bg-[#6366f1]" />
+                      <span className="text-slate-500">Submission</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <div className="w-2.5 h-2.5 rounded-full bg-[#22c55e]" />
+                      <span className="text-slate-500">Accepted</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
           <div className="glass rounded-lg border border-surface-200 p-6">
             <h2 className="text-lg font-medium text-slate-900 mb-4">Details</h2>
             <dl className="space-y-3 text-sm">
@@ -256,13 +363,6 @@ export default function TaskDetailPage() {
                 <dd className="text-xl font-bold text-slate-900">
                   {task.bounty?.currency} {task.bounty?.amount?.toFixed(2)}
                 </dd>
-              </div>
-              <div>
-                <dt className="text-slate-500">Location</dt>
-                <dd className="text-slate-900">
-                  {task.location?.lat?.toFixed(4)}, {task.location?.lon?.toFixed(4)}
-                </dd>
-                <dd className="text-slate-500">Radius: {task.location?.radius_m}m</dd>
               </div>
               <div>
                 <dt className="text-slate-500">Time Window</dt>

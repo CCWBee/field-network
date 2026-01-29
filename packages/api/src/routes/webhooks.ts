@@ -1,6 +1,6 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
-import { createHash, createHmac } from 'crypto';
+import { createHash } from 'crypto';
 import { prisma } from '../services/database';
 import { authenticate, requireScope } from '../middleware/auth';
 import { NotFoundError, ValidationError } from '../middleware/errorHandler';
@@ -8,13 +8,14 @@ import { safeUrl, WebhookEventTypesSchema, safeJsonParse } from '../utils/valida
 
 const router = Router();
 
+// Webhook event types - keep in sync with jobs/webhook-delivery.ts
 const WebhookEventTypes = [
   'task.published',
   'task.claimed',
-  'task.submitted',
-  'task.accepted',
+  'task.completed',
   'task.cancelled',
   'task.expired',
+  'submission.created',
   'submission.finalised',
   'submission.accepted',
   'submission.rejected',
@@ -44,7 +45,7 @@ router.get('/', authenticate, async (req: Request, res: Response, next: NextFunc
     res.json({
       webhooks: webhooks.map(w => ({
         ...w,
-        eventTypes: safeJsonParse(w.eventTypes, WebhookEventTypesSchema, []),
+        eventTypes: safeJsonParse(typeof w.eventTypes === 'string' ? w.eventTypes : JSON.stringify(w.eventTypes), WebhookEventTypesSchema, []),
       })),
     });
   } catch (error) {
@@ -75,7 +76,7 @@ router.post('/', authenticate, async (req: Request, res: Response, next: NextFun
     res.status(201).json({
       id: webhook.id,
       url: webhook.url,
-      event_types: safeJsonParse(webhook.eventTypes, WebhookEventTypesSchema, []),
+      event_types: safeJsonParse(typeof webhook.eventTypes === 'string' ? webhook.eventTypes : JSON.stringify(webhook.eventTypes), WebhookEventTypesSchema, []),
       secret, // Only shown once at creation
       status: webhook.status,
     });
@@ -88,7 +89,7 @@ router.post('/', authenticate, async (req: Request, res: Response, next: NextFun
 router.delete('/:webhookId', authenticate, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const webhook = await prisma.webhook.findUnique({
-      where: { id: req.params.webhookId },
+      where: { id: req.params.webhookId as string },
     });
 
     if (!webhook || webhook.userId !== req.user!.userId) {
@@ -105,74 +106,7 @@ router.delete('/:webhookId', authenticate, async (req: Request, res: Response, n
   }
 });
 
-// Helper to dispatch webhook events (used by other services)
-export async function dispatchWebhookEvent(
-  eventType: typeof WebhookEventTypes[number],
-  payload: Record<string, any>,
-  userId?: string
-) {
-  const whereClause: any = {
-    status: 'active',
-    eventTypes: { contains: eventType },
-  };
-
-  if (userId) {
-    whereClause.userId = userId;
-  }
-
-  const webhooks = await prisma.webhook.findMany({ where: whereClause });
-
-  for (const webhook of webhooks) {
-    // Queue delivery (in production, use a proper job queue)
-    try {
-      await deliverWebhook(webhook, eventType, payload);
-    } catch (error) {
-      console.error(`Webhook delivery failed for ${webhook.id}:`, error);
-    }
-  }
-}
-
-async function deliverWebhook(
-  webhook: { id: string; url: string; secretHash: string },
-  eventType: string,
-  payload: Record<string, any>
-) {
-  const body = JSON.stringify({
-    event: eventType,
-    timestamp: new Date().toISOString(),
-    data: payload,
-  });
-
-  // Sign the payload
-  const signature = createHmac('sha256', webhook.secretHash)
-    .update(body)
-    .digest('hex');
-
-  const response = await fetch(webhook.url, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-Webhook-Signature': signature,
-      'X-Webhook-Event': eventType,
-    },
-    body,
-  });
-
-  // Record delivery
-  await prisma.webhookDelivery.create({
-    data: {
-      webhookId: webhook.id,
-      eventType,
-      attempt: 1,
-      status: response.ok ? 'success' : 'failed',
-      responseCode: response.status,
-      lastAttemptAt: new Date(),
-    },
-  });
-
-  if (!response.ok) {
-    throw new Error(`Webhook returned ${response.status}`);
-  }
-}
+// Note: Webhook dispatching is handled via job queue in ../jobs/webhook-delivery.ts
+// Use dispatchWebhookEvent() from there for async delivery with retries
 
 export default router;

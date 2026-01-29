@@ -58,6 +58,69 @@ interface UserWithStats {
   badges: Badge[];
 }
 
+interface Evidence {
+  id: string;
+  dispute_id: string;
+  submitted_by: string;
+  submitter: {
+    id: string;
+    email: string;
+    username: string | null;
+  };
+  party: 'worker' | 'requester';
+  type: 'text' | 'image' | 'document';
+  description: string;
+  storage_key: string | null;
+  mime_type: string | null;
+  size_bytes: number | null;
+  download_url: string | null;
+  created_at: string;
+}
+
+interface TierTransition {
+  from: number;
+  to: number;
+  reason: string;
+  actorId?: string;
+  timestamp: string;
+  details?: Record<string, unknown>;
+}
+
+interface AutoScoreCheck {
+  name: string;
+  passed: boolean;
+  score: number;
+  weight: number;
+  details?: string;
+}
+
+interface AutoScoreResult {
+  totalScore: number;
+  checks: AutoScoreCheck[];
+  recommendation: 'worker_wins' | 'requester_wins' | 'escalate';
+  timestamp: string;
+}
+
+interface JuryVote {
+  jurorId: string;
+  hasVoted: boolean;
+  weight: number;
+}
+
+interface JuryStatus {
+  totalJurors: number;
+  votedCount: number;
+  deadline: string | null;
+  votes: JuryVote[];
+  results?: {
+    workerVotes: number;
+    requesterVotes: number;
+    abstainVotes: number;
+    workerWeight: number;
+    requesterWeight: number;
+  };
+}
+
 interface DisputeDetail {
   id: string;
   submission_id: string;
@@ -69,6 +132,23 @@ interface DisputeDetail {
   resolver_id: string | null;
   opened_at: string;
   resolved_at: string | null;
+  evidence_deadline: string | null;
+  evidence_deadline_passed: boolean;
+  evidence: Evidence[];
+  // Multi-tier fields
+  current_tier: number;
+  tier_history: TierTransition[];
+  auto_score_result: AutoScoreResult | null;
+  tier1_deadline: string | null;
+  tier2_deadline: string | null;
+  tier3_deadline: string | null;
+  escalation_stake: number | null;
+  jury_status?: JuryStatus;
+  evidence_count: {
+    total: number;
+    worker: number;
+    requester: number;
+  };
   submission: {
     id: string;
     task_id: string;
@@ -135,6 +215,7 @@ export default function DisputeDetailPage() {
   const [isResolving, setIsResolving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedArtefact, setSelectedArtefact] = useState<Artefact | null>(null);
+  const [selectedEvidence, setSelectedEvidence] = useState<Evidence | null>(null);
 
   // Resolution form
   const [outcome, setOutcome] = useState<'worker_wins' | 'requester_wins' | 'split'>('worker_wins');
@@ -236,19 +317,72 @@ export default function DisputeDetailPage() {
     }).format(amount);
   };
 
+  const formatFileSize = (bytes: number | null) => {
+    if (!bytes) return 'Unknown';
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  };
+
   const getStatusBadge = (status: string) => {
     const styles: Record<string, string> = {
       opened: 'bg-yellow-100 text-yellow-800 border-yellow-200',
       evidence_pending: 'bg-orange-100 text-orange-800 border-orange-200',
       under_review: 'bg-blue-100 text-blue-800 border-blue-200',
+      tier1_review: 'bg-purple-100 text-purple-800 border-purple-200',
+      tier2_voting: 'bg-indigo-100 text-indigo-800 border-indigo-200',
+      tier3_appeal: 'bg-pink-100 text-pink-800 border-pink-200',
       resolved: 'bg-green-100 text-green-800 border-green-200',
+    };
+
+    const statusLabels: Record<string, string> = {
+      tier1_review: 'Tier 1: Auto Review',
+      tier2_voting: 'Tier 2: Jury Voting',
+      tier3_appeal: 'Tier 3: Admin Appeal',
     };
 
     return (
       <span className={`px-3 py-1 text-sm font-medium rounded-full border ${styles[status] || 'bg-gray-100 text-gray-800 border-gray-200'}`}>
-        {status.replace(/_/g, ' ')}
+        {statusLabels[status] || status.replace(/_/g, ' ')}
       </span>
     );
+  };
+
+  const getTierBadge = (tier: number) => {
+    const tierInfo: Record<number, { label: string; style: string }> = {
+      1: { label: 'Tier 1: Auto', style: 'bg-purple-100 text-purple-800 border-purple-200' },
+      2: { label: 'Tier 2: Jury', style: 'bg-indigo-100 text-indigo-800 border-indigo-200' },
+      3: { label: 'Tier 3: Admin', style: 'bg-pink-100 text-pink-800 border-pink-200' },
+    };
+    const info = tierInfo[tier] || { label: `Tier ${tier}`, style: 'bg-gray-100 text-gray-800 border-gray-200' };
+    return (
+      <span className={`px-2 py-0.5 text-xs font-medium rounded-full border ${info.style}`}>
+        {info.label}
+      </span>
+    );
+  };
+
+  const getEvidenceIcon = (type: string) => {
+    switch (type) {
+      case 'image':
+        return (
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+          </svg>
+        );
+      case 'document':
+        return (
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          </svg>
+        );
+      default:
+        return (
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
+          </svg>
+        );
+    }
   };
 
   if (isLoading) {
@@ -286,6 +420,10 @@ export default function DisputeDetailPage() {
     requesterPreviewAmount = bountyAmount - workerPreviewAmount;
   }
 
+  // Separate evidence by party
+  const workerEvidence = dispute.evidence?.filter(e => e.party === 'worker') || [];
+  const requesterEvidence = dispute.evidence?.filter(e => e.party === 'requester') || [];
+
   return (
     <div className="max-w-6xl">
       {/* Header */}
@@ -300,6 +438,237 @@ export default function DisputeDetailPage() {
       {error && (
         <div className="mb-6 p-4 rounded-lg bg-red-50 border border-red-200 text-red-700">
           {error}
+        </div>
+      )}
+
+      {/* Tier Progress Bar */}
+      {dispute.current_tier && (
+        <div className="glass rounded-lg border border-surface-200 p-4 mb-6">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm font-semibold text-slate-700">Resolution Progress</h3>
+            {getTierBadge(dispute.current_tier)}
+          </div>
+
+          {/* Tier timeline */}
+          <div className="relative">
+            <div className="flex items-center justify-between">
+              {/* Tier 1 */}
+              <div className="flex flex-col items-center">
+                <div className={`w-10 h-10 rounded-full flex items-center justify-center border-2 ${
+                  dispute.current_tier >= 1
+                    ? dispute.current_tier === 1 && dispute.status !== 'resolved'
+                      ? 'bg-purple-100 border-purple-500 text-purple-700'
+                      : 'bg-green-100 border-green-500 text-green-700'
+                    : 'bg-slate-100 border-slate-300 text-slate-500'
+                }`}>
+                  {dispute.current_tier > 1 || (dispute.current_tier === 1 && dispute.status === 'resolved') ? (
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                  ) : (
+                    <span className="text-sm font-bold">1</span>
+                  )}
+                </div>
+                <span className="text-xs mt-1 text-slate-600">Auto</span>
+                {dispute.auto_score_result && (
+                  <span className={`text-xs font-medium ${
+                    dispute.auto_score_result.totalScore >= 80 ? 'text-green-600' :
+                    dispute.auto_score_result.totalScore <= 20 ? 'text-red-600' : 'text-yellow-600'
+                  }`}>
+                    {dispute.auto_score_result.totalScore.toFixed(0)}%
+                  </span>
+                )}
+              </div>
+
+              {/* Connector 1-2 */}
+              <div className={`flex-1 h-1 mx-2 ${
+                dispute.current_tier >= 2 ? 'bg-green-400' : 'bg-slate-200'
+              }`}></div>
+
+              {/* Tier 2 */}
+              <div className="flex flex-col items-center">
+                <div className={`w-10 h-10 rounded-full flex items-center justify-center border-2 ${
+                  dispute.current_tier >= 2
+                    ? dispute.current_tier === 2 && dispute.status !== 'resolved'
+                      ? 'bg-indigo-100 border-indigo-500 text-indigo-700'
+                      : 'bg-green-100 border-green-500 text-green-700'
+                    : 'bg-slate-100 border-slate-300 text-slate-500'
+                }`}>
+                  {dispute.current_tier > 2 || (dispute.current_tier === 2 && dispute.status === 'resolved') ? (
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                  ) : (
+                    <span className="text-sm font-bold">2</span>
+                  )}
+                </div>
+                <span className="text-xs mt-1 text-slate-600">Jury</span>
+                {dispute.current_tier === 2 && dispute.jury_status && (
+                  <span className="text-xs font-medium text-indigo-600">
+                    {dispute.jury_status.votedCount}/{dispute.jury_status.totalJurors}
+                  </span>
+                )}
+              </div>
+
+              {/* Connector 2-3 */}
+              <div className={`flex-1 h-1 mx-2 ${
+                dispute.current_tier >= 3 ? 'bg-green-400' : 'bg-slate-200'
+              }`}></div>
+
+              {/* Tier 3 */}
+              <div className="flex flex-col items-center">
+                <div className={`w-10 h-10 rounded-full flex items-center justify-center border-2 ${
+                  dispute.current_tier >= 3
+                    ? dispute.current_tier === 3 && dispute.status !== 'resolved'
+                      ? 'bg-pink-100 border-pink-500 text-pink-700'
+                      : 'bg-green-100 border-green-500 text-green-700'
+                    : 'bg-slate-100 border-slate-300 text-slate-500'
+                }`}>
+                  {dispute.current_tier === 3 && dispute.status === 'resolved' ? (
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                  ) : (
+                    <span className="text-sm font-bold">3</span>
+                  )}
+                </div>
+                <span className="text-xs mt-1 text-slate-600">Admin</span>
+                {dispute.escalation_stake && dispute.current_tier === 3 && (
+                  <span className="text-xs font-medium text-pink-600">
+                    +{formatCurrency(dispute.escalation_stake, dispute.submission.task.currency)}
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* Deadline display */}
+            {dispute.current_tier === 2 && dispute.tier2_deadline && (
+              <div className="mt-3 text-center text-xs text-slate-500">
+                Jury voting deadline: {formatDate(dispute.tier2_deadline)}
+              </div>
+            )}
+            {dispute.current_tier === 3 && dispute.tier3_deadline && (
+              <div className="mt-3 text-center text-xs text-slate-500">
+                Admin appeal deadline: {formatDate(dispute.tier3_deadline)}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Auto Score Result (Tier 1) */}
+      {dispute.auto_score_result && (
+        <div className="glass rounded-lg border border-purple-200 bg-purple-50 p-4 mb-6">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm font-semibold text-purple-800">Tier 1 Automated Analysis</h3>
+            <span className={`px-2 py-0.5 text-xs font-medium rounded ${
+              dispute.auto_score_result.recommendation === 'worker_wins'
+                ? 'bg-green-200 text-green-800'
+                : dispute.auto_score_result.recommendation === 'requester_wins'
+                ? 'bg-red-200 text-red-800'
+                : 'bg-yellow-200 text-yellow-800'
+            }`}>
+              {dispute.auto_score_result.recommendation === 'worker_wins'
+                ? 'Worker Favored'
+                : dispute.auto_score_result.recommendation === 'requester_wins'
+                ? 'Requester Favored'
+                : 'Escalate Recommended'}
+            </span>
+          </div>
+
+          <div className="mb-3">
+            <div className="flex items-center justify-between text-sm mb-1">
+              <span className="text-purple-700">Overall Score</span>
+              <span className={`font-bold ${
+                dispute.auto_score_result.totalScore >= 80 ? 'text-green-600' :
+                dispute.auto_score_result.totalScore <= 20 ? 'text-red-600' : 'text-yellow-600'
+              }`}>
+                {dispute.auto_score_result.totalScore.toFixed(1)}%
+              </span>
+            </div>
+            <div className="w-full bg-purple-200 rounded-full h-2">
+              <div
+                className={`h-2 rounded-full ${
+                  dispute.auto_score_result.totalScore >= 80 ? 'bg-green-500' :
+                  dispute.auto_score_result.totalScore <= 20 ? 'bg-red-500' : 'bg-yellow-500'
+                }`}
+                style={{ width: `${dispute.auto_score_result.totalScore}%` }}
+              ></div>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            {dispute.auto_score_result.checks.map((check, i) => (
+              <div key={i} className="flex items-center justify-between text-xs">
+                <div className="flex items-center gap-2">
+                  {check.passed ? (
+                    <svg className="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                  ) : (
+                    <svg className="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  )}
+                  <span className="text-purple-700">{check.name.replace(/_/g, ' ')}</span>
+                </div>
+                <span className="text-purple-600">{check.score.toFixed(0)}% (w:{check.weight})</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Jury Status (Tier 2) */}
+      {dispute.current_tier === 2 && dispute.jury_status && (
+        <div className="glass rounded-lg border border-indigo-200 bg-indigo-50 p-4 mb-6">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm font-semibold text-indigo-800">Tier 2 Jury Voting</h3>
+            <span className="text-xs text-indigo-600">
+              {dispute.jury_status.votedCount} of {dispute.jury_status.totalJurors} votes cast
+            </span>
+          </div>
+
+          <div className="grid grid-cols-5 gap-2 mb-3">
+            {dispute.jury_status.votes.map((vote, i) => (
+              <div
+                key={i}
+                className={`p-2 rounded text-center text-xs ${
+                  vote.hasVoted
+                    ? 'bg-indigo-200 text-indigo-800'
+                    : 'bg-white border border-indigo-200 text-indigo-400'
+                }`}
+              >
+                <div className="font-medium">Juror {i + 1}</div>
+                <div className="text-xs opacity-75">
+                  {vote.hasVoted ? 'Voted' : 'Pending'}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {dispute.jury_status.results && (
+            <div className="pt-3 border-t border-indigo-200">
+              <div className="grid grid-cols-3 gap-2 text-center text-xs">
+                <div className="p-2 bg-green-100 rounded">
+                  <div className="font-medium text-green-800">Worker</div>
+                  <div className="text-green-600">
+                    {dispute.jury_status.results.workerVotes} ({dispute.jury_status.results.workerWeight.toFixed(2)}w)
+                  </div>
+                </div>
+                <div className="p-2 bg-blue-100 rounded">
+                  <div className="font-medium text-blue-800">Requester</div>
+                  <div className="text-blue-600">
+                    {dispute.jury_status.results.requesterVotes} ({dispute.jury_status.results.requesterWeight.toFixed(2)}w)
+                  </div>
+                </div>
+                <div className="p-2 bg-slate-100 rounded">
+                  <div className="font-medium text-slate-800">Abstain</div>
+                  <div className="text-slate-600">{dispute.jury_status.results.abstainVotes}</div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -433,6 +802,138 @@ export default function DisputeDetailPage() {
               </div>
             )}
           </div>
+
+          {/* Evidence Timeline */}
+          {dispute.evidence && dispute.evidence.length > 0 && (
+            <div className="glass rounded-lg border border-surface-200 p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold text-slate-800">Evidence Timeline</h2>
+                <div className="flex items-center gap-4 text-sm">
+                  <span className="text-slate-500">
+                    Worker: <span className="font-medium text-green-600">{dispute.evidence_count?.worker || 0}</span>
+                  </span>
+                  <span className="text-slate-500">
+                    Requester: <span className="font-medium text-blue-600">{dispute.evidence_count?.requester || 0}</span>
+                  </span>
+                </div>
+              </div>
+
+              {/* Evidence deadline notice */}
+              {dispute.evidence_deadline && (
+                <div className={`mb-4 p-3 rounded-lg border ${
+                  dispute.evidence_deadline_passed
+                    ? 'bg-red-50 border-red-200'
+                    : 'bg-blue-50 border-blue-200'
+                }`}>
+                  <p className={`text-sm ${dispute.evidence_deadline_passed ? 'text-red-700' : 'text-blue-700'}`}>
+                    {dispute.evidence_deadline_passed
+                      ? 'Evidence submission deadline has passed'
+                      : `Evidence deadline: ${formatDate(dispute.evidence_deadline)}`}
+                  </p>
+                </div>
+              )}
+
+              {/* Evidence items */}
+              <div className="space-y-4">
+                {dispute.evidence.map((evidence, index) => (
+                  <div
+                    key={evidence.id}
+                    className={`relative pl-8 pb-4 ${
+                      index !== dispute.evidence.length - 1 ? 'border-l-2 border-slate-200 ml-2' : 'ml-2'
+                    }`}
+                  >
+                    {/* Timeline dot */}
+                    <div className={`absolute left-0 -translate-x-1/2 w-4 h-4 rounded-full border-2 ${
+                      evidence.party === 'worker'
+                        ? 'bg-green-100 border-green-500'
+                        : 'bg-blue-100 border-blue-500'
+                    }`}></div>
+
+                    <div className={`p-4 rounded-lg border ${
+                      evidence.party === 'worker'
+                        ? 'bg-green-50 border-green-200'
+                        : 'bg-blue-50 border-blue-200'
+                    }`}>
+                      {/* Header */}
+                      <div className="flex items-start justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                          <span className={`px-2 py-0.5 text-xs font-medium rounded ${
+                            evidence.party === 'worker'
+                              ? 'bg-green-200 text-green-800'
+                              : 'bg-blue-200 text-blue-800'
+                          }`}>
+                            {evidence.party === 'worker' ? 'Worker' : 'Requester'}
+                          </span>
+                          <span className="text-sm text-slate-600">
+                            {evidence.submitter.username || evidence.submitter.email}
+                          </span>
+                        </div>
+                        <span className="text-xs text-slate-400">{formatDate(evidence.created_at)}</span>
+                      </div>
+
+                      {/* Description */}
+                      <p className="text-sm text-slate-700 whitespace-pre-wrap mb-3">{evidence.description}</p>
+
+                      {/* File attachment */}
+                      {evidence.type !== 'text' && evidence.storage_key && (
+                        <div className="flex items-center gap-3 p-3 bg-white/60 rounded-lg border border-slate-200">
+                          <div className={`p-2 rounded ${
+                            evidence.type === 'image' ? 'bg-purple-100 text-purple-600' : 'bg-red-100 text-red-600'
+                          }`}>
+                            {getEvidenceIcon(evidence.type)}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-slate-700 truncate">
+                              {evidence.type === 'image' ? 'Image attachment' : 'PDF document'}
+                            </p>
+                            <p className="text-xs text-slate-500">
+                              {evidence.mime_type} - {formatFileSize(evidence.size_bytes)}
+                            </p>
+                          </div>
+                          {evidence.type === 'image' && (
+                            <button
+                              onClick={() => setSelectedEvidence(evidence)}
+                              className="px-3 py-1.5 text-xs font-medium text-slate-600 bg-white border border-slate-300 rounded hover:bg-slate-50"
+                            >
+                              View
+                            </button>
+                          )}
+                          {evidence.download_url && (
+                            <a
+                              href={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'}${evidence.download_url}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="px-3 py-1.5 text-xs font-medium text-white bg-field-500 rounded hover:bg-field-600"
+                            >
+                              Download
+                            </a>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* No evidence message */}
+          {(!dispute.evidence || dispute.evidence.length === 0) && (
+            <div className="glass rounded-lg border border-surface-200 p-6">
+              <h2 className="text-lg font-semibold text-slate-800 mb-4">Evidence</h2>
+              <div className="text-center py-8 text-slate-500">
+                <svg className="w-12 h-12 mx-auto mb-3 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                <p>No evidence has been submitted yet</p>
+                {dispute.evidence_deadline && !dispute.evidence_deadline_passed && (
+                  <p className="text-sm mt-2">
+                    Deadline: {formatDate(dispute.evidence_deadline)}
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Resolution Form */}
           {!isResolved && (
@@ -709,6 +1210,17 @@ export default function DisputeDetailPage() {
                   <p className="text-xs text-slate-400">{formatDate(dispute.opened_at)}</p>
                 </div>
               </div>
+              {dispute.evidence_deadline && (
+                <div className="flex gap-3 text-sm">
+                  <div className={`w-2 h-2 mt-1.5 rounded-full ${
+                    dispute.evidence_deadline_passed ? 'bg-red-400' : 'bg-orange-400'
+                  }`}></div>
+                  <div>
+                    <p className="text-slate-700">Evidence deadline</p>
+                    <p className="text-xs text-slate-400">{formatDate(dispute.evidence_deadline)}</p>
+                  </div>
+                </div>
+              )}
               {dispute.submission.finalised_at && (
                 <div className="flex gap-3 text-sm">
                   <div className="w-2 h-2 mt-1.5 rounded-full bg-slate-400"></div>
@@ -773,6 +1285,61 @@ export default function DisputeDetailPage() {
                   <span className="ml-2">{formatDate(selectedArtefact.captured_at)}</span>
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Evidence Image Modal */}
+      {selectedEvidence && selectedEvidence.type === 'image' && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75" onClick={() => setSelectedEvidence(null)}>
+          <div className="bg-white rounded-lg max-w-4xl w-full mx-4 p-6 max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-slate-800">Evidence Image</h3>
+              <button onClick={() => setSelectedEvidence(null)} className="text-slate-400 hover:text-slate-600">
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            {/* Image container */}
+            <div className="bg-slate-100 rounded-lg overflow-hidden mb-4">
+              {selectedEvidence.download_url ? (
+                <img
+                  src={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'}${selectedEvidence.download_url}`}
+                  alt="Evidence"
+                  className="w-full h-auto max-h-[60vh] object-contain"
+                />
+              ) : (
+                <div className="flex items-center justify-center h-64 text-slate-400">
+                  <p>Image not available</p>
+                </div>
+              )}
+            </div>
+
+            {/* Evidence details */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <span className={`px-2 py-0.5 text-xs font-medium rounded ${
+                  selectedEvidence.party === 'worker'
+                    ? 'bg-green-200 text-green-800'
+                    : 'bg-blue-200 text-blue-800'
+                }`}>
+                  {selectedEvidence.party === 'worker' ? 'Worker' : 'Requester'}
+                </span>
+                <span className="text-sm text-slate-600">
+                  {selectedEvidence.submitter.username || selectedEvidence.submitter.email}
+                </span>
+                <span className="text-xs text-slate-400 ml-auto">
+                  {formatDate(selectedEvidence.created_at)}
+                </span>
+              </div>
+              <p className="text-sm text-slate-700">{selectedEvidence.description}</p>
+              <div className="flex items-center gap-4 text-xs text-slate-500">
+                <span>{selectedEvidence.mime_type}</span>
+                <span>{formatFileSize(selectedEvidence.size_bytes)}</span>
+              </div>
             </div>
           </div>
         </div>

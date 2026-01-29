@@ -7,6 +7,13 @@ import { splitEscrow, refundEscrow, releaseEscrow } from '../services/escrow';
 import { recalculateUserStats } from '../services/reputation';
 import { deleteArtefacts } from '../services/storage';
 
+// Helper to safely extract string from query param
+function qs(param: any): string | undefined {
+  if (typeof param === 'string') return param;
+  if (Array.isArray(param) && typeof param[0] === 'string') return param[0];
+  return undefined;
+}
+
 const router = Router();
 
 // Apply admin hardening to all routes in this router
@@ -106,7 +113,7 @@ router.get('/users', async (req: Request, res: Response, next: NextFunction) => 
 // PATCH /v1/admin/users/:userId/status - Update user status
 router.patch('/users/:userId/status', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { userId } = req.params;
+    const userId = req.params.userId as string;
     const { status } = req.body as { status?: string };
 
     if (!status || !['active', 'suspended', 'banned'].includes(status)) {
@@ -146,15 +153,13 @@ router.patch('/users/:userId/status', async (req: Request, res: Response, next: 
 // GET /v1/admin/disputes - List disputes with filtering and pagination
 router.get('/disputes', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const {
-      status,
-      from,
-      to,
-      limit = '20',
-      offset = '0',
-      sort_by = 'opened_at',
-      sort_order = 'desc',
-    } = req.query;
+    const status = qs(req.query.status);
+    const from = qs(req.query.from);
+    const to = qs(req.query.to);
+    const limit = qs(req.query.limit) || '20';
+    const offset = qs(req.query.offset) || '0';
+    const sort_by = qs(req.query.sort_by) || 'opened_at';
+    const sort_order = qs(req.query.sort_order) || 'desc';
 
     const where: any = {};
 
@@ -167,16 +172,16 @@ router.get('/disputes', async (req: Request, res: Response, next: NextFunction) 
     if (from || to) {
       where.openedAt = {};
       if (from) {
-        where.openedAt.gte = new Date(from as string);
+        where.openedAt.gte = new Date(from);
       }
       if (to) {
-        where.openedAt.lte = new Date(to as string);
+        where.openedAt.lte = new Date(to);
       }
     }
 
     // Validate sort field
     const allowedSortFields = ['opened_at', 'resolved_at', 'status'];
-    const sortField = allowedSortFields.includes(sort_by as string) ? sort_by : 'opened_at';
+    const sortField = allowedSortFields.includes(sort_by) ? sort_by : 'opened_at';
     const sortFieldMap: Record<string, string> = {
       opened_at: 'openedAt',
       resolved_at: 'resolvedAt',
@@ -215,17 +220,17 @@ router.get('/disputes', async (req: Request, res: Response, next: NextFunction) 
         },
       },
       orderBy: {
-        [sortFieldMap[sortField as string] || 'openedAt']: sort_order === 'asc' ? 'asc' : 'desc',
+        [sortFieldMap[sortField] || 'openedAt']: sort_order === 'asc' ? 'asc' : 'desc',
       },
-      take: Math.min(parseInt(limit as string) || 20, 100),
-      skip: parseInt(offset as string) || 0,
+      take: Math.min(parseInt(limit) || 20, 100),
+      skip: parseInt(offset) || 0,
     });
 
     const total = await prisma.dispute.count({ where });
 
     // Get requester info for each dispute
     const disputesWithRequester = await Promise.all(
-      disputes.map(async (d) => {
+      (disputes as any[]).map(async (d: any) => {
         const requester = await prisma.user.findUnique({
           where: { id: d.submission.task.requesterId },
           select: { id: true, email: true, username: true },
@@ -272,8 +277,8 @@ router.get('/disputes', async (req: Request, res: Response, next: NextFunction) 
     res.json({
       disputes: disputesWithRequester,
       total,
-      limit: parseInt(limit as string) || 20,
-      offset: parseInt(offset as string) || 0,
+      limit: parseInt(limit) || 20,
+      offset: parseInt(offset) || 0,
     });
   } catch (error) {
     next(error);
@@ -283,9 +288,9 @@ router.get('/disputes', async (req: Request, res: Response, next: NextFunction) 
 // GET /v1/admin/disputes/:disputeId - Get dispute details with full context
 router.get('/disputes/:disputeId', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { disputeId } = req.params;
+    const disputeId = req.params.disputeId as string;
 
-    const dispute = await prisma.dispute.findUnique({
+    const disputeRaw = await prisma.dispute.findUnique({
       where: { id: disputeId },
       include: {
         submission: {
@@ -307,12 +312,23 @@ router.get('/disputes/:disputeId', async (req: Request, res: Response, next: Nex
             },
           },
         },
+        evidence: {
+          include: {
+            submitter: {
+              select: { id: true, email: true, username: true },
+            },
+          },
+          orderBy: { createdAt: 'asc' },
+        },
       },
     });
 
-    if (!dispute) {
+    if (!disputeRaw) {
       throw new NotFoundError('Dispute');
     }
+
+    // Cast to any to access included relations
+    const dispute = disputeRaw as any;
 
     // Get requester info
     const requester = await prisma.user.findUnique({
@@ -327,7 +343,7 @@ router.get('/disputes/:disputeId', async (req: Request, res: Response, next: Nex
     const auditLog = await prisma.auditEvent.findMany({
       where: {
         objectType: 'dispute',
-        objectId: disputeId,
+        objectId: disputeId as string,
       },
       orderBy: { createdAt: 'desc' },
       take: 50,
@@ -335,7 +351,7 @@ router.get('/disputes/:disputeId', async (req: Request, res: Response, next: Nex
 
     // Get dispute audit log entries
     const disputeAuditLog = await prisma.disputeAuditLog.findMany({
-      where: { disputeId },
+      where: { disputeId: disputeId as string },
       orderBy: { createdAt: 'desc' },
     });
 
@@ -347,7 +363,7 @@ router.get('/disputes/:disputeId', async (req: Request, res: Response, next: Nex
 
     // Generate signed URLs for artefacts (if storage service supports it)
     const artefactsWithUrls = await Promise.all(
-      dispute.submission.artefacts.map(async (a) => {
+      dispute.submission.artefacts.map(async (a: any) => {
         // For now, return storage key - signed URL generation depends on storage provider
         return {
           id: a.id,
@@ -366,6 +382,38 @@ router.get('/disputes/:disputeId', async (req: Request, res: Response, next: Nex
       })
     );
 
+    // Format evidence with party information
+    const workerId = dispute.submission.workerId;
+    const requesterId = dispute.submission.task.requesterId;
+    const evidenceItems = dispute.evidence.map((e: any) => ({
+      id: e.id,
+      dispute_id: e.disputeId,
+      submitted_by: e.submittedBy,
+      submitter: {
+        id: e.submitter.id,
+        email: e.submitter.email,
+        username: e.submitter.username,
+      },
+      party: e.submittedBy === workerId ? 'worker' : 'requester',
+      type: e.type,
+      description: e.description,
+      storage_key: e.storageKey,
+      mime_type: e.mimeType,
+      size_bytes: e.sizeBytes,
+      sha256: e.sha256,
+      download_url: e.storageKey ? `/v1/disputes/${disputeId}/evidence/${e.id}/download` : null,
+      created_at: e.createdAt.toISOString(),
+    }));
+
+    // Count evidence by party
+    const workerEvidenceCount = dispute.evidence.filter((e: any) => e.submittedBy === workerId).length;
+    const requesterEvidenceCount = dispute.evidence.filter((e: any) => e.submittedBy === requesterId).length;
+
+    // Check if evidence deadline has passed
+    const evidenceDeadlinePassed = dispute.evidenceDeadline
+      ? new Date() > dispute.evidenceDeadline
+      : new Date() > new Date(dispute.openedAt.getTime() + 48 * 60 * 60 * 1000);
+
     res.json({
       id: dispute.id,
       submission_id: dispute.submissionId,
@@ -377,6 +425,14 @@ router.get('/disputes/:disputeId', async (req: Request, res: Response, next: Nex
       resolver_id: dispute.resolverId,
       opened_at: dispute.openedAt.toISOString(),
       resolved_at: dispute.resolvedAt?.toISOString() || null,
+      evidence_deadline: dispute.evidenceDeadline?.toISOString() || null,
+      evidence_deadline_passed: evidenceDeadlinePassed,
+      evidence: evidenceItems,
+      evidence_count: {
+        total: dispute.evidence.length,
+        worker: workerEvidenceCount,
+        requester: requesterEvidenceCount,
+      },
       submission: {
         id: dispute.submission.id,
         task_id: dispute.submission.taskId,
@@ -404,7 +460,7 @@ router.get('/disputes/:disputeId', async (req: Request, res: Response, next: Nex
           },
         },
         artefacts: artefactsWithUrls,
-        decisions: dispute.submission.decisions.map((d) => ({
+        decisions: dispute.submission.decisions.map((d: any) => ({
           id: d.id,
           type: d.decisionType,
           reason_code: d.reasonCode,
@@ -429,7 +485,7 @@ router.get('/disputes/:disputeId', async (req: Request, res: Response, next: Nex
           total_earned: dispute.submission.worker.stats.totalEarned,
           current_streak: dispute.submission.worker.stats.currentStreak,
         } : null,
-        badges: dispute.submission.worker.badges.map((b) => ({
+        badges: dispute.submission.worker.badges.map((b: any) => ({
           type: b.badgeType,
           tier: b.tier,
           title: b.title,
@@ -439,14 +495,14 @@ router.get('/disputes/:disputeId', async (req: Request, res: Response, next: Nex
         id: requester.id,
         email: requester.email,
         username: requester.username,
-        stats: requester.stats ? {
-          reliability_score: requester.stats.reliabilityScore,
-          dispute_rate: requester.stats.disputeRate,
-          tasks_posted: requester.stats.tasksPosted,
-          tasks_completed: requester.stats.tasksCompleted,
-          total_bounties_paid: requester.stats.totalBountiesPaid,
+        stats: (requester as any).stats ? {
+          reliability_score: (requester as any).stats.reliabilityScore,
+          dispute_rate: (requester as any).stats.disputeRate,
+          tasks_posted: (requester as any).stats.tasksPosted,
+          tasks_completed: (requester as any).stats.tasksCompleted,
+          total_bounties_paid: (requester as any).stats.totalBountiesPaid,
         } : null,
-        badges: requester.badges.map((b) => ({
+        badges: (requester as any).badges.map((b: any) => ({
           type: b.badgeType,
           tier: b.tier,
           title: b.title,
@@ -465,14 +521,14 @@ router.get('/disputes/:disputeId', async (req: Request, res: Response, next: Nex
         actor_id: e.actorId,
         ip: e.ip,
         created_at: e.createdAt.toISOString(),
-        details: JSON.parse(e.detailsJson || '{}'),
+        details: JSON.parse(typeof e.detailsJson === 'string' ? e.detailsJson : JSON.stringify(e.detailsJson || {})),
       })),
       dispute_audit_log: disputeAuditLog.map((e) => ({
         id: e.id,
         action: e.action,
         actor_id: e.actorId,
         created_at: e.createdAt.toISOString(),
-        details: JSON.parse(e.detailsJson || '{}'),
+        details: JSON.parse(typeof e.detailsJson === 'string' ? e.detailsJson : JSON.stringify(e.detailsJson || {})),
       })),
     });
   } catch (error) {
@@ -490,7 +546,7 @@ const ResolveDisputeSchema = z.object({
 // POST /v1/admin/disputes/:disputeId/resolve - Resolve a dispute
 router.post('/disputes/:disputeId/resolve', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { disputeId } = req.params;
+    const disputeId = req.params.disputeId as string;
     const data = ResolveDisputeSchema.parse(req.body);
 
     // Validate split percentage is only provided for 'split' outcome
@@ -501,7 +557,7 @@ router.post('/disputes/:disputeId/resolve', async (req: Request, res: Response, 
       throw new ValidationError('split_percentage should only be provided when outcome is "split"');
     }
 
-    const dispute = await prisma.dispute.findUnique({
+    const disputeRaw = await prisma.dispute.findUnique({
       where: { id: disputeId },
       include: {
         submission: {
@@ -518,9 +574,11 @@ router.post('/disputes/:disputeId/resolve', async (req: Request, res: Response, 
       },
     });
 
-    if (!dispute) {
+    if (!disputeRaw) {
       throw new NotFoundError('Dispute');
     }
+
+    const dispute = disputeRaw as any;
 
     if (dispute.status === 'resolved') {
       throw new ValidationError('Dispute already resolved');
@@ -813,19 +871,21 @@ router.get('/tasks', async (req: Request, res: Response, next: NextFunction) => 
 // POST /v1/admin/tasks/:taskId/cancel - Admin cancel a task
 router.post('/tasks/:taskId/cancel', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { taskId } = req.params;
+    const taskId = req.params.taskId as string;
     const { reason } = req.body;
 
-    const task = await prisma.task.findUnique({
+    const taskRaw = await prisma.task.findUnique({
       where: { id: taskId },
       include: {
         escrows: { orderBy: { createdAt: 'desc' }, take: 1 },
       },
     });
 
-    if (!task) {
+    if (!taskRaw) {
       throw new NotFoundError('Task');
     }
+
+    const task = taskRaw as any;
 
     if (['cancelled', 'accepted'].includes(task.status)) {
       throw new ValidationError(`Cannot cancel task with status: ${task.status}`);
@@ -833,7 +893,7 @@ router.post('/tasks/:taskId/cancel', async (req: Request, res: Response, next: N
 
     // Refund escrow if funded
     if (task.escrows[0]?.status === 'funded') {
-      const refundResult = await refundEscrow(taskId);
+      const refundResult = await refundEscrow(taskId as string);
       if (!refundResult.success) {
         console.error(`Escrow refund failed for task ${taskId}: ${refundResult.error}`);
       }
@@ -846,7 +906,7 @@ router.post('/tasks/:taskId/cancel', async (req: Request, res: Response, next: N
         data: { status: 'cancelled' },
       }),
       prisma.taskClaim.updateMany({
-        where: { taskId, status: 'active' },
+        where: { taskId: taskId as string, status: 'active' },
         data: { status: 'released' },
       }),
     ]);

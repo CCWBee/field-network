@@ -5,9 +5,22 @@ import { randomBytes, createHash } from 'crypto';
 import { z } from 'zod';
 import { SiweMessage, generateNonce } from 'siwe';
 import { prisma } from '../services/database';
-import { generateToken, generateRefreshToken, authenticate } from '../middleware/auth';
+import { generateToken, generateRefreshToken, authenticate, getJwtSecretForSigning } from '../middleware/auth';
 import { ValidationError, UnauthorizedError, NotFoundError } from '../middleware/errorHandler';
 import { getENSProfile, suggestUsernameFromENS } from '../services/ens';
+import {
+  blacklistToken,
+  blacklistRefreshToken,
+  isRefreshTokenBlacklisted,
+  blacklistAllUserTokens,
+} from '../services/tokenBlacklist';
+
+// Helper to safely extract string from query param
+function qs(param: any): string | undefined {
+  if (typeof param === 'string') return param;
+  if (Array.isArray(param) && typeof param[0] === 'string') return param[0];
+  return undefined;
+}
 
 const router = Router();
 
@@ -167,10 +180,16 @@ router.post('/refresh', async (req: Request, res: Response, next: NextFunction) 
       throw new ValidationError('Refresh token required');
     }
 
+    // Check if refresh token is blacklisted
+    const isBlacklisted = await isRefreshTokenBlacklisted(refreshToken);
+    if (isBlacklisted) {
+      throw new UnauthorizedError('Refresh token has been revoked');
+    }
+
     // Verify refresh token
     let payload: { userId: string; type: string };
     try {
-      payload = jwt.verify(refreshToken, process.env.JWT_SECRET || 'dev-secret-change-in-production') as any;
+      payload = jwt.verify(refreshToken, getJwtSecretForSigning()) as any;
     } catch {
       throw new UnauthorizedError('Invalid or expired refresh token');
     }
@@ -188,6 +207,9 @@ router.post('/refresh', async (req: Request, res: Response, next: NextFunction) 
     if (!user || user.status !== 'active') {
       throw new UnauthorizedError('User not found or inactive');
     }
+
+    // Blacklist the old refresh token (one-time use)
+    await blacklistRefreshToken(refreshToken);
 
     // Generate new tokens
     const primaryWallet = user.walletLinks[0];
@@ -213,8 +235,33 @@ router.post('/refresh', async (req: Request, res: Response, next: NextFunction) 
 // POST /v1/auth/logout
 router.post('/logout', authenticate, async (req: Request, res: Response, next: NextFunction) => {
   try {
-    // TODO: Invalidate token/session
+    const authHeader = req.headers.authorization;
+    const { refreshToken } = req.body as { refreshToken?: string };
+
+    // Blacklist the access token
+    if (authHeader?.startsWith('Bearer ')) {
+      const accessToken = authHeader.substring(7);
+      await blacklistToken(accessToken);
+    }
+
+    // Blacklist the refresh token if provided
+    if (refreshToken) {
+      await blacklistRefreshToken(refreshToken);
+    }
+
     res.json({ message: 'Logged out successfully' });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// POST /v1/auth/logout-all - Logout from all devices
+router.post('/logout-all', authenticate, async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    // Invalidate all tokens for this user
+    await blacklistAllUserTokens(req.user!.userId, 'user_requested_logout_all');
+
+    res.json({ message: 'Logged out from all devices' });
   } catch (error) {
     next(error);
   }
@@ -246,7 +293,7 @@ router.get('/me', authenticate, async (req: Request, res: Response, next: NextFu
       website: user.website,
       twitter_handle: user.twitterHandle,
       onboarding_completed: user.onboardingCompleted,
-      saved_addresses: JSON.parse(user.savedAddresses),
+      saved_addresses: user.savedAddresses,
       // Wallets
       primary_wallet: user.primaryWalletId,
       wallets: user.walletLinks.map(w => ({
@@ -548,16 +595,18 @@ router.post('/wallet/link', authenticate, async (req: Request, res: Response, ne
 // DELETE /v1/auth/wallet/:walletId - Unlink wallet from account
 router.delete('/wallet/:walletId', authenticate, async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { walletId } = req.params;
+    const walletId = req.params.walletId as string;
 
-    const wallet = await prisma.walletLink.findUnique({
+    const walletRaw = await prisma.walletLink.findUnique({
       where: { id: walletId },
       include: { user: { include: { walletLinks: true } } },
     });
 
-    if (!wallet || wallet.userId !== req.user!.userId) {
+    if (!walletRaw || walletRaw.userId !== req.user!.userId) {
       throw new NotFoundError('Wallet');
     }
+
+    const wallet = walletRaw as any;
 
     // Don't allow removing the only wallet if no email/password set
     if (wallet.user.walletLinks.length === 1 && !wallet.user.email) {
@@ -566,7 +615,7 @@ router.delete('/wallet/:walletId', authenticate, async (req: Request, res: Respo
 
     // If removing primary wallet, set another as primary
     if (wallet.isPrimary && wallet.user.walletLinks.length > 1) {
-      const nextWallet = wallet.user.walletLinks.find(w => w.id !== walletId);
+      const nextWallet = wallet.user.walletLinks.find((w: any) => w.id !== walletId);
       if (nextWallet) {
         await prisma.$transaction([
           prisma.walletLink.update({
@@ -592,7 +641,7 @@ router.delete('/wallet/:walletId', authenticate, async (req: Request, res: Respo
 // PUT /v1/auth/wallet/:walletId/primary - Set wallet as primary
 router.put('/wallet/:walletId/primary', authenticate, async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { walletId } = req.params;
+    const walletId = req.params.walletId as string;
 
     const wallet = await prisma.walletLink.findUnique({
       where: { id: walletId },
@@ -616,7 +665,7 @@ router.put('/wallet/:walletId/primary', authenticate, async (req: Request, res: 
       // Update user's primaryWalletId
       prisma.user.update({
         where: { id: req.user!.userId },
-        data: { primaryWalletId: walletId },
+        data: { primaryWalletId: walletId as string },
       }),
     ]);
 
@@ -660,7 +709,7 @@ router.get('/api-tokens', authenticate, async (req: Request, res: Response, next
         id: t.id,
         api_key: t.apiKey,
         name: t.name,
-        scopes: JSON.parse(t.scopes),
+        scopes: JSON.parse(typeof t.scopes === 'string' ? t.scopes : JSON.stringify(t.scopes || [])),
         spend_cap_amount: t.spendCapAmount,
         spend_cap_currency: t.spendCapCurrency,
         spend_used: t.spendUsed,
@@ -733,7 +782,7 @@ router.post('/api-tokens', authenticate, async (req: Request, res: Response, nex
 // DELETE /v1/auth/api-tokens/:tokenId - Revoke API token
 router.delete('/api-tokens/:tokenId', authenticate, async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { tokenId } = req.params;
+    const tokenId = req.params.tokenId as string;
 
     const token = await prisma.apiToken.findUnique({
       where: { id: tokenId },

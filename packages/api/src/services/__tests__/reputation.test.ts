@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, jest, afterAll } from '@jest/globals';
+import { describe, it, expect, beforeEach, vi, afterAll } from 'vitest';
 import { prisma } from '../database';
 import {
   recalculateUserStats,
@@ -8,53 +8,53 @@ import {
 } from '../reputation';
 
 // Mock prisma client
-jest.mock('../database', () => ({
+vi.mock('../database', () => ({
   prisma: {
     userStats: {
-      findUnique: jest.fn(),
-      create: jest.fn(),
-      update: jest.fn(),
+      findUnique: vi.fn(),
+      create: vi.fn(),
+      update: vi.fn(),
     },
     reputationEvent: {
-      create: jest.fn(),
-      findMany: jest.fn(),
-      count: jest.fn(),
+      create: vi.fn(),
+      findMany: vi.fn(),
+      count: vi.fn(),
     },
     task: {
-      count: jest.fn(),
-      aggregate: jest.fn(),
+      count: vi.fn(),
+      aggregate: vi.fn(),
     },
     taskClaim: {
-      count: jest.fn(),
+      count: vi.fn(),
     },
     submission: {
-      count: jest.fn(),
-      findMany: jest.fn(),
+      count: vi.fn(),
+      findMany: vi.fn(),
     },
     dispute: {
-      count: jest.fn(),
+      count: vi.fn(),
     },
     userBadge: {
-      findUnique: jest.fn(),
-      create: jest.fn(),
+      findUnique: vi.fn(),
+      create: vi.fn(),
     },
     badgeDefinition: {
-      findUnique: jest.fn(),
-      upsert: jest.fn(),
+      findUnique: vi.fn(),
+      upsert: vi.fn(),
     },
   },
 }));
 
-const mockPrisma = prisma as jest.Mocked<typeof prisma>;
+const mockPrisma = prisma as any;
 
 describe('Reputation Service', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   describe('logReputationEvent', () => {
     it('should create a reputation event with all fields', async () => {
-      (mockPrisma.reputationEvent.create as jest.Mock).mockResolvedValue({
+      (mockPrisma.reputationEvent.create as any).mockResolvedValue({
         id: 'event-1',
         userId: 'user-1',
         previousScore: 85,
@@ -98,7 +98,7 @@ describe('Reputation Service', () => {
     });
 
     it('should log recalculations with score changes', async () => {
-      (mockPrisma.reputationEvent.create as jest.Mock).mockResolvedValue({
+      (mockPrisma.reputationEvent.create as any).mockResolvedValue({
         id: 'event-1',
         userId: 'user-1',
         previousScore: 85,
@@ -117,7 +117,7 @@ describe('Reputation Service', () => {
     });
 
     it('should always log significant events even with no score change', async () => {
-      (mockPrisma.reputationEvent.create as jest.Mock).mockResolvedValue({
+      (mockPrisma.reputationEvent.create as any).mockResolvedValue({
         id: 'event-1',
       });
 
@@ -158,8 +158,8 @@ describe('Reputation Service', () => {
         },
       ];
 
-      (mockPrisma.reputationEvent.findMany as jest.Mock).mockResolvedValue(mockEvents);
-      (mockPrisma.reputationEvent.count as jest.Mock).mockResolvedValue(2);
+      (mockPrisma.reputationEvent.findMany as any).mockResolvedValue(mockEvents);
+      (mockPrisma.reputationEvent.count as any).mockResolvedValue(2);
 
       const result = await getReputationHistory('user-1', { limit: 10, offset: 0 });
 
@@ -170,8 +170,8 @@ describe('Reputation Service', () => {
     });
 
     it('should apply pagination correctly', async () => {
-      (mockPrisma.reputationEvent.findMany as jest.Mock).mockResolvedValue([]);
-      (mockPrisma.reputationEvent.count as jest.Mock).mockResolvedValue(100);
+      (mockPrisma.reputationEvent.findMany as any).mockResolvedValue([]);
+      (mockPrisma.reputationEvent.count as any).mockResolvedValue(100);
 
       await getReputationHistory('user-1', { limit: 10, offset: 50 });
 
@@ -197,8 +197,8 @@ describe('Reputation Service', () => {
         },
       ];
 
-      (mockPrisma.reputationEvent.findMany as jest.Mock).mockResolvedValue(mockEvents);
-      (mockPrisma.reputationEvent.count as jest.Mock).mockResolvedValue(1);
+      (mockPrisma.reputationEvent.findMany as any).mockResolvedValue(mockEvents);
+      (mockPrisma.reputationEvent.count as any).mockResolvedValue(1);
 
       const result = await getReputationHistory('user-1');
 
@@ -325,7 +325,7 @@ describe('Reputation Service', () => {
     describe('Badge Award Deduplication', () => {
       it('should not award duplicate badges', async () => {
         // Mock that badge already exists
-        (mockPrisma.userBadge.findUnique as jest.Mock).mockResolvedValue({
+        (mockPrisma.userBadge.findUnique as any).mockResolvedValue({
           id: 'badge-1',
           userId: 'user-1',
           badgeType: 'first_light',
@@ -367,52 +367,52 @@ function setupMocksForCalculation(data: {
   currentStreak: number;
 }) {
   // Mock existing stats
-  (mockPrisma.userStats.findUnique as jest.Mock).mockResolvedValue({
+  (mockPrisma.userStats.findUnique as any).mockResolvedValue({
     userId: 'user-1',
     reliabilityScore: 100,
   });
 
-  (mockPrisma.userStats.create as jest.Mock).mockResolvedValue({
+  (mockPrisma.userStats.create as any).mockResolvedValue({
     userId: 'user-1',
     reliabilityScore: 100,
   });
 
-  (mockPrisma.userStats.update as jest.Mock).mockResolvedValue({
+  (mockPrisma.userStats.update as any).mockResolvedValue({
     userId: 'user-1',
     reliabilityScore: 85,
   });
 
   // Mock task counts
-  (mockPrisma.task.count as jest.Mock).mockResolvedValue(0);
-  (mockPrisma.task.aggregate as jest.Mock).mockResolvedValue({ _sum: { bountyAmount: 0 } });
+  (mockPrisma.task.count as any).mockResolvedValue(0);
+  (mockPrisma.task.aggregate as any).mockResolvedValue({ _sum: { bountyAmount: 0 } });
 
   // Mock claim counts
-  (mockPrisma.taskClaim.count as jest.Mock).mockResolvedValue(0);
+  (mockPrisma.taskClaim.count as any).mockResolvedValue(0);
 
   // Mock submission counts
-  (mockPrisma.submission.count as jest.Mock)
+  (mockPrisma.submission.count as any)
     .mockResolvedValueOnce(data.tasksDelivered) // tasksDelivered
     .mockResolvedValueOnce(data.tasksAccepted) // tasksAccepted
     .mockResolvedValueOnce(data.tasksDelivered - data.tasksAccepted); // tasksRejected
 
   // Mock accepted submissions for earnings
-  (mockPrisma.submission.findMany as jest.Mock).mockResolvedValue(
+  (mockPrisma.submission.findMany as any).mockResolvedValue(
     Array(data.tasksAccepted).fill({
       task: { id: 'task-1', bountyAmount: 100, locationLat: null, locationLon: null },
     })
   );
 
   // Mock disputes
-  (mockPrisma.dispute.count as jest.Mock).mockResolvedValue(data.disputesCount);
+  (mockPrisma.dispute.count as any).mockResolvedValue(data.disputesCount);
 
   // Mock badge definitions
-  (mockPrisma.badgeDefinition.findUnique as jest.Mock).mockResolvedValue(null);
-  (mockPrisma.badgeDefinition.upsert as jest.Mock).mockResolvedValue({});
+  (mockPrisma.badgeDefinition.findUnique as any).mockResolvedValue(null);
+  (mockPrisma.badgeDefinition.upsert as any).mockResolvedValue({});
 
   // Mock existing badges (none)
-  (mockPrisma.userBadge.findUnique as jest.Mock).mockResolvedValue(null);
-  (mockPrisma.userBadge.create as jest.Mock).mockResolvedValue({});
+  (mockPrisma.userBadge.findUnique as any).mockResolvedValue(null);
+  (mockPrisma.userBadge.create as any).mockResolvedValue({});
 
   // Mock reputation event logging
-  (mockPrisma.reputationEvent.create as jest.Mock).mockResolvedValue({});
+  (mockPrisma.reputationEvent.create as any).mockResolvedValue({});
 }

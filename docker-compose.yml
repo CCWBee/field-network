@@ -10,13 +10,15 @@ services:
     environment:
       - DATABASE_URL=postgresql://postgres:postgres@db:5432/fieldnetwork?connection_limit=10&pool_timeout=30
       - JWT_SECRET=${JWT_SECRET}
-      - CORS_ORIGINS=http://localhost:3000
+      - CORS_ORIGINS=http://localhost:3000,http://web:3000
       - ESCROW_PROVIDER=${ESCROW_PROVIDER:-mock}
       - ESCROW_CONTRACT_ADDRESS=${ESCROW_CONTRACT_ADDRESS}
       - CHAIN_ID=${CHAIN_ID:-84532}
       - BASE_RPC_URL=${BASE_RPC_URL}
       - OPERATOR_PRIVATE_KEY=${OPERATOR_PRIVATE_KEY}
       - REDIS_URL=redis://redis:6379
+      - SENTRY_DSN=${SENTRY_DSN}
+      - LOG_LEVEL=${LOG_LEVEL:-info}
       # Storage configuration (use 's3' for MinIO, 'local' for file system)
       - STORAGE_PROVIDER=${STORAGE_PROVIDER:-local}
       - S3_BUCKET=${S3_BUCKET:-field-network}
@@ -67,11 +69,16 @@ services:
     build:
       context: .
       dockerfile: packages/web/Dockerfile
+      args:
+        - NEXT_PUBLIC_API_URL=http://api:3001
+        - NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID=${WALLETCONNECT_PROJECT_ID}
+        - SENTRY_DSN=${SENTRY_DSN}
     ports:
       - '3000:3000'
     environment:
       - NEXT_PUBLIC_API_URL=http://api:3001
       - NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID=${WALLETCONNECT_PROJECT_ID}
+      - NEXT_PUBLIC_SENTRY_DSN=${SENTRY_DSN}
     depends_on:
       - api
 
@@ -86,6 +93,8 @@ services:
       - JWT_SECRET=${JWT_SECRET}
       - REDIS_URL=redis://redis:6379
       - ESCROW_PROVIDER=${ESCROW_PROVIDER:-mock}
+      - SENTRY_DSN=${SENTRY_DSN}
+      - LOG_LEVEL=${LOG_LEVEL:-info}
     depends_on:
       db:
         condition: service_healthy

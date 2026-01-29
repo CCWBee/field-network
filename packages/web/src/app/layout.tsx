@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { Space_Grotesk } from 'next/font/google';
 import { Web3Provider } from '@/lib/web3/provider';
+import { ToastProvider } from '@/components/ui';
 import './globals.css';
 
 const spaceGrotesk = Space_Grotesk({ subsets: ['latin'] });
@@ -19,9 +20,11 @@ export default function RootLayout({
     <html lang="en">
       <body className={spaceGrotesk.className}>
         <Web3Provider>
-          <div className="min-h-screen bg-surface">
-            {children}
-          </div>
+          <ToastProvider>
+            <div className="min-h-screen bg-surface">
+              {children}
+            </div>
+          </ToastProvider>
         </Web3Provider>
       </body>
     </html>

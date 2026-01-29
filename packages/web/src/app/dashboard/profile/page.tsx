@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { useAuthStore } from '@/lib/store';
 import { api } from '@/lib/api';
 import ReputationChart from '@/components/ReputationChart';
@@ -178,7 +179,20 @@ export default function ProfilePage() {
     <div className="max-w-4xl mx-auto space-y-8">
       {/* Header */}
       <div className="flex justify-between items-start">
-        <h1 className="text-2xl font-bold text-slate-800">My Profile</h1>
+        <div>
+          <h1 className="text-2xl font-bold text-slate-800">My Profile</h1>
+          {user?.username && (
+            <Link
+              href={`/users/${user.username}`}
+              className="text-sm text-field-600 hover:text-field-700 flex items-center gap-1 mt-1"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+              </svg>
+              View public profile
+            </Link>
+          )}
+        </div>
         {!isEditing && (
           <button
             onClick={() => setIsEditing(true)}

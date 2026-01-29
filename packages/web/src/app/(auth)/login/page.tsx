@@ -1,15 +1,18 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { useConnect, useAccount, useDisconnect } from 'wagmi';
-import { useSiweAuth } from '@/lib/web3/useSiweAuth';
 import { useAuthStore } from '@/lib/store';
 
-export default function LoginPage() {
+// Lazy import wagmi hooks to avoid SSR issues
+function LoginContent() {
   const router = useRouter();
   const { login, isLoading: isEmailLoading, error: emailError, clearError } = useAuthStore();
+
+  // These imports are only executed on the client
+  const { useConnect, useAccount, useDisconnect } = require('wagmi');
+  const { useSiweAuth } = require('@/lib/web3/useSiweAuth');
 
   // Wallet connection
   const { connectors, connect, isPending: isConnecting } = useConnect();
@@ -37,7 +40,7 @@ export default function LoginPage() {
     }
   };
 
-  const handleWalletConnect = async (connector: typeof connectors[number]) => {
+  const handleWalletConnect = async (connector: any) => {
     if (connector) {
       connect({ connector });
     }
@@ -55,8 +58,8 @@ export default function LoginPage() {
   const isLoading = isEmailLoading || isConnecting || isAuthenticating;
 
   // Find MetaMask connector
-  const metamaskConnector = connectors.find(c => c.name === 'MetaMask');
-  const walletConnectConnector = connectors.find(c => c.name === 'WalletConnect');
+  const metamaskConnector = connectors.find((c: any) => c.name === 'MetaMask');
+  const walletConnectConnector = connectors.find((c: any) => c.name === 'WalletConnect');
 
   return (
     <>
@@ -195,4 +198,22 @@ export default function LoginPage() {
       </p>
     </>
   );
+}
+
+export default function LoginPage() {
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-field-500"></div>
+      </div>
+    );
+  }
+
+  return <LoginContent />;
 }

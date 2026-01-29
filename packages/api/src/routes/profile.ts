@@ -7,6 +7,13 @@ import { getENSProfile, suggestUsernameFromENS } from '../services/ens';
 import { safeUrl, SavedAddressesSchema, safeJsonParse } from '../utils/validation';
 import { getReputationHistory } from '../services/reputation';
 
+// Helper to safely extract string from query/param
+function qs(param: any): string | undefined {
+  if (typeof param === 'string') return param;
+  if (Array.isArray(param) && typeof param[0] === 'string') return param[0];
+  return undefined;
+}
+
 const router = Router();
 
 // ============================================================================
@@ -161,15 +168,15 @@ router.post('/onboarding', authenticate, async (req: Request, res: Response, nex
 // GET /v1/profile/check-username/:username - Check if username is available
 router.get('/check-username/:username', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { username } = req.params;
+    const username = req.params.username as string;
 
-    if (!/^[a-zA-Z0-9_]{3,30}$/.test(username)) {
+    if (!/^[a-zA-Z0-9_]{3,30}$/.test(username as string)) {
       res.json({ available: false, reason: 'Invalid username format' });
       return;
     }
 
     const existingUser = await prisma.user.findUnique({
-      where: { username },
+      where: { username: username as string },
     });
 
     res.json({ available: !existingUser });
@@ -224,14 +231,14 @@ router.post('/refresh-ens', authenticate, async (req: Request, res: Response, ne
 // GET /v1/profile/:usernameOrId - Get public profile
 router.get('/:usernameOrId', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { usernameOrId } = req.params;
+    const usernameOrId = req.params.usernameOrId as string;
 
     // Try to find by username first, then by ID
-    let user = await prisma.user.findFirst({
+    let userRaw = await prisma.user.findFirst({
       where: {
         OR: [
-          { username: usernameOrId },
-          { id: usernameOrId },
+          { username: usernameOrId as string },
+          { id: usernameOrId as string },
         ],
         status: 'active',
       },
@@ -243,10 +250,11 @@ router.get('/:usernameOrId', async (req: Request, res: Response, next: NextFunct
       },
     });
 
-    if (!user) {
+    if (!userRaw) {
       throw new NotFoundError('User');
     }
 
+    const user = userRaw as any;
     const primaryWallet = user.walletLinks[0];
 
     res.json({
@@ -273,7 +281,7 @@ router.get('/:usernameOrId', async (req: Request, res: Response, next: NextFunct
         wallet_verified: user.stats.walletVerified,
         identity_verified: user.stats.identityVerified,
       } : null,
-      badges: user.badges.map(b => ({
+      badges: user.badges.map((b: any) => ({
         badge_type: b.badgeType,
         tier: b.tier,
         title: b.title,
@@ -310,7 +318,7 @@ router.get('/me/addresses', authenticate, async (req: Request, res: Response, ne
       throw new NotFoundError('User');
     }
 
-    res.json({ addresses: safeJsonParse(user.savedAddresses, SavedAddressesSchema, []) });
+    res.json({ addresses: safeJsonParse(typeof user.savedAddresses === 'string' ? user.savedAddresses : JSON.stringify(user.savedAddresses || []), SavedAddressesSchema, []) });
   } catch (error) {
     next(error);
   }
@@ -329,7 +337,7 @@ router.post('/me/addresses', authenticate, async (req: Request, res: Response, n
       throw new NotFoundError('User');
     }
 
-    const addresses = safeJsonParse(user.savedAddresses, SavedAddressesSchema, []);
+    const addresses = safeJsonParse(typeof user.savedAddresses === 'string' ? user.savedAddresses : JSON.stringify(user.savedAddresses || []), SavedAddressesSchema, []);
     const newAddress = {
       id: crypto.randomUUID(),
       ...data,
@@ -361,7 +369,7 @@ router.delete('/me/addresses/:addressId', authenticate, async (req: Request, res
       throw new NotFoundError('User');
     }
 
-    const addresses = safeJsonParse(user.savedAddresses, SavedAddressesSchema, []);
+    const addresses = safeJsonParse(typeof user.savedAddresses === 'string' ? user.savedAddresses : JSON.stringify(user.savedAddresses || []), SavedAddressesSchema, []);
     const filtered = addresses.filter((a) => a.id !== addressId);
 
     if (filtered.length === addresses.length) {
@@ -417,15 +425,16 @@ router.get('/me/reputation-history', authenticate, async (req: Request, res: Res
 // GET /v1/profile/:usernameOrId/reputation-history - Get public reputation history (summary)
 router.get('/:usernameOrId/reputation-history', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { usernameOrId } = req.params;
-    const { limit = '20', offset = '0' } = req.query;
+    const usernameOrId = req.params.usernameOrId as string;
+    const limit = qs(req.query.limit) || '20';
+    const offset = qs(req.query.offset) || '0';
 
     // Find user by username or ID
     const user = await prisma.user.findFirst({
       where: {
         OR: [
-          { username: usernameOrId },
-          { id: usernameOrId },
+          { username: usernameOrId as string },
+          { id: usernameOrId as string },
         ],
         status: 'active',
       },
@@ -436,8 +445,8 @@ router.get('/:usernameOrId/reputation-history', async (req: Request, res: Respon
     }
 
     const result = await getReputationHistory(user.id, {
-      limit: Math.min(parseInt(limit as string) || 20, 50),
-      offset: parseInt(offset as string) || 0,
+      limit: Math.min(parseInt(limit) || 20, 50),
+      offset: parseInt(offset) || 0,
     });
 
     // Public view: less detail, no task IDs

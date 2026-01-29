@@ -7,6 +7,17 @@ import { useAuthStore } from '@/lib/store';
 import { useTaskStore } from '@/lib/store';
 import { api } from '@/lib/api';
 import { StatCard } from '@/components/AchievementProgress';
+import {
+  Spinner,
+  Button,
+  Card,
+  CardBody,
+  EmptyTaskList,
+  EmptyMapView,
+  StaggeredList,
+  StaggeredItem,
+  HoverScale,
+} from '@/components/ui';
 
 // Dynamic imports for components with client-side dependencies
 const EarningsChart = dynamic(() => import('@/components/EarningsChart'), { ssr: false });

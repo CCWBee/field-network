@@ -7,10 +7,13 @@
  * - Error logging with request context
  * - Support for various error types
  * - Request ID tracking for debugging
+ * - Sentry integration for error tracking
  */
 
 import { Request, Response, NextFunction } from 'express';
 import { ZodError } from 'zod';
+import * as Sentry from '@sentry/node';
+import { logger } from '../lib/logger';
 
 /**
  * Check if running in production mode
@@ -139,37 +142,59 @@ function sanitizeErrorMessage(message: string): string {
 }
 
 /**
- * Log error with context
+ * Log error with context using structured logger
  */
 function logError(err: Error, req: Request, requestId: string): void {
-  const logEntry = {
-    timestamp: new Date().toISOString(),
+  const logContext = {
     requestId,
     method: req.method,
     path: req.path,
     errorName: err.name,
-    errorMessage: err.message,
-    // Only include stack in development or for debugging
-    ...((!isProduction || process.env.LOG_STACKS === 'true') && {
-      stack: err.stack,
-    }),
     // Include user ID if authenticated (but not the full user object)
-    ...((req as any).user && { userId: (req as any).user.id }),
-    // Include relevant headers for debugging
+    userId: (req as any).user?.id,
     userAgent: req.headers['user-agent'],
     ip: req.ip,
   };
 
-  // Use structured logging in production
-  if (isProduction && process.env.LOG_FORMAT === 'json') {
-    console.error(JSON.stringify(logEntry));
+  // Use request logger if available, otherwise use base logger
+  const log = req.log || logger;
+
+  // Log with appropriate level based on error type
+  if (err instanceof AppError && err.isOperational) {
+    log.warn({ err, ...logContext }, `Operational error: ${err.message}`);
   } else {
-    console.error(`[ERROR] ${requestId} ${err.name}: ${err.message}`, {
-      path: req.path,
-      method: req.method,
-      stack: err.stack,
+    log.error({ err, ...logContext }, `Unexpected error: ${err.message}`);
+  }
+}
+
+/**
+ * Report error to Sentry
+ */
+function reportToSentry(err: Error, req: Request, requestId: string): void {
+  // Only report non-operational errors (unexpected errors)
+  if (err instanceof AppError && err.isOperational) {
+    return;
+  }
+
+  // Set Sentry context
+  Sentry.setContext('request', {
+    requestId,
+    method: req.method,
+    path: req.path,
+    query: req.query,
+  });
+
+  // Add user context if authenticated
+  const user = (req as any).user;
+  if (user) {
+    Sentry.setUser({
+      id: user.id,
+      email: user.email,
     });
   }
+
+  // Capture the exception
+  Sentry.captureException(err);
 }
 
 /**
@@ -201,6 +226,9 @@ export function errorHandler(
 
   // Log the full error server-side
   logError(err, req, requestId);
+
+  // Report to Sentry for unexpected errors
+  reportToSentry(err, req, requestId);
 
   // Build response
   const response: ErrorResponse = {

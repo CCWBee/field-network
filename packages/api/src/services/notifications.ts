@@ -1,4 +1,12 @@
 import { prisma } from './database';
+import {
+  sendTaskClaimedEmail,
+  sendSubmissionReceivedEmail,
+  sendSubmissionAcceptedEmail,
+  sendSubmissionRejectedEmail,
+  sendDisputeOpenedEmail,
+  sendDisputeResolvedEmail,
+} from './email';
 
 // Notification types
 export type NotificationType =
@@ -8,12 +16,14 @@ export type NotificationType =
   | 'submission_rejected'
   | 'dispute_opened'
   | 'dispute_resolved'
+  | 'dispute_escalated'
+  | 'jury_duty'
   | 'badge_earned'
   | 'streak_milestone'
   | 'claim_expiring'
   | 'fee_tier_upgrade';
 
-// Default notification preferences
+// Default notification preferences (in-app)
 export const DEFAULT_NOTIFICATION_PREFS: Record<NotificationType, boolean> = {
   task_claimed: true,
   submission_received: true,
@@ -21,10 +31,31 @@ export const DEFAULT_NOTIFICATION_PREFS: Record<NotificationType, boolean> = {
   submission_rejected: true,
   dispute_opened: true,
   dispute_resolved: true,
+  dispute_escalated: true,
+  jury_duty: true,
   badge_earned: true,
   streak_milestone: true,
   claim_expiring: true,
   fee_tier_upgrade: true,
+};
+
+// Email notification preferences (subset of notifications that can be emailed)
+export type EmailableNotificationType =
+  | 'task_claimed'
+  | 'submission_received'
+  | 'submission_accepted'
+  | 'submission_rejected'
+  | 'dispute_opened'
+  | 'dispute_resolved';
+
+// Default email notification preferences
+export const DEFAULT_EMAIL_PREFS: Record<EmailableNotificationType, boolean> = {
+  task_claimed: true,
+  submission_received: true,
+  submission_accepted: true,
+  submission_rejected: true,
+  dispute_opened: true,
+  dispute_resolved: true,
 };
 
 interface NotificationData {
@@ -33,6 +64,13 @@ interface NotificationData {
   title: string;
   body: string;
   data?: Record<string, any>;
+}
+
+// Extended notification preferences including email settings
+interface NotificationPreferences {
+  inApp: Record<NotificationType, boolean>;
+  email: Record<EmailableNotificationType, boolean>;
+  emailEnabled: boolean; // Master switch for all email notifications
 }
 
 /**
@@ -49,7 +87,10 @@ export async function getNotificationPrefs(userId: string): Promise<Record<Notif
   }
 
   try {
-    const prefs = JSON.parse(user.notificationPrefs);
+    // notificationPrefs is Json type in PostgreSQL - already an object
+    const prefs = (typeof user.notificationPrefs === 'string'
+      ? JSON.parse(user.notificationPrefs)
+      : user.notificationPrefs) as Record<string, any>;
     return { ...DEFAULT_NOTIFICATION_PREFS, ...prefs };
   } catch {
     return DEFAULT_NOTIFICATION_PREFS;
@@ -75,6 +116,104 @@ export async function updateNotificationPrefs(
 }
 
 /**
+ * Get user's email notification preferences
+ */
+export async function getEmailNotificationPrefs(userId: string): Promise<{
+  emailEnabled: boolean;
+  prefs: Record<EmailableNotificationType, boolean>;
+}> {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { notificationPrefs: true },
+  });
+
+  if (!user) {
+    return { emailEnabled: true, prefs: DEFAULT_EMAIL_PREFS };
+  }
+
+  try {
+    const allPrefs = user.notificationPrefs as Record<string, any>;
+    const emailEnabled = allPrefs?.emailEnabled !== false; // Default to true
+    const emailPrefs = allPrefs?.email || {};
+    return {
+      emailEnabled,
+      prefs: { ...DEFAULT_EMAIL_PREFS, ...emailPrefs },
+    };
+  } catch {
+    return { emailEnabled: true, prefs: DEFAULT_EMAIL_PREFS };
+  }
+}
+
+/**
+ * Update user's email notification preferences
+ */
+export async function updateEmailNotificationPrefs(
+  userId: string,
+  options: {
+    emailEnabled?: boolean;
+    prefs?: Partial<Record<EmailableNotificationType, boolean>>;
+  }
+): Promise<{
+  emailEnabled: boolean;
+  prefs: Record<EmailableNotificationType, boolean>;
+}> {
+  const current = await getEmailNotificationPrefs(userId);
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { notificationPrefs: true },
+  });
+
+  const allPrefs = (user?.notificationPrefs as Record<string, any>) || {};
+
+  if (options.emailEnabled !== undefined) {
+    allPrefs.emailEnabled = options.emailEnabled;
+  }
+
+  if (options.prefs) {
+    allPrefs.email = { ...(allPrefs.email || {}), ...options.prefs };
+  }
+
+  await prisma.user.update({
+    where: { id: userId },
+    data: { notificationPrefs: allPrefs },
+  });
+
+  return {
+    emailEnabled: allPrefs.emailEnabled !== false,
+    prefs: { ...DEFAULT_EMAIL_PREFS, ...(allPrefs.email || {}) },
+  };
+}
+
+/**
+ * Check if user wants email notifications for a specific type
+ */
+async function shouldSendEmail(
+  userId: string,
+  type: EmailableNotificationType
+): Promise<{ send: boolean; email: string | null }> {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { email: true, notificationPrefs: true },
+  });
+
+  if (!user?.email) {
+    return { send: false, email: null };
+  }
+
+  const { emailEnabled, prefs } = await getEmailNotificationPrefs(userId);
+
+  if (!emailEnabled) {
+    return { send: false, email: user.email };
+  }
+
+  if (!prefs[type]) {
+    return { send: false, email: user.email };
+  }
+
+  return { send: true, email: user.email };
+}
+
+/**
  * Create a notification for a user
  * Respects user's notification preferences
  */
@@ -91,7 +230,7 @@ export async function createNotification(data: NotificationData): Promise<{ id: 
       type: data.type,
       title: data.title,
       body: data.body,
-      data: JSON.stringify(data.data || {}),
+      data: data.data || {},
     },
   });
 
@@ -154,7 +293,7 @@ export async function getNotifications(
       type: n.type,
       title: n.title,
       body: n.body,
-      data: JSON.parse(n.data),
+      data: (typeof n.data === 'string' ? JSON.parse(n.data) : n.data) as Record<string, any>,
       read: n.read,
       createdAt: n.createdAt,
     })),
@@ -236,6 +375,23 @@ export async function notifyTaskClaimed(
     body: `${workerName} has claimed your task "${taskTitle}"`,
     data: { taskId },
   });
+
+  // Send email notification
+  const { send, email } = await shouldSendEmail(requesterId, 'task_claimed');
+  if (send && email) {
+    const user = await prisma.user.findUnique({
+      where: { id: requesterId },
+      select: { username: true },
+    });
+    const baseUrl = process.env.WEB_URL || 'https://field-network.com';
+    await sendTaskClaimedEmail(email, {
+      requesterName: user?.username || undefined,
+      taskTitle,
+      workerName,
+      taskUrl: `${baseUrl}/dashboard/requester/tasks/${taskId}`,
+      ttlHours: 4,
+    });
+  }
 }
 
 /**
@@ -246,7 +402,8 @@ export async function notifySubmissionReceived(
   taskId: string,
   taskTitle: string,
   submissionId: string,
-  workerName: string
+  workerName: string,
+  verificationScore?: number
 ): Promise<void> {
   await createNotification({
     userId: requesterId,
@@ -255,6 +412,23 @@ export async function notifySubmissionReceived(
     body: `${workerName} submitted work for "${taskTitle}"`,
     data: { taskId, submissionId },
   });
+
+  // Send email notification
+  const { send, email } = await shouldSendEmail(requesterId, 'submission_received');
+  if (send && email) {
+    const user = await prisma.user.findUnique({
+      where: { id: requesterId },
+      select: { username: true },
+    });
+    const baseUrl = process.env.WEB_URL || 'https://field-network.com';
+    await sendSubmissionReceivedEmail(email, {
+      requesterName: user?.username || undefined,
+      taskTitle,
+      workerName,
+      verificationScore: verificationScore || 0,
+      submissionUrl: `${baseUrl}/dashboard/requester/submissions/${submissionId}`,
+    });
+  }
 }
 
 /**
@@ -275,6 +449,23 @@ export async function notifySubmissionAccepted(
     body: `Your submission for "${taskTitle}" was accepted. ${currency} ${bountyAmount.toFixed(2)} has been released.`,
     data: { taskId, submissionId, bountyAmount, currency },
   });
+
+  // Send email notification
+  const { send, email } = await shouldSendEmail(workerId, 'submission_accepted');
+  if (send && email) {
+    const user = await prisma.user.findUnique({
+      where: { id: workerId },
+      select: { username: true },
+    });
+    const baseUrl = process.env.WEB_URL || 'https://field-network.com';
+    await sendSubmissionAcceptedEmail(email, {
+      workerName: user?.username || undefined,
+      taskTitle,
+      bountyAmount,
+      currency,
+      submissionUrl: `${baseUrl}/dashboard/worker/submissions/${submissionId}`,
+    });
+  }
 }
 
 /**
@@ -285,7 +476,8 @@ export async function notifySubmissionRejected(
   taskId: string,
   taskTitle: string,
   submissionId: string,
-  reasonCode: string
+  reasonCode: string,
+  comment?: string
 ): Promise<void> {
   await createNotification({
     userId: workerId,
@@ -294,6 +486,23 @@ export async function notifySubmissionRejected(
     body: `Your submission for "${taskTitle}" was rejected. Reason: ${reasonCode}. You can dispute within 48 hours.`,
     data: { taskId, submissionId, reasonCode },
   });
+
+  // Send email notification
+  const { send, email } = await shouldSendEmail(workerId, 'submission_rejected');
+  if (send && email) {
+    const user = await prisma.user.findUnique({
+      where: { id: workerId },
+      select: { username: true },
+    });
+    const baseUrl = process.env.WEB_URL || 'https://field-network.com';
+    await sendSubmissionRejectedEmail(email, {
+      workerName: user?.username || undefined,
+      taskTitle,
+      reasonCode,
+      comment,
+      submissionUrl: `${baseUrl}/dashboard/worker/submissions/${submissionId}`,
+    });
+  }
 }
 
 /**
@@ -314,6 +523,22 @@ export async function notifyDisputeOpened(
       : `Your dispute for "${taskTitle}" has been submitted for review`,
     data: { disputeId },
   });
+
+  // Send email notification
+  const { send, email } = await shouldSendEmail(userId, 'dispute_opened');
+  if (send && email) {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { username: true },
+    });
+    const baseUrl = process.env.WEB_URL || 'https://field-network.com';
+    await sendDisputeOpenedEmail(email, {
+      recipientName: user?.username || undefined,
+      taskTitle,
+      isRequester,
+      disputeUrl: `${baseUrl}/dashboard/disputes/${disputeId}`,
+    });
+  }
 }
 
 /**
@@ -355,6 +580,22 @@ export async function notifyDisputeResolved(
     body: `${message} Task: "${taskTitle}"`,
     data: { disputeId, resolutionType },
   });
+
+  // Send email notification
+  const { send, email } = await shouldSendEmail(userId, 'dispute_resolved');
+  if (send && email) {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { username: true },
+    });
+    const baseUrl = process.env.WEB_URL || 'https://field-network.com';
+    await sendDisputeResolvedEmail(email, {
+      recipientName: user?.username || undefined,
+      taskTitle,
+      resolutionMessage: message,
+      disputeUrl: `${baseUrl}/dashboard/disputes/${disputeId}`,
+    });
+  }
 }
 
 /**
@@ -405,5 +646,59 @@ export async function notifyFeeTierUpgrade(
     title: 'Fee Tier Upgraded!',
     body: `Your platform fee has been reduced to ${(newRate * 100).toFixed(1)}% (${newTier} tier).`,
     data: { newTier, newRate },
+  });
+}
+
+/**
+ * Notify parties when a dispute is escalated to a higher tier
+ */
+export async function notifyDisputeEscalated(
+  userId: string,
+  disputeId: string,
+  taskTitle: string,
+  newTier: number
+): Promise<void> {
+  const tierNames: Record<number, string> = {
+    2: 'Community Jury Review',
+    3: 'Admin Appeal',
+  };
+
+  const tierDescriptions: Record<number, string> = {
+    2: 'A panel of 5 community jurors will review the evidence and vote. Results expected within 48 hours.',
+    3: 'An administrator will review the appeal. Decision expected within 72 hours.',
+  };
+
+  await createNotification({
+    userId,
+    type: 'dispute_escalated',
+    title: `Dispute Escalated to ${tierNames[newTier] || `Tier ${newTier}`}`,
+    body: `The dispute for "${taskTitle}" has been escalated. ${tierDescriptions[newTier] || ''}`,
+    data: { disputeId, tier: newTier },
+  });
+}
+
+/**
+ * Notify user when they are selected for jury duty
+ */
+export async function notifyJuryDuty(
+  userId: string,
+  disputeId: string,
+  taskTitle: string,
+  deadline: Date
+): Promise<void> {
+  const deadlineStr = deadline.toLocaleDateString('en-GB', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+
+  await createNotification({
+    userId,
+    type: 'jury_duty',
+    title: 'Jury Duty: Your Vote Needed',
+    body: `You have been selected to serve on the jury for a dispute regarding "${taskTitle}". Please review the evidence and cast your vote by ${deadlineStr}.`,
+    data: { disputeId, deadline: deadline.toISOString() },
   });
 }

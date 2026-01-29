@@ -1,13 +1,18 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
+import { motion, AnimatePresence } from 'framer-motion';
+import { StaggeredList, StaggeredItem, HoverScale } from '@/components/ui';
 
 const HeightMapBackground = dynamic(() => import('@/components/HeightMapBackground'), {
   ssr: false,
 });
 
 export default function HomePage() {
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
   return (
     <div className="min-h-screen bg-surface">
       {/* Navigation */}
@@ -16,9 +21,11 @@ export default function HomePage() {
           <div className="flex justify-between h-16">
             <div className="flex items-center gap-3">
               <img src="/icon.svg" alt="Field Network" className="h-12 w-12" />
-              <span className="text-3xl font-bold bg-gradient-to-r from-teal-400 to-cyan-300 bg-clip-text text-transparent">Field Network</span>
+              <span className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-teal-400 to-cyan-300 bg-clip-text text-transparent">Field Network</span>
             </div>
-            <div className="flex items-center space-x-4">
+
+            {/* Desktop navigation */}
+            <div className="hidden md:flex items-center space-x-4">
               <Link
                 href="/docs"
                 className="text-teal-100/70 hover:text-teal-300 px-3 py-2 transition-colors"
@@ -38,7 +45,61 @@ export default function HomePage() {
                 Get Started
               </Link>
             </div>
+
+            {/* Mobile menu button */}
+            <div className="flex md:hidden items-center">
+              <button
+                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                className="p-2 rounded-md text-teal-100/70 hover:text-teal-300 hover:bg-white/5 transition-colors"
+                aria-label="Toggle menu"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  {mobileMenuOpen ? (
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  ) : (
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                  )}
+                </svg>
+              </button>
+            </div>
           </div>
+
+          {/* Mobile menu */}
+          <AnimatePresence>
+            {mobileMenuOpen && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                transition={{ duration: 0.2 }}
+                className="md:hidden overflow-hidden"
+              >
+                <div className="py-4 space-y-2 border-t border-teal-500/20">
+                  <Link
+                    href="/docs"
+                    className="block px-3 py-2 text-teal-100/70 hover:text-teal-300 hover:bg-white/5 rounded-lg transition-colors"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    Docs
+                  </Link>
+                  <Link
+                    href="/login"
+                    className="block px-3 py-2 text-teal-100/70 hover:text-teal-300 hover:bg-white/5 rounded-lg transition-colors"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    Sign In
+                  </Link>
+                  <Link
+                    href="/register"
+                    className="block px-3 py-2 bg-field-500 text-white rounded-lg hover:bg-field-400 transition-colors text-center"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    Get Started
+                  </Link>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       </nav>
 
@@ -97,64 +158,100 @@ export default function HomePage() {
       {/* How It Works Section */}
       <div className="py-24 bg-surface-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <h2 className="text-3xl font-bold text-center text-slate-800 mb-4">
+          <motion.h2
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.5 }}
+            className="text-3xl font-bold text-center text-slate-800 mb-4"
+          >
             How It Works
-          </h2>
-          <p className="text-slate-600 text-center mb-16 max-w-2xl mx-auto">
+          </motion.h2>
+          <motion.p
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.5, delay: 0.1 }}
+            className="text-slate-600 text-center mb-16 max-w-2xl mx-auto"
+          >
             Three steps from question to verified answer
-          </p>
-          <div className="grid md:grid-cols-3 gap-8">
-            <div className="glass rounded-xl p-8 text-center">
-              <div className="w-16 h-16 bg-field-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
-                <svg className="w-8 h-8 text-field-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                </svg>
-              </div>
-              <h3 className="text-xl font-semibold text-slate-800 mb-4">1. Define</h3>
-              <p className="text-slate-600">
-                Describe the place, time window, and evidence needed.
-                Set a bounty and fund escrow in minutes.
-              </p>
-            </div>
-            <div className="glass rounded-xl p-8 text-center">
-              <div className="w-16 h-16 bg-accent-cyan/20 rounded-full flex items-center justify-center mx-auto mb-6">
-                <svg className="w-8 h-8 text-accent-cyan" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                </svg>
-              </div>
-              <h3 className="text-xl font-semibold text-slate-800 mb-4">2. Collect</h3>
-              <p className="text-slate-600">
-                Field operators claim the task and capture what you asked for.
-                Submissions include GPS, timestamps, and proof bundles.
-              </p>
-            </div>
-            <div className="glass rounded-xl p-8 text-center">
-              <div className="w-16 h-16 bg-accent-purple/20 rounded-full flex items-center justify-center mx-auto mb-6">
-                <svg className="w-8 h-8 text-accent-purple" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                </svg>
-              </div>
-              <h3 className="text-xl font-semibold text-slate-800 mb-4">3. Verify</h3>
-              <p className="text-slate-600">
-                Automated checks score every submission.
-                Accept the result and escrow releases payment.
-              </p>
-            </div>
-          </div>
+          </motion.p>
+          <StaggeredList className="grid md:grid-cols-3 gap-8">
+            <StaggeredItem>
+              <HoverScale>
+                <div className="glass rounded-xl p-8 text-center h-full">
+                  <div className="w-16 h-16 bg-field-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <svg className="w-8 h-8 text-field-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                    </svg>
+                  </div>
+                  <h3 className="text-xl font-semibold text-slate-800 mb-4">1. Define</h3>
+                  <p className="text-slate-600">
+                    Describe the place, time window, and evidence needed.
+                    Set a bounty and fund escrow in minutes.
+                  </p>
+                </div>
+              </HoverScale>
+            </StaggeredItem>
+            <StaggeredItem>
+              <HoverScale>
+                <div className="glass rounded-xl p-8 text-center h-full">
+                  <div className="w-16 h-16 bg-accent-cyan/20 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <svg className="w-8 h-8 text-accent-cyan" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                  </div>
+                  <h3 className="text-xl font-semibold text-slate-800 mb-4">2. Collect</h3>
+                  <p className="text-slate-600">
+                    Field operators claim the task and capture what you asked for.
+                    Submissions include GPS, timestamps, and proof bundles.
+                  </p>
+                </div>
+              </HoverScale>
+            </StaggeredItem>
+            <StaggeredItem>
+              <HoverScale>
+                <div className="glass rounded-xl p-8 text-center h-full">
+                  <div className="w-16 h-16 bg-accent-purple/20 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <svg className="w-8 h-8 text-accent-purple" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                    </svg>
+                  </div>
+                  <h3 className="text-xl font-semibold text-slate-800 mb-4">3. Verify</h3>
+                  <p className="text-slate-600">
+                    Automated checks score every submission.
+                    Accept the result and escrow releases payment.
+                  </p>
+                </div>
+              </HoverScale>
+            </StaggeredItem>
+          </StaggeredList>
         </div>
       </div>
 
       {/* Use Cases Section */}
       <div className="py-24 bg-surface">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <h2 className="text-3xl font-bold text-center text-slate-800 mb-4">
+          <motion.h2
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.5 }}
+            className="text-3xl font-bold text-center text-slate-800 mb-4"
+          >
             Use Cases
-          </h2>
-          <p className="text-slate-600 text-center mb-16 max-w-2xl mx-auto">
+          </motion.h2>
+          <motion.p
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.5, delay: 0.1 }}
+            className="text-slate-600 text-center mb-16 max-w-2xl mx-auto"
+          >
             When you need eyes on the ground
-          </p>
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+          </motion.p>
+          <StaggeredList className="grid md:grid-cols-2 lg:grid-cols-3 gap-6" staggerDelay={0.08}>
             {[
               { title: 'Research Without Borders', desc: 'Anyone can commission real-world measurements anywhere and the planet becomes your lab.', icon: 'LAB' },
               { title: 'Engineering and Urban Studies', desc: 'Run traffic, crowd, and safety studies by scripting time-windowed, angle-specific observation tasks.', icon: 'CITY' },
@@ -163,13 +260,17 @@ export default function HomePage() {
               { title: 'Environment and Climate', desc: 'Commission drainage checks, pollution readings, and wildlife surveys with verifiable proof.', icon: 'EARTH' },
               { title: 'AI Field Operations', desc: 'Let AI define the data it needs, commission tasks, and return evidence-backed answers.', icon: 'AI' },
             ].map((item, i) => (
-              <div key={i} className="glass-light rounded-xl p-6 hover:bg-field-50 transition-colors">
-                <span className="text-2xl mb-3 block">{item.icon}</span>
-                <h3 className="text-lg font-semibold text-slate-800 mb-2">{item.title}</h3>
-                <p className="text-slate-600 text-sm">{item.desc}</p>
-              </div>
+              <StaggeredItem key={i}>
+                <HoverScale scale={1.03}>
+                  <div className="glass-light rounded-xl p-6 hover:bg-field-50 transition-colors h-full">
+                    <span className="text-2xl mb-3 block">{item.icon}</span>
+                    <h3 className="text-lg font-semibold text-slate-800 mb-2">{item.title}</h3>
+                    <p className="text-slate-600 text-sm">{item.desc}</p>
+                  </div>
+                </HoverScale>
+              </StaggeredItem>
             ))}
-          </div>
+          </StaggeredList>
         </div>
       </div>
 

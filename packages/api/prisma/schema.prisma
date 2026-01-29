@@ -40,19 +40,21 @@ model User {
   updatedAt    DateTime @updatedAt @map("updated_at")
 
   // Relations
-  workerProfile  WorkerProfile?
-  walletLinks    WalletLink[]
-  apiTokens      ApiToken[]
-  tasks          Task[]          @relation("TaskRequester")
-  taskClaims     TaskClaim[]
-  submissions    Submission[]
-  decisions      Decision[]
-  auditEvents    AuditEvent[]
-  webhooks       Webhook[]
-  escrowsCreated Escrow[]
-  siweNonces     SiweNonce[]
-  badges         UserBadge[]
-  stats          UserStats?
+  workerProfile    WorkerProfile?
+  walletLinks      WalletLink[]
+  apiTokens        ApiToken[]
+  tasks            Task[]          @relation("TaskRequester")
+  taskClaims       TaskClaim[]
+  submissions      Submission[]
+  decisions        Decision[]
+  auditEvents      AuditEvent[]
+  webhooks         Webhook[]
+  escrowsCreated   Escrow[]
+  siweNonces       SiweNonce[]
+  badges           UserBadge[]
+  stats            UserStats?
+  disputeEvidence  DisputeEvidence[]
+  juryDuties       DisputeJuror[]
 
   @@map("users")
 }
@@ -394,20 +396,80 @@ model Dispute {
   id                String    @id @default(uuid())
   submissionId      String    @map("submission_id")
   openedBy          String    @map("opened_by")
-  status            String    @default("opened") // opened, evidence_pending, under_review, resolved
+  status            String    @default("opened") // opened, evidence_pending, tier1_review, tier2_voting, tier3_appeal, resolved
   resolutionType    String?   @map("resolution_type") // accept_pay, partial_pay, reject_refund, strike
   resolutionComment String?   @db.Text @map("resolution_comment")
   splitPercentage   Int?      @map("split_percentage") // 0-100, worker's share when outcome is 'split'
   resolverId        String?   @map("resolver_id")
   openedAt          DateTime  @default(now()) @map("opened_at")
   resolvedAt        DateTime? @map("resolved_at")
+  evidenceDeadline  DateTime? @map("evidence_deadline") // 48hrs from dispute open
+
+  // Multi-tier dispute resolution
+  currentTier       Int       @default(1) @map("current_tier") // 1=auto, 2=jury, 3=admin
+  tierHistory       Json      @default("[]") @map("tier_history") // Array of tier transitions with timestamps
+  autoScoreResult   Json?     @map("auto_score_result") // Tier 1 auto-scoring result { score, checks, recommendation }
+  tier1Deadline     DateTime? @map("tier1_deadline") // Auto-resolution deadline (instant, but allows brief review)
+  tier2Deadline     DateTime? @map("tier2_deadline") // Jury voting deadline (48hrs from escalation)
+  tier3Deadline     DateTime? @map("tier3_deadline") // Admin appeal deadline (72hrs from escalation)
+  escalatedAt       DateTime? @map("escalated_at") // When dispute was last escalated
+  escalationStake   Float?    @map("escalation_stake") // Additional stake for Tier 3 appeal
 
   submission Submission        @relation(fields: [submissionId], references: [id], onDelete: Cascade)
   auditLogs  DisputeAuditLog[]
+  evidence   DisputeEvidence[]
+  jurors     DisputeJuror[]
 
   @@index([status])
   @@index([openedAt])
+  @@index([currentTier])
+  @@index([tier2Deadline])
+  @@index([tier3Deadline])
   @@map("disputes")
+}
+
+// Dispute jury voting
+model DisputeJuror {
+  id           String    @id @default(uuid())
+  disputeId    String    @map("dispute_id")
+  jurorId      String    @map("juror_id")
+  vote         String?   // worker, requester, abstain (null = not yet voted)
+  weight       Float     @default(1.0) // Stake-weighted voting weight
+  reason       String?   @db.Text // Optional explanation for vote
+  selectedAt   DateTime  @default(now()) @map("selected_at")
+  votedAt      DateTime? @map("voted_at")
+  notifiedAt   DateTime? @map("notified_at") // When juror was notified of duty
+
+  dispute Dispute @relation(fields: [disputeId], references: [id], onDelete: Cascade)
+  juror   User    @relation(fields: [jurorId], references: [id])
+
+  @@unique([disputeId, jurorId])
+  @@index([disputeId])
+  @@index([jurorId])
+  @@index([votedAt])
+  @@map("dispute_jurors")
+}
+
+// Dispute evidence - documents/images submitted by either party
+model DisputeEvidence {
+  id          String   @id @default(uuid())
+  disputeId   String   @map("dispute_id")
+  submittedBy String   @map("submitted_by") // User ID of submitter
+  type        String   // text, image, document
+  storageKey  String?  @map("storage_key") // For files (images/documents)
+  description String   @db.Text // Required description/explanation
+  mimeType    String?  @map("mime_type") // MIME type for files
+  sizeBytes   Int?     @map("size_bytes") // File size
+  sha256      String?  // File hash for integrity
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  dispute   Dispute @relation(fields: [disputeId], references: [id], onDelete: Cascade)
+  submitter User    @relation(fields: [submittedBy], references: [id])
+
+  @@index([disputeId])
+  @@index([submittedBy])
+  @@index([createdAt])
+  @@map("dispute_evidence")
 }
 
 // Dispute audit log - tracks all dispute actions with timestamps and actor
@@ -424,6 +486,55 @@ model DisputeAuditLog {
   @@index([disputeId])
   @@index([createdAt])
   @@map("dispute_audit_logs")
+}
+
+// ============================================================================
+// WORKER STAKING
+// ============================================================================
+
+model Stake {
+  id              String    @id @default(uuid())
+  taskId          String    @map("task_id")
+  workerId        String    @map("worker_id")
+  provider        String    @default("onchain") // onchain, mock
+  providerRef     String?   @map("provider_ref") // On-chain stake ID (bytes32)
+
+  // Amounts (USDC, 6 decimals in contract but stored as float here)
+  amount          Float     // Stake amount
+  bountyAmount    Float     @map("bounty_amount") // Task bounty for reference
+
+  // Stake calculation inputs (stored for audit)
+  strikeCount     Int       @default(0) @map("strike_count")
+  reputationScore Float     @default(100) @map("reputation_score")
+  stakePercentage Float     @map("stake_percentage") // Actual % used
+
+  // Status
+  status          String    @default("pending") // pending, held, released, slashed
+
+  // On-chain tracking
+  chainId         Int?      @map("chain_id")
+  contractAddress String?   @map("contract_address")
+  stakeTxHash     String?   @map("stake_tx_hash")
+  releaseTxHash   String?   @map("release_tx_hash")
+  slashTxHash     String?   @map("slash_tx_hash")
+
+  // Slash details (if slashed)
+  slashReason     String?   @map("slash_reason") // dispute_lost, fraud, abandoned
+  requesterShare  Float?    @map("requester_share") // Amount to requester
+  platformShare   Float?    @map("platform_share") // Amount to platform
+  workerReturn    Float?    @map("worker_return") // Amount returned to worker (partial slash)
+
+  // Timestamps
+  createdAt       DateTime  @default(now()) @map("created_at")
+  heldAt          DateTime? @map("held_at") // When stake was confirmed on-chain
+  releasedAt      DateTime? @map("released_at")
+  slashedAt       DateTime? @map("slashed_at")
+
+  @@unique([taskId, workerId])
+  @@index([taskId])
+  @@index([workerId])
+  @@index([status])
+  @@map("stakes")
 }
 
 // ============================================================================
@@ -620,6 +731,28 @@ model Notification {
   @@index([userId, read])
   @@index([createdAt])
   @@map("notifications")
+}
+
+// ============================================================================
+// REVIEWS
+// ============================================================================
+
+model Review {
+  id          String   @id @default(uuid())
+  reviewerId  String   @map("reviewer_id")
+  revieweeId  String   @map("reviewee_id")
+  taskId      String   @map("task_id")
+  rating      Int      // 1-5 stars
+  comment     String?  @db.Text
+  role        String   // 'requester' reviewing worker, or 'worker' reviewing requester
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@unique([reviewerId, taskId]) // One review per task per person
+  @@index([revieweeId])
+  @@index([reviewerId])
+  @@index([taskId])
+  @@index([rating])
+  @@map("reviews")
 }
 
 // ============================================================================

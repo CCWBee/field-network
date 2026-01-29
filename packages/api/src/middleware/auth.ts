@@ -1,12 +1,54 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { createHash } from 'crypto';
+import { v4 as uuidv4 } from 'uuid';
 import { prisma } from '../services/database';
 import { UnauthorizedError, ForbiddenError } from './errorHandler';
+import {
+  isTokenBlacklisted,
+  wasTokenInvalidatedForUser,
+} from '../services/tokenBlacklist';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-change-in-production';
+// JWT_SECRET enforcement: no fallback in production
+const JWT_SECRET = getJwtSecret();
 const ADMIN_SESSION_TIMEOUT_MS = 60 * 60 * 1000; // 1 hour
 const MAX_ADMIN_SESSIONS_PER_USER = 3;
+
+/**
+ * Get JWT secret with proper enforcement
+ * - In production: throws if JWT_SECRET not set
+ * - In development/test: uses fallback with warning
+ */
+function getJwtSecret(): string {
+  const secret = process.env.JWT_SECRET;
+
+  if (process.env.NODE_ENV === 'production') {
+    if (!secret) {
+      console.error('FATAL: JWT_SECRET environment variable is required in production');
+      process.exit(1);
+    }
+    if (secret.length < 32) {
+      console.error('FATAL: JWT_SECRET must be at least 32 characters in production');
+      process.exit(1);
+    }
+    return secret;
+  }
+
+  // Development/test: allow fallback with warning
+  if (!secret) {
+    console.warn('WARNING: JWT_SECRET not set, using insecure development fallback');
+    return 'dev-secret-do-not-use-in-production';
+  }
+
+  return secret;
+}
+
+/**
+ * Export JWT_SECRET for use in other modules
+ */
+export function getJwtSecretForSigning(): string {
+  return JWT_SECRET;
+}
 
 // Track admin session activity
 const adminSessionActivity = new Map<string, { lastActivity: number; ip: string }>();
@@ -26,6 +68,42 @@ declare global {
       user?: TokenPayload;
     }
   }
+}
+
+/**
+ * Optional authentication middleware
+ * Attaches user info if valid token is present, but allows unauthenticated requests
+ */
+export async function optionalAuth(req: Request, res: Response, next: NextFunction) {
+  const authHeader = req.headers.authorization;
+
+  if (!authHeader) {
+    return next();
+  }
+
+  // Try to authenticate, but don't fail if it doesn't work
+  if (authHeader.startsWith('Bearer ')) {
+    const token = authHeader.substring(7);
+    try {
+      const payload = jwt.verify(token, JWT_SECRET) as TokenPayload & { iat?: number };
+
+      const blacklisted = await isTokenBlacklisted(token);
+      if (!blacklisted) {
+        if (payload.iat) {
+          const invalidated = await wasTokenInvalidatedForUser(payload.userId, payload.iat);
+          if (!invalidated) {
+            req.user = payload;
+          }
+        } else {
+          req.user = payload;
+        }
+      }
+    } catch {
+      // Token invalid or expired, continue without auth
+    }
+  }
+
+  next();
 }
 
 export async function authenticate(req: Request, res: Response, next: NextFunction) {
@@ -48,10 +126,28 @@ export async function authenticate(req: Request, res: Response, next: NextFuncti
   const token = authHeader.substring(7);
 
   try {
-    const payload = jwt.verify(token, JWT_SECRET) as TokenPayload;
+    const payload = jwt.verify(token, JWT_SECRET) as TokenPayload & { iat?: number };
+
+    // Check if token is blacklisted
+    const blacklisted = await isTokenBlacklisted(token);
+    if (blacklisted) {
+      return next(new UnauthorizedError('Token has been revoked'));
+    }
+
+    // Check if all user tokens were invalidated (e.g., password change)
+    if (payload.iat) {
+      const invalidated = await wasTokenInvalidatedForUser(payload.userId, payload.iat);
+      if (invalidated) {
+        return next(new UnauthorizedError('Session has been invalidated'));
+      }
+    }
+
     req.user = payload;
     next();
   } catch (error) {
+    if (error instanceof UnauthorizedError) {
+      return next(error);
+    }
     return next(new UnauthorizedError('Invalid or expired token'));
   }
 }
@@ -96,7 +192,8 @@ async function authenticateApiKey(
     });
 
     // Set user context with delegated scopes
-    const scopes = JSON.parse(tokenRecord.scopes) as string[];
+    // tokenRecord.scopes is a Json type (already parsed by Prisma)
+    const scopes = (tokenRecord.scopes as string[]) || [];
     req.user = {
       userId: tokenRecord.userId,
       email: tokenRecord.user.email || undefined,
@@ -141,11 +238,22 @@ export function requireScope(...scopes: string[]) {
 }
 
 export function generateToken(payload: TokenPayload, expiresIn: string | number = '24h'): string {
-  return jwt.sign(payload as object, JWT_SECRET, { expiresIn: expiresIn as jwt.SignOptions['expiresIn'] });
+  // Add jti (JWT ID) for token blacklisting
+  const tokenPayload = {
+    ...payload,
+    jti: uuidv4(),
+  };
+  return jwt.sign(tokenPayload, JWT_SECRET, { expiresIn: expiresIn as jwt.SignOptions['expiresIn'] });
 }
 
 export function generateRefreshToken(userId: string): string {
-  return jwt.sign({ userId, type: 'refresh' } as object, JWT_SECRET, { expiresIn: '7d' as jwt.SignOptions['expiresIn'] });
+  // Add jti for refresh token blacklisting
+  const payload = {
+    userId,
+    type: 'refresh',
+    jti: uuidv4(),
+  };
+  return jwt.sign(payload, JWT_SECRET, { expiresIn: '7d' as jwt.SignOptions['expiresIn'] });
 }
 
 /**

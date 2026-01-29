@@ -1,13 +1,12 @@
-// Task Status State Machine
-export type TaskStatus =
-  | 'draft'
-  | 'posted'
-  | 'claimed'
-  | 'submitted'
-  | 'accepted'
-  | 'disputed'
-  | 'cancelled'
-  | 'expired';
+// Re-export types from shared package to ensure consistency
+export type {
+  TaskStatus,
+  SubmissionStatus,
+  UserRole,
+} from '@ground-truth/shared';
+
+// Import for use in state machine
+import type { TaskStatus, SubmissionStatus } from '@ground-truth/shared';
 
 export const TASK_TRANSITIONS: Record<TaskStatus, TaskStatus[]> = {
   draft: ['posted', 'cancelled'],
@@ -30,15 +29,7 @@ export const CLAIM_TRANSITIONS: Record<ClaimStatus, ClaimStatus[]> = {
   converted: [],
 };
 
-// Submission Status State Machine
-export type SubmissionStatus =
-  | 'created'
-  | 'uploading'
-  | 'finalised'
-  | 'accepted'
-  | 'rejected'
-  | 'disputed'
-  | 'resolved';
+// Submission Status State Machine (type imported from @ground-truth/shared)
 
 export const SUBMISSION_TRANSITIONS: Record<SubmissionStatus, SubmissionStatus[]> = {
   created: ['uploading'],

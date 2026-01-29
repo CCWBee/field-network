@@ -50,6 +50,7 @@ export const QUEUE_NAMES = {
   NOTIFICATION: 'notification',
   WEBHOOK_DELIVERY: 'webhook-delivery',
   CLEANUP: 'cleanup',
+  DISPUTE_DEADLINE: 'dispute-deadline',
 } as const;
 
 type QueueName = (typeof QUEUE_NAMES)[keyof typeof QUEUE_NAMES];
@@ -90,9 +91,9 @@ export function getQueue(name: QueueName): Queue {
 /**
  * Register a worker for a queue
  */
-export function registerWorker<T = unknown>(
+export function registerWorker<T = unknown, R = unknown>(
   name: QueueName,
-  processor: (job: Job<T>) => Promise<void>,
+  processor: (job: Job<T>) => Promise<R>,
   options?: {
     concurrency?: number;
     limiter?: { max: number; duration: number };

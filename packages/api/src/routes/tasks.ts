@@ -6,8 +6,28 @@ import { recalculateUserStats } from '../services/reputation';
 import { authenticate, requireScope } from '../middleware/auth';
 import { NotFoundError, ValidationError, StateTransitionError } from '../middleware/errorHandler';
 import { TaskStatus, TASK_TRANSITIONS } from '../types/stateMachine';
+import { dispatchWebhookEvent } from '../jobs/webhook-delivery';
 
 const router = Router();
+
+/**
+ * Haversine distance calculation between two points
+ * Returns distance in meters
+ */
+function haversineDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6371000; // Earth's radius in meters
+  const toRad = (deg: number) => deg * (Math.PI / 180);
+
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+
+  const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+            Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
+            Math.sin(dLon / 2) * Math.sin(dLon / 2);
+
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
 
 // Task schema based on geo_photo_v1 template
 const LocationSchema = z.object({
@@ -95,9 +115,40 @@ router.get('/', authenticate, requireScope('tasks:read'), async (req: Request, r
       where.status = 'posted';
     }
 
-    const tasks = await prisma.task.findMany({
+    // Parse location filter params
+    const nearLat = near_lat ? parseFloat(near_lat as string) : null;
+    const nearLon = near_lon ? parseFloat(near_lon as string) : null;
+    const maxDistanceM = max_distance ? parseFloat(max_distance as string) : 50000; // Default 50km
+
+    // Validate location params
+    const hasLocationFilter = nearLat !== null && nearLon !== null &&
+                              !isNaN(nearLat) && !isNaN(nearLon) &&
+                              nearLat >= -90 && nearLat <= 90 &&
+                              nearLon >= -180 && nearLon <= 180;
+
+    // If location filter is provided, use bounding box pre-filter for database efficiency
+    // This is a rough filter; we'll do precise Haversine calculation after fetching
+    if (hasLocationFilter) {
+      // Calculate rough bounding box (1 degree lat ~ 111km, lon varies with latitude)
+      const latDelta = maxDistanceM / 111000;
+      const lonDelta = maxDistanceM / (111000 * Math.cos(nearLat! * Math.PI / 180));
+
+      where.locationLat = {
+        gte: nearLat! - latDelta,
+        lte: nearLat! + latDelta,
+      };
+      where.locationLon = {
+        gte: nearLon! - lonDelta,
+        lte: nearLon! + lonDelta,
+      };
+    }
+
+    let tasks = await prisma.task.findMany({
       where,
-      take: Math.min(parseInt(limit as string) || 50, 100),
+      // Fetch more than needed if filtering by location (some will be filtered out by Haversine)
+      take: hasLocationFilter
+        ? Math.min((parseInt(limit as string) || 50) * 2, 200)
+        : Math.min(parseInt(limit as string) || 50, 100),
       cursor: cursor ? { id: cursor as string } : undefined,
       orderBy: { createdAt: 'desc' },
       include: {
@@ -105,11 +156,42 @@ router.get('/', authenticate, requireScope('tasks:read'), async (req: Request, r
           where: { status: 'active' },
           select: { id: true, workerId: true },
         },
+        requester: {
+          select: {
+            id: true,
+            username: true,
+            avatarUrl: true,
+            ensName: true,
+            ensAvatarUrl: true,
+            stats: {
+              select: {
+                tasksPosted: true,
+                reliabilityScore: true,
+              },
+            },
+          },
+        },
       },
     });
 
+    // If location filter provided, do precise Haversine distance filtering
+    let tasksWithDistance: Array<{ task: typeof tasks[0]; distance_m: number | null }>;
+
+    if (hasLocationFilter) {
+      tasksWithDistance = tasks
+        .map(task => ({
+          task,
+          distance_m: haversineDistance(nearLat!, nearLon!, task.locationLat, task.locationLon),
+        }))
+        .filter(({ distance_m }) => distance_m <= maxDistanceM)
+        .sort((a, b) => a.distance_m - b.distance_m)
+        .slice(0, parseInt(limit as string) || 50);
+    } else {
+      tasksWithDistance = tasks.map(task => ({ task, distance_m: null }));
+    }
+
     res.json({
-      tasks: tasks.map(task => ({
+      tasks: tasksWithDistance.map(({ task, distance_m }) => ({
         id: task.id,
         title: task.title,
         template: task.template,
@@ -129,8 +211,19 @@ router.get('/', authenticate, requireScope('tasks:read'), async (req: Request, r
         },
         created_at: task.createdAt.toISOString(),
         is_claimed: task.claims.length > 0,
+        ...(distance_m !== null && { distance_m: Math.round(distance_m) }),
+        requester: task.requester ? {
+          id: task.requester.id,
+          username: task.requester.username,
+          avatar_url: task.requester.ensAvatarUrl || task.requester.avatarUrl,
+          ens_name: task.requester.ensName,
+          stats: task.requester.stats ? {
+            tasks_posted: task.requester.stats.tasksPosted,
+            reliability_score: task.requester.stats.reliabilityScore,
+          } : null,
+        } : null,
       })),
-      next_cursor: tasks.length > 0 ? tasks[tasks.length - 1].id : null,
+      next_cursor: tasksWithDistance.length > 0 ? tasksWithDistance[tasksWithDistance.length - 1].task.id : null,
     });
   } catch (error) {
     next(error);
@@ -140,21 +233,62 @@ router.get('/', authenticate, requireScope('tasks:read'), async (req: Request, r
 // GET /v1/tasks/:taskId - Get single task
 router.get('/:taskId', authenticate, requireScope('tasks:read'), async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const task = await prisma.task.findUnique({
-      where: { id: req.params.taskId },
+    const taskRaw = await prisma.task.findUnique({
+      where: { id: req.params.taskId as string },
       include: {
         claims: true,
         submissions: {
           include: {
             artefacts: true,
+            worker: {
+              select: {
+                id: true,
+                username: true,
+                avatarUrl: true,
+                ensName: true,
+                ensAvatarUrl: true,
+                stats: {
+                  select: {
+                    reliabilityScore: true,
+                    tasksAccepted: true,
+                    disputeRate: true,
+                  },
+                },
+              },
+            },
           },
         },
       },
     });
 
-    if (!task) {
+    if (!taskRaw) {
       throw new NotFoundError('Task');
     }
+
+    // Cast to any to access included relations
+    const task = taskRaw as any;
+
+    // Format submissions with worker info
+    const formattedSubmissions = task.submissions.map((sub: any) => ({
+      id: sub.id,
+      status: sub.status,
+      proofBundleHash: sub.proofBundleHash,
+      verificationScore: sub.verificationScore,
+      created_at: sub.createdAt.toISOString(),
+      finalised_at: sub.finalisedAt?.toISOString(),
+      artefacts: sub.artefacts,
+      worker: sub.worker ? {
+        id: sub.worker.id,
+        username: sub.worker.username,
+        avatar_url: sub.worker.ensAvatarUrl || sub.worker.avatarUrl,
+        ens_name: sub.worker.ensName,
+        stats: sub.worker.stats ? {
+          reliability_score: sub.worker.stats.reliabilityScore,
+          tasks_accepted: sub.worker.stats.tasksAccepted,
+          dispute_rate: sub.worker.stats.disputeRate,
+        } : null,
+      } : null,
+    }));
 
     res.json({
       id: task.id,
@@ -174,7 +308,7 @@ router.get('/:taskId', authenticate, requireScope('tasks:read'), async (req: Req
         start_iso: task.timeStart.toISOString(),
         end_iso: task.timeEnd.toISOString(),
       },
-      requirements: JSON.parse(task.requirementsJson),
+      requirements: task.requirementsJson,
       assurance: {
         mode: task.assuranceMode,
         quorum: task.quorumN,
@@ -187,12 +321,12 @@ router.get('/:taskId', authenticate, requireScope('tasks:read'), async (req: Req
         exclusivity_days: task.rightsExclusivityDays,
         allow_resale_after_exclusivity: task.rightsResaleAllowed,
       },
-      policy: task.policyJson ? JSON.parse(task.policyJson) : null,
+      policy: task.policyJson || null,
       created_at: task.createdAt.toISOString(),
       published_at: task.publishedAt?.toISOString(),
       expires_at: task.expiresAt?.toISOString(),
       claims: task.claims,
-      submissions: task.submissions,
+      submissions: formattedSubmissions,
     });
   } catch (error) {
     next(error);
@@ -224,7 +358,7 @@ router.post('/', authenticate, requireScope('tasks:write'), async (req: Request,
         currency: data.bounty.currency,
         rightsExclusivityDays: data.rights.exclusivity_days,
         rightsResaleAllowed: data.rights.allow_resale_after_exclusivity,
-        policyJson: data.policy ? JSON.stringify(data.policy) : null,
+        policyJson: data.policy ? JSON.stringify(data.policy) : undefined,
       },
     });
 
@@ -255,7 +389,7 @@ router.post('/', authenticate, requireScope('tasks:write'), async (req: Request,
 router.post('/:taskId/publish', authenticate, requireScope('tasks:publish'), async (req: Request, res: Response, next: NextFunction) => {
   try {
     const task = await prisma.task.findUnique({
-      where: { id: req.params.taskId },
+      where: { id: req.params.taskId as string },
     });
 
     if (!task) {
@@ -305,6 +439,24 @@ router.post('/:taskId/publish', authenticate, requireScope('tasks:publish'), asy
 
     await recalculateUserStats(req.user!.userId);
 
+    // Dispatch webhook event
+    await dispatchWebhookEvent('task.published', {
+      task_id: updatedTask.id,
+      title: task.title,
+      bounty_amount: task.bountyAmount,
+      currency: task.currency,
+      location: {
+        lat: task.locationLat,
+        lon: task.locationLon,
+        radius_m: task.radiusM,
+      },
+      time_window: {
+        start_iso: task.timeStart.toISOString(),
+        end_iso: task.timeEnd.toISOString(),
+      },
+      published_at: updatedTask.publishedAt?.toISOString(),
+    }, req.user!.userId);
+
     res.json({
       id: updatedTask.id,
       status: updatedTask.status,
@@ -319,7 +471,7 @@ router.post('/:taskId/publish', authenticate, requireScope('tasks:publish'), asy
 router.post('/:taskId/cancel', authenticate, requireScope('tasks:write'), async (req: Request, res: Response, next: NextFunction) => {
   try {
     const task = await prisma.task.findUnique({
-      where: { id: req.params.taskId },
+      where: { id: req.params.taskId as string },
     });
 
     if (!task) {

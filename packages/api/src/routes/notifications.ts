@@ -59,9 +59,9 @@ router.get('/unread-count', authenticate, async (req: Request, res: Response, ne
 // POST /v1/notifications/:id/read - Mark single notification as read
 router.post('/:id/read', authenticate, async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { id } = req.params;
+    const id = req.params.id as string;
 
-    const success = await markAsRead(id, req.user!.userId);
+    const success = await markAsRead(id as string, req.user!.userId);
     if (!success) {
       throw new NotFoundError('Notification');
     }

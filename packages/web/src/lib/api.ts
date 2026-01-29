@@ -1,26 +1,166 @@
+import type { TaskStatus, SubmissionStatus, UserRole } from '@ground-truth/shared';
+
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+
+// Re-export shared types for consumers
+export type { TaskStatus, SubmissionStatus, UserRole };
+
+// Storage keys for tokens
+const ACCESS_TOKEN_KEY = 'field_access_token';
+const REFRESH_TOKEN_KEY = 'field_refresh_token';
+
+// Event for session expiry (components can listen to this)
+export const sessionExpiredEvent = typeof window !== 'undefined' ? new EventTarget() : null;
 
 interface RequestOptions extends RequestInit {
   token?: string;
+  skipRefresh?: boolean; // Skip token refresh on 401 (to prevent infinite loops)
 }
 
 class ApiClient {
   private baseUrl: string;
   private token: string | null = null;
+  private refreshToken: string | null = null;
+  private refreshPromise: Promise<boolean> | null = null;
+  private onSessionExpired: (() => void) | null = null;
 
   constructor(baseUrl: string) {
     this.baseUrl = baseUrl;
+    // Load tokens from localStorage if available (client-side only)
+    if (typeof window !== 'undefined') {
+      this.token = localStorage.getItem(ACCESS_TOKEN_KEY);
+      this.refreshToken = localStorage.getItem(REFRESH_TOKEN_KEY);
+    }
   }
 
   setToken(token: string | null) {
     this.token = token;
+    if (typeof window !== 'undefined') {
+      if (token) {
+        localStorage.setItem(ACCESS_TOKEN_KEY, token);
+      } else {
+        localStorage.removeItem(ACCESS_TOKEN_KEY);
+      }
+    }
+  }
+
+  setRefreshToken(refreshToken: string | null) {
+    this.refreshToken = refreshToken;
+    if (typeof window !== 'undefined') {
+      if (refreshToken) {
+        localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken);
+      } else {
+        localStorage.removeItem(REFRESH_TOKEN_KEY);
+      }
+    }
+  }
+
+  /**
+   * Set both tokens at once (useful after login)
+   */
+  setTokens(accessToken: string | null, refreshToken: string | null) {
+    this.setToken(accessToken);
+    this.setRefreshToken(refreshToken);
+  }
+
+  /**
+   * Clear all tokens (for logout)
+   */
+  clearTokens() {
+    this.setTokens(null, null);
+  }
+
+  /**
+   * Get current access token
+   */
+  getToken(): string | null {
+    return this.token;
+  }
+
+  /**
+   * Get current refresh token
+   */
+  getRefreshToken(): string | null {
+    return this.refreshToken;
+  }
+
+  /**
+   * Check if user has tokens (may still be expired)
+   */
+  hasTokens(): boolean {
+    return !!(this.token || this.refreshToken);
+  }
+
+  /**
+   * Set callback for session expiry
+   */
+  onSessionExpiry(callback: () => void) {
+    this.onSessionExpired = callback;
+  }
+
+  /**
+   * Attempt to refresh the access token
+   * Returns true if successful, false otherwise
+   */
+  private async tryRefreshToken(): Promise<boolean> {
+    // If already refreshing, wait for that to complete
+    if (this.refreshPromise) {
+      return this.refreshPromise;
+    }
+
+    if (!this.refreshToken) {
+      return false;
+    }
+
+    this.refreshPromise = (async () => {
+      try {
+        const response = await fetch(`${this.baseUrl}/v1/auth/refresh`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ refreshToken: this.refreshToken }),
+        });
+
+        if (!response.ok) {
+          // Refresh failed - session is expired
+          this.handleSessionExpired();
+          return false;
+        }
+
+        const data = await response.json();
+        this.setTokens(data.token, data.refreshToken);
+        return true;
+      } catch (error) {
+        console.error('Token refresh failed:', error);
+        this.handleSessionExpired();
+        return false;
+      } finally {
+        this.refreshPromise = null;
+      }
+    })();
+
+    return this.refreshPromise;
+  }
+
+  /**
+   * Handle session expiry
+   */
+  private handleSessionExpired() {
+    this.clearTokens();
+    // Dispatch event for listeners
+    if (sessionExpiredEvent) {
+      sessionExpiredEvent.dispatchEvent(new CustomEvent('expired'));
+    }
+    // Call callback if set
+    if (this.onSessionExpired) {
+      this.onSessionExpired();
+    }
   }
 
   private async request<T>(
     endpoint: string,
     options: RequestOptions = {}
   ): Promise<T> {
-    const { token, ...fetchOptions } = options;
+    const { token, skipRefresh, ...fetchOptions } = options;
 
     const headers: HeadersInit = {
       'Content-Type': 'application/json',
@@ -36,6 +176,18 @@ class ApiClient {
       headers,
     });
 
+    // Handle 401 Unauthorized - try to refresh token
+    if (response.status === 401 && !skipRefresh && !token) {
+      const refreshed = await this.tryRefreshToken();
+      if (refreshed) {
+        // Retry the original request with new token
+        return this.request<T>(endpoint, { ...options, skipRefresh: true });
+      }
+      // Refresh failed, throw the error
+      const error = await response.json().catch(() => ({ error: 'Session expired' }));
+      throw new Error(error.error || 'Session expired');
+    }
+
     if (!response.ok) {
       const error = await response.json().catch(() => ({ error: 'Unknown error' }));
       throw new Error(error.error || `HTTP ${response.status}`);
@@ -46,7 +198,7 @@ class ApiClient {
 
   // Auth endpoints
   async register(email: string, password: string) {
-    return this.request<{
+    const result = await this.request<{
       user: { id: string; email: string; role: string };
       token: string;
       refreshToken: string;
@@ -54,10 +206,14 @@ class ApiClient {
       method: 'POST',
       body: JSON.stringify({ email, password }),
     });
+
+    // Automatically store tokens after successful registration
+    this.setTokens(result.token, result.refreshToken);
+    return result;
   }
 
   async login(email: string, password: string) {
-    return this.request<{
+    const result = await this.request<{
       user: { id: string; email: string; role: string };
       token: string;
       refreshToken: string;
@@ -65,6 +221,45 @@ class ApiClient {
       method: 'POST',
       body: JSON.stringify({ email, password }),
     });
+
+    // Automatically store tokens after successful login
+    this.setTokens(result.token, result.refreshToken);
+    return result;
+  }
+
+  /**
+   * Logout - invalidates tokens on server and clears local storage
+   */
+  async logout(): Promise<void> {
+    try {
+      // Send logout request with refresh token so server can invalidate both
+      await this.request<{ message: string }>('/v1/auth/logout', {
+        method: 'POST',
+        body: JSON.stringify({ refreshToken: this.refreshToken }),
+        skipRefresh: true, // Don't try to refresh on logout
+      });
+    } catch (error) {
+      // Even if server request fails, clear local tokens
+      console.warn('Logout request failed:', error);
+    } finally {
+      this.clearTokens();
+    }
+  }
+
+  /**
+   * Logout from all devices - invalidates all user tokens
+   */
+  async logoutAll(): Promise<void> {
+    try {
+      await this.request<{ message: string }>('/v1/auth/logout-all', {
+        method: 'POST',
+        skipRefresh: true,
+      });
+    } catch (error) {
+      console.warn('Logout all request failed:', error);
+    } finally {
+      this.clearTokens();
+    }
   }
 
   async getMe() {
@@ -131,7 +326,7 @@ class ApiClient {
     signature: string;
     role?: 'requester' | 'worker';
   }) {
-    return this.request<{
+    const result = await this.request<{
       user: {
         id: string;
         email: string | null;
@@ -145,6 +340,10 @@ class ApiClient {
       method: 'POST',
       body: JSON.stringify(data),
     });
+
+    // Automatically store tokens after successful SIWE verification
+    this.setTokens(result.token, result.refreshToken);
+    return result;
   }
 
   // Wallet management
@@ -919,6 +1118,148 @@ class ApiClient {
       limit: number;
       offset: number;
     }>(`/v1/profile/${encodeURIComponent(usernameOrId)}/reputation-history?${params.toString()}`);
+  }
+
+  // Public user profile endpoints
+  async getUserProfile(usernameOrId: string) {
+    return this.request<{
+      id: string;
+      username: string | null;
+      bio: string | null;
+      avatar_url: string | null;
+      ens_name: string | null;
+      ens_avatar_url: string | null;
+      location: string | null;
+      website: string | null;
+      twitter_handle: string | null;
+      member_since: string;
+      stats: {
+        tasks_completed: number;
+        tasks_posted: number;
+        tasks_accepted: number;
+        reliability_score: number;
+        dispute_rate: number;
+        current_streak: number;
+        longest_streak: number;
+        avg_response_time_hours: number | null;
+        avg_delivery_time_hours: number | null;
+        wallet_verified: boolean;
+        identity_verified: boolean;
+      } | null;
+      rating: {
+        average: number | null;
+        count: number;
+      };
+      badges: Array<{
+        badge_type: string;
+        tier: string;
+        title: string;
+        description: string;
+        icon_url: string | null;
+        earned_at: string;
+      }>;
+    }>(`/v1/users/${encodeURIComponent(usernameOrId)}`);
+  }
+
+  async getUserStats(usernameOrId: string) {
+    return this.request<{
+      summary: {
+        tasks_completed: number;
+        tasks_posted: number;
+        tasks_accepted: number;
+        tasks_rejected: number;
+        reliability_score: number;
+        dispute_rate: number;
+        current_streak: number;
+        longest_streak: number;
+        avg_response_time_hours: number | null;
+        avg_delivery_time_hours: number | null;
+      } | null;
+      submission_breakdown: {
+        accepted: number;
+        rejected: number;
+        pending: number;
+        disputed: number;
+      };
+      activity_chart: Array<{
+        month: string;
+        label: string;
+        tasks_completed: number;
+      }>;
+      member_since: string;
+    }>(`/v1/users/${encodeURIComponent(usernameOrId)}/stats`);
+  }
+
+  async getUserBadges(usernameOrId: string) {
+    return this.request<{
+      badges: Array<{
+        badge_type: string;
+        tier: string;
+        title: string;
+        description: string;
+        icon_url: string | null;
+        category: string;
+        earned_at: string;
+      }>;
+      summary: {
+        total: number;
+        by_tier: {
+          platinum: number;
+          gold: number;
+          silver: number;
+          bronze: number;
+        };
+      };
+    }>(`/v1/users/${encodeURIComponent(usernameOrId)}/badges`);
+  }
+
+  async getUserReviews(usernameOrId: string, options?: { limit?: number; offset?: number; role?: 'requester' | 'worker' }) {
+    const params = new URLSearchParams();
+    if (options?.limit) params.set('limit', String(options.limit));
+    if (options?.offset) params.set('offset', String(options.offset));
+    if (options?.role) params.set('role', options.role);
+    return this.request<{
+      reviews: Array<{
+        id: string;
+        rating: number;
+        comment: string | null;
+        role: string;
+        reviewer: {
+          username: string | null;
+          avatar_url: string | null;
+        } | null;
+        created_at: string;
+      }>;
+      summary: {
+        average_rating: number | null;
+        total_reviews: number;
+        rating_breakdown: Record<number, number>;
+      };
+      total: number;
+      limit: number;
+      offset: number;
+    }>(`/v1/users/${encodeURIComponent(usernameOrId)}/reviews?${params.toString()}`);
+  }
+
+  async submitReview(usernameOrId: string, data: { task_id: string; rating: number; comment?: string }) {
+    return this.request<{
+      id: string;
+      rating: number;
+      comment: string | null;
+      role: string;
+      created_at: string;
+    }>(`/v1/users/${encodeURIComponent(usernameOrId)}/reviews`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async canReviewUser(usernameOrId: string, taskId: string) {
+    return this.request<{
+      can_review: boolean;
+      reason?: string;
+      role?: string;
+    }>(`/v1/users/${encodeURIComponent(usernameOrId)}/can-review/${taskId}`);
   }
 }
 

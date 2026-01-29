@@ -20,27 +20,38 @@ import {
   recordFeeLedgerEntry,
   checkTierPromotion,
 } from '../services/fees';
+import { dispatchWebhookEvent } from '../jobs/webhook-delivery';
+import { releaseTaskStake } from '../services/staking';
+
+// Helper to safely extract string from query/param
+function qs(param: any): string | undefined {
+  if (typeof param === 'string') return param;
+  if (Array.isArray(param) && typeof param[0] === 'string') return param[0];
+  return undefined;
+}
 
 const router = Router();
 
 // POST /v1/tasks/:taskId/submissions - Create submission
 router.post('/:taskId/submissions', authenticate, requireScope('submissions:write'), async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { taskId } = req.params;
+    const taskId = req.params.taskId as string;
 
     // Check claim exists and is active
-    const claim = await prisma.taskClaim.findFirst({
+    const claimRaw = await prisma.taskClaim.findFirst({
       where: {
-        taskId,
+        taskId: taskId as string,
         workerId: req.user!.userId,
         status: 'active',
       },
       include: { task: true },
     });
 
-    if (!claim) {
+    if (!claimRaw) {
       throw new ValidationError('You must have an active claim to submit');
     }
+
+    const claim = claimRaw as any;
 
     // Check claim hasn't expired
     if (new Date() > claim.claimedUntil) {
@@ -81,6 +92,15 @@ router.post('/:taskId/submissions', authenticate, requireScope('submissions:writ
       },
     });
 
+    // Dispatch webhook event
+    await dispatchWebhookEvent('submission.created', {
+      submission_id: submission.id,
+      task_id: taskId,
+      worker_id: req.user!.userId,
+      status: submission.status,
+      created_at: submission.createdAt.toISOString(),
+    }, claim.task.requesterId);
+
     res.status(201).json({
       submission_id: submission.id,
       task_id: taskId,
@@ -94,7 +114,7 @@ router.post('/:taskId/submissions', authenticate, requireScope('submissions:writ
 // POST /v1/submissions/:submissionId/artefacts - Init artefact upload
 router.post('/:submissionId/artefacts', authenticate, requireScope('submissions:write'), async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { submissionId } = req.params;
+    const submissionId = req.params.submissionId as string;
     const { type, filename, content_type, size_bytes } = req.body;
 
     const submission = await prisma.submission.findUnique({
@@ -115,12 +135,12 @@ router.post('/:submissionId/artefacts', authenticate, requireScope('submissions:
 
     // Generate storage key and upload URL
     const artefactId = uuidv4();
-    const storageKey = `${process.env.NODE_ENV || 'dev'}/${submission.taskId}/${submissionId}/${artefactId}/${filename}`;
+    const storageKey = `${process.env.NODE_ENV || 'dev'}/${submission.taskId}/${submissionId as string}/${artefactId}/${filename}`;
 
     // Create artefact record
     const artefact = await prisma.artefact.create({
       data: {
-        submissionId,
+        submissionId: submissionId as string,
         type: type || 'photo',
         storageKey,
         sha256: '', // Will be set after upload
@@ -167,10 +187,10 @@ router.post('/:submissionId/artefacts', authenticate, requireScope('submissions:
 // POST /v1/submissions/:submissionId/finalise - Finalise submission
 router.post('/:submissionId/finalise', authenticate, requireScope('submissions:write'), async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { submissionId } = req.params;
+    const submissionId = req.params.submissionId as string;
     const { capture_claims } = req.body;
 
-    const submission = await prisma.submission.findUnique({
+    const submissionRaw = await prisma.submission.findUnique({
       where: { id: submissionId },
       include: {
         artefacts: true,
@@ -178,9 +198,11 @@ router.post('/:submissionId/finalise', authenticate, requireScope('submissions:w
       },
     });
 
-    if (!submission) {
+    if (!submissionRaw) {
       throw new NotFoundError('Submission');
     }
+
+    const submission = submissionRaw as any;
 
     if (submission.workerId !== req.user!.userId) {
       throw new NotFoundError('Submission');
@@ -191,7 +213,7 @@ router.post('/:submissionId/finalise', authenticate, requireScope('submissions:w
     }
 
     // Check minimum artefacts
-    const requirements = JSON.parse(submission.task.requirementsJson);
+    const requirements = JSON.parse(typeof submission.task.requirementsJson === 'string' ? submission.task.requirementsJson : JSON.stringify(submission.task.requirementsJson || {}));
     if (submission.artefacts.length < (requirements?.photos?.count || 1)) {
       throw new ValidationError(`Minimum ${requirements?.photos?.count || 1} photos required`);
     }
@@ -203,7 +225,7 @@ router.post('/:submissionId/finalise', authenticate, requireScope('submissions:w
       submission_id: submission.id,
       worker_id: submission.workerId,
       capture_claims: capture_claims || {},
-      artefacts: submission.artefacts.map(a => ({
+      artefacts: submission.artefacts.map((a: any) => ({
         id: a.id,
         type: a.type,
         storage_key: a.storageKey,
@@ -268,7 +290,8 @@ router.post('/:submissionId/finalise', authenticate, requireScope('submissions:w
       submission.taskId,
       submission.task.title,
       submission.id,
-      workerName
+      workerName,
+      verificationResult.score
     );
 
     res.json({
@@ -288,8 +311,8 @@ router.post('/:submissionId/finalise', authenticate, requireScope('submissions:w
 // GET /v1/submissions/:submissionId - Get submission details
 router.get('/:submissionId', authenticate, requireScope('submissions:read'), async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const submission = await prisma.submission.findUnique({
-      where: { id: req.params.submissionId },
+    const submissionRaw = await prisma.submission.findUnique({
+      where: { id: req.params.submissionId as string },
       include: {
         artefacts: true,
         task: true,
@@ -297,9 +320,11 @@ router.get('/:submissionId', authenticate, requireScope('submissions:read'), asy
       },
     });
 
-    if (!submission) {
+    if (!submissionRaw) {
       throw new NotFoundError('Submission');
     }
+
+    const submission = submissionRaw as any;
 
     // Only allow owner, requester, or admin to view
     const isOwner = submission.workerId === req.user!.userId;
@@ -319,8 +344,8 @@ router.get('/:submissionId', authenticate, requireScope('submissions:read'), asy
       finalised_at: submission.finalisedAt?.toISOString(),
       proof_bundle_hash: submission.proofBundleHash,
       verification_score: submission.verificationScore,
-      flags: JSON.parse(submission.flagsJson),
-      artefacts: submission.artefacts.map(a => ({
+      flags: JSON.parse(typeof submission.flagsJson === 'string' ? submission.flagsJson : JSON.stringify(submission.flagsJson || [])),
+      artefacts: submission.artefacts.map((a: any) => ({
         id: a.id,
         type: a.type,
         sha256: a.sha256,
@@ -337,16 +362,18 @@ router.get('/:submissionId', authenticate, requireScope('submissions:read'), asy
 // POST /v1/submissions/:submissionId/accept - Accept submission
 router.post('/:submissionId/accept', authenticate, requireScope('decisions:accept'), async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { submissionId } = req.params;
+    const submissionId = req.params.submissionId as string;
 
-    const submission = await prisma.submission.findUnique({
+    const submissionRaw = await prisma.submission.findUnique({
       where: { id: submissionId },
       include: { task: true },
     });
 
-    if (!submission) {
+    if (!submissionRaw) {
       throw new NotFoundError('Submission');
     }
+
+    const submission = submissionRaw as any;
 
     // Only requester or admin can accept
     if (submission.task.requesterId !== req.user!.userId && req.user!.role !== 'admin') {
@@ -373,7 +400,7 @@ router.post('/:submissionId/accept', authenticate, requireScope('decisions:accep
       // Create decision record
       await tx.decision.create({
         data: {
-          submissionId,
+          submissionId: submissionId as string,
           actorId: req.user!.userId,
           decisionType: 'accept',
           comment: req.body.comment,
@@ -385,7 +412,7 @@ router.post('/:submissionId/accept', authenticate, requireScope('decisions:accep
       recalculateUserStats(submission.workerId, {
         reason: 'task_accepted',
         taskId: submission.taskId,
-        submissionId,
+        submissionId: submissionId as string,
       }),
       recalculateUserStats(submission.task.requesterId),
     ]);
@@ -395,6 +422,12 @@ router.post('/:submissionId/accept', authenticate, requireScope('decisions:accep
     if (!escrowResult.success) {
       // Log but don't fail - submission is accepted, escrow release can be retried
       console.error(`Escrow release failed for task ${submission.taskId}: ${escrowResult.error}`);
+    }
+
+    // Release stake back to worker (successful submission)
+    const stakeResult = await releaseTaskStake(submission.taskId, submission.workerId);
+    if (!stakeResult.success) {
+      console.error(`Stake release failed for task ${submission.taskId}: ${stakeResult.error}`);
     }
 
     // Record platform fee in ledger
@@ -462,6 +495,26 @@ router.post('/:submissionId/accept', authenticate, requireScope('decisions:accep
       );
     }
 
+    // Dispatch webhook events
+    await dispatchWebhookEvent('submission.accepted', {
+      submission_id: submissionId,
+      task_id: submission.taskId,
+      worker_id: submission.workerId,
+      bounty_amount: submission.task.bountyAmount,
+      currency: submission.task.currency,
+      accepted_at: new Date().toISOString(),
+    }, submission.task.requesterId);
+
+    // Also dispatch task.completed event
+    await dispatchWebhookEvent('task.completed', {
+      task_id: submission.taskId,
+      submission_id: submissionId,
+      worker_id: submission.workerId,
+      bounty_amount: submission.task.bountyAmount,
+      currency: submission.task.currency,
+      completed_at: new Date().toISOString(),
+    }, submission.task.requesterId);
+
     res.json({
       submission_id: submissionId,
       status: 'accepted',
@@ -480,21 +533,23 @@ router.post('/:submissionId/accept', authenticate, requireScope('decisions:accep
 // POST /v1/submissions/:submissionId/reject - Reject submission
 router.post('/:submissionId/reject', authenticate, requireScope('decisions:reject'), async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { submissionId } = req.params;
+    const submissionId = req.params.submissionId as string;
     const { reason_code, comment } = req.body;
 
     if (!reason_code) {
       throw new ValidationError('reason_code is required');
     }
 
-    const submission = await prisma.submission.findUnique({
+    const submissionRaw = await prisma.submission.findUnique({
       where: { id: submissionId },
       include: { task: true },
     });
 
-    if (!submission) {
+    if (!submissionRaw) {
       throw new NotFoundError('Submission');
     }
+
+    const submission = submissionRaw as any;
 
     if (submission.task.requesterId !== req.user!.userId && req.user!.role !== 'admin') {
       throw new NotFoundError('Submission');
@@ -512,7 +567,7 @@ router.post('/:submissionId/reject', authenticate, requireScope('decisions:rejec
 
       await tx.decision.create({
         data: {
-          submissionId,
+          submissionId: submissionId as string,
           actorId: req.user!.userId,
           decisionType: 'reject',
           reasonCode: reason_code,
@@ -525,20 +580,27 @@ router.post('/:submissionId/reject', authenticate, requireScope('decisions:rejec
       recalculateUserStats(submission.workerId, {
         reason: 'task_rejected',
         taskId: submission.taskId,
-        submissionId,
+        submissionId: submissionId as string,
       }),
       recalculateUserStats(submission.task.requesterId),
     ]);
+
+    // Release stake back to worker (benefit of doubt - rejection without dispute returns stake)
+    // Worker can dispute if they believe rejection was unfair
+    const stakeResult = await releaseTaskStake(submission.taskId, submission.workerId);
+    if (!stakeResult.success) {
+      console.error(`Stake release failed for rejected task ${submission.taskId}: ${stakeResult.error}`);
+    }
 
     await prisma.auditEvent.create({
       data: {
         actorId: req.user!.userId,
         action: 'submission.rejected',
         objectType: 'submission',
-        objectId: submissionId,
+        objectId: submissionId as string,
         ip: req.ip || 'unknown',
         userAgent: req.get('user-agent') || 'unknown',
-        detailsJson: JSON.stringify({ reason_code }),
+        detailsJson: JSON.stringify({ reason_code, stake_released: stakeResult.success }),
       },
     });
 
@@ -547,9 +609,20 @@ router.post('/:submissionId/reject', authenticate, requireScope('decisions:rejec
       submission.workerId,
       submission.taskId,
       submission.task.title,
-      submissionId,
+      submissionId as string,
       reason_code
     );
+
+    // Dispatch webhook event
+    await dispatchWebhookEvent('submission.rejected', {
+      submission_id: submissionId,
+      task_id: submission.taskId,
+      worker_id: submission.workerId,
+      reason_code,
+      comment: comment || null,
+      rejected_at: new Date().toISOString(),
+      dispute_window_hours: 48,
+    }, submission.task.requesterId);
 
     res.json({
       submission_id: submissionId,

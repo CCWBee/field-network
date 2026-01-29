@@ -5,9 +5,22 @@ import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/lib/store';
+import {
+  Spinner,
+  Alert,
+  Button,
+  Card,
+  CardBody,
+  EmptySearchResults,
+  EmptyMapView,
+  StaggeredList,
+  StaggeredItem,
+  HoverScale,
+} from '@/components/ui';
+import PublicProfileCard from '@/components/PublicProfileCard';
 
 // Dynamic imports for components with client-side dependencies
-const TaskMap = dynamic(() => import('@/components/TaskMap'), { ssr: false });
+const TaskBrowseMap = dynamic(() => import('@/components/TaskBrowseMap'), { ssr: false });
 const EarningsChart = dynamic(() => import('@/components/EarningsChart'), { ssr: false });
 const CompletedTasksMap = dynamic(() => import('@/components/CompletedTasksMap'), { ssr: false });
 import AchievementProgress, { StatCard } from '@/components/AchievementProgress';
@@ -71,6 +84,7 @@ export default function WorkerDashboard() {
   const [taskTemplate, setTaskTemplate] = useState('all');
   const [showClaimed, setShowClaimed] = useState(true);
   const [activeTab, setActiveTab] = useState<'missions' | 'stats' | 'history'>('missions');
+  const [viewMode, setViewMode] = useState<'grid' | 'map'>('grid');
 
   useEffect(() => {
     fetchTasks();
@@ -266,14 +280,6 @@ export default function WorkerDashboard() {
     });
   }, [tasks, minBounty, bountyCurrency, taskTemplate, showClaimed, mapCenter, maxDistanceKm, useDistanceFilter]);
 
-  const taskPoints = useMemo(() => {
-    return filteredTasks.map((task) => ({
-      id: task.id,
-      location: task.location,
-      bounty: task.bounty,
-    }));
-  }, [filteredTasks]);
-
   const selectedTask = useMemo(() => {
     return tasks.find((task) => task.id === selectedTaskId) ?? null;
   }, [tasks, selectedTaskId]);
@@ -316,12 +322,20 @@ export default function WorkerDashboard() {
           <h1 className="text-3xl font-semibold text-slate-800">Collector Mission Board</h1>
           <p className="text-slate-500 mt-2">Track bounties, performance, and live opportunities.</p>
         </div>
-        <Link
-          href="/dashboard/worker/claims"
-          className="text-field-600 hover:text-field-500 text-sm"
-        >
-          View My Claims &rarr;
-        </Link>
+        <div className="flex gap-4">
+          <Link
+            href="/dashboard/worker/claims"
+            className="text-field-600 hover:text-field-500 text-sm"
+          >
+            My Claims &rarr;
+          </Link>
+          <Link
+            href="/dashboard/worker/history"
+            className="text-field-600 hover:text-field-500 text-sm"
+          >
+            History &rarr;
+          </Link>
+        </div>
       </div>
 
       {/* Stats Overview Cards */}
@@ -431,6 +445,124 @@ export default function WorkerDashboard() {
       {/* Missions Tab */}
       {activeTab === 'missions' && (
         <>
+          {/* View Mode Toggle */}
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-lg font-medium text-slate-800">
+              {filteredTasks.length} Available {filteredTasks.length === 1 ? 'Task' : 'Tasks'}
+            </h2>
+            <div className="flex items-center gap-2 bg-surface-50 p-1 rounded-lg">
+              <button
+                onClick={() => setViewMode('grid')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-md transition-colors ${
+                  viewMode === 'grid'
+                    ? 'bg-white text-slate-800 shadow-sm'
+                    : 'text-slate-500 hover:text-slate-700'
+                }`}
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+                </svg>
+                Grid
+              </button>
+              <button
+                onClick={() => setViewMode('map')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-md transition-colors ${
+                  viewMode === 'map'
+                    ? 'bg-white text-slate-800 shadow-sm'
+                    : 'text-slate-500 hover:text-slate-700'
+                }`}
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+                </svg>
+                Map
+              </button>
+            </div>
+          </div>
+
+          {/* Full Map View Mode */}
+          {viewMode === 'map' ? (
+            <div className="space-y-6">
+              {/* Filters row for map view */}
+              <div className="glass rounded-lg border border-surface-200 p-4">
+                <div className="flex flex-wrap items-center gap-4">
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      id="distanceFilterMap"
+                      checked={useDistanceFilter}
+                      onChange={(e) => setUseDistanceFilter(e.target.checked)}
+                      className="rounded border-surface-300 text-field-600"
+                    />
+                    <label htmlFor="distanceFilterMap" className="text-sm text-slate-600">
+                      Within
+                    </label>
+                    <select
+                      value={maxDistanceKm}
+                      onChange={(e) => setMaxDistanceKm(Number(e.target.value))}
+                      className="text-sm border border-surface-300 rounded-md px-2 py-1 bg-white"
+                      disabled={!useDistanceFilter}
+                    >
+                      {[10, 25, 50, 100, 250, 500].map((km) => (
+                        <option key={km} value={km}>{km} km</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <label className="text-sm text-slate-600">Min bounty</label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={minBounty}
+                      onChange={(e) => setMinBounty(Number(e.target.value))}
+                      className="w-20 text-sm border border-surface-300 rounded-md px-2 py-1 bg-white"
+                    />
+                  </div>
+                  <select
+                    value={taskTemplate}
+                    onChange={(e) => setTaskTemplate(e.target.value)}
+                    className="text-sm border border-surface-300 rounded-md px-2 py-1 bg-white"
+                  >
+                    <option value="all">All types</option>
+                    {taskTemplates.map((template) => (
+                      <option key={template} value={template}>{template}</option>
+                    ))}
+                  </select>
+                  <label className="flex items-center gap-2 text-sm text-slate-600">
+                    <input
+                      type="checkbox"
+                      checked={showClaimed}
+                      onChange={(e) => setShowClaimed(e.target.checked)}
+                      className="rounded border-surface-300 text-field-600"
+                    />
+                    Show claimed
+                  </label>
+                  <div className="ml-auto text-sm text-slate-500">
+                    {filteredTasks.length} tasks shown
+                  </div>
+                </div>
+              </div>
+
+              {/* Large map */}
+              <div className="glass rounded-lg border border-surface-200 overflow-hidden">
+                <TaskBrowseMap
+                  tasks={filteredTasks}
+                  height="calc(100vh - 400px)"
+                  userLocation={mapCenter}
+                  radiusFilter={useDistanceFilter ? maxDistanceKm : null}
+                  onTaskSelect={(task) => setSelectedTaskId(task.id)}
+                  onTaskClaim={handleClaim}
+                  selectedTaskId={selectedTaskId}
+                  claimingTaskId={claimingId}
+                  showUserLocation={true}
+                  showRadiusCircle={useDistanceFilter}
+                  enableClustering={filteredTasks.length > 15}
+                />
+              </div>
+            </div>
+          ) : (
+            /* Grid View Mode */
+            <>
           <div className="grid gap-6 lg:grid-cols-[280px_1fr] mb-10">
             <div className="glass rounded-lg border border-surface-200 p-5">
               <div className="text-xs uppercase tracking-[0.3em] text-slate-400">Filters</div>
@@ -525,14 +657,28 @@ export default function WorkerDashboard() {
                   <h2 className="text-lg font-semibold text-slate-800">Live Bounty Map</h2>
                   <p className="text-sm text-slate-500">Click a marker for a quick view without leaving the map.</p>
                 </div>
-                <span className="text-xs uppercase tracking-wide text-slate-400">Operator View</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs uppercase tracking-wide text-slate-400">Operator View</span>
+                  {mapCenter && (
+                    <span className="text-xs text-field-600 px-2 py-1 bg-field-50 rounded-full">
+                      Location active
+                    </span>
+                  )}
+                </div>
               </div>
               <div className="relative">
-                <TaskMap
-                  tasks={taskPoints}
-                  center={mapCenter ?? undefined}
-                  onSelect={(task) => setSelectedTaskId(task.id)}
-                  selectedId={selectedTaskId}
+                <TaskBrowseMap
+                  tasks={filteredTasks}
+                  height="420px"
+                  userLocation={mapCenter}
+                  radiusFilter={useDistanceFilter ? maxDistanceKm : null}
+                  onTaskSelect={(task) => setSelectedTaskId(task.id)}
+                  onTaskClaim={handleClaim}
+                  selectedTaskId={selectedTaskId}
+                  claimingTaskId={claimingId}
+                  showUserLocation={true}
+                  showRadiusCircle={useDistanceFilter}
+                  enableClustering={filteredTasks.length > 15}
                 />
               </div>
             </div>
@@ -559,6 +705,28 @@ export default function WorkerDashboard() {
                           {task.bounty.currency} {task.bounty.amount.toFixed(2)}
                         </span>
                       </div>
+
+                      {/* Requester Profile */}
+                      {task.requester && (
+                        <div className="mb-4 -mx-2">
+                          <PublicProfileCard
+                            user={{
+                              id: task.requester.id,
+                              username: task.requester.username,
+                              avatar_url: task.requester.avatar_url,
+                              ens_name: task.requester.ens_name,
+                              stats: task.requester.stats ? {
+                                reliability_score: task.requester.stats.reliability_score,
+                                tasks_completed: task.requester.stats.tasks_posted,
+                              } : undefined,
+                            }}
+                            size="sm"
+                            showRating={false}
+                            showBadges={false}
+                            showStats={true}
+                          />
+                        </div>
+                      )}
 
                       <div className="space-y-2 text-sm text-slate-500 mb-4">
                         <div className="flex items-center">
@@ -601,6 +769,8 @@ export default function WorkerDashboard() {
                 ))}
               </div>
             </div>
+          )}
+            </>
           )}
         </>
       )}

@@ -2,8 +2,12 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import dynamic from 'next/dynamic';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/lib/store';
+
+// Dynamic import for LocationPicker to avoid SSR issues with Leaflet
+const LocationPicker = dynamic(() => import('@/components/LocationPicker'), { ssr: false });
 
 // Helper to get default dates
 function getDefaultDates() {
@@ -247,77 +251,65 @@ export default function CreateTaskPage() {
         {step === 2 && (
           <div className="space-y-6">
             <h2 className="text-lg font-medium">Location</h2>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-slate-700">Latitude</label>
-                <input
-                  type="number"
-                  step="0.0001"
-                  value={formData.lat}
-                  onChange={(e) => updateForm('lat', parseFloat(e.target.value))}
-                  className="mt-1 block w-full px-3 py-2 border border-surface-300 rounded-md shadow-sm focus:ring-field-500 focus:border-field-500"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700">Longitude</label>
-                <input
-                  type="number"
-                  step="0.0001"
-                  value={formData.lon}
-                  onChange={(e) => updateForm('lon', parseFloat(e.target.value))}
-                  className="mt-1 block w-full px-3 py-2 border border-surface-300 rounded-md shadow-sm focus:ring-field-500 focus:border-field-500"
-                />
-              </div>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-700">
-                Radius (meters) - {formData.radius_m}m
-              </label>
-              <input
-                type="range"
-                min="10"
-                max="500"
-                value={formData.radius_m}
-                onChange={(e) => updateForm('radius_m', parseInt(e.target.value))}
-                className="mt-1 block w-full"
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-slate-700">Start Date</label>
-                <input
-                  type="date"
-                  value={formData.startDate}
-                  onChange={(e) => updateForm('startDate', e.target.value)}
-                  className="mt-1 block w-full px-3 py-2 border border-surface-300 rounded-md shadow-sm"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700">Start Time</label>
-                <input
-                  type="time"
-                  value={formData.startTime}
-                  onChange={(e) => updateForm('startTime', e.target.value)}
-                  className="mt-1 block w-full px-3 py-2 border border-surface-300 rounded-md shadow-sm"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700">End Date</label>
-                <input
-                  type="date"
-                  value={formData.endDate}
-                  onChange={(e) => updateForm('endDate', e.target.value)}
-                  className="mt-1 block w-full px-3 py-2 border border-surface-300 rounded-md shadow-sm"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700">End Time</label>
-                <input
-                  type="time"
-                  value={formData.endTime}
-                  onChange={(e) => updateForm('endTime', e.target.value)}
-                  className="mt-1 block w-full px-3 py-2 border border-surface-300 rounded-md shadow-sm"
-                />
+            <p className="text-sm text-slate-500">
+              Click on the map to set the task location, or search for an address. Drag the marker to adjust.
+            </p>
+
+            {/* Interactive Map Location Picker */}
+            <LocationPicker
+              value={{ lat: formData.lat, lon: formData.lon }}
+              radius={formData.radius_m}
+              onChange={(location) => {
+                updateForm('lat', location.lat);
+                updateForm('lon', location.lon);
+              }}
+              onRadiusChange={(radius) => updateForm('radius_m', radius)}
+              height="350px"
+              showSearch={true}
+              showRadiusControl={true}
+              draggableMarker={true}
+            />
+
+            {/* Time Window */}
+            <div className="pt-4 border-t border-surface-200">
+              <h3 className="text-sm font-medium text-slate-700 mb-4">Time Window</h3>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700">Start Date</label>
+                  <input
+                    type="date"
+                    value={formData.startDate}
+                    onChange={(e) => updateForm('startDate', e.target.value)}
+                    className="mt-1 block w-full px-3 py-2 border border-surface-300 rounded-md shadow-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700">Start Time</label>
+                  <input
+                    type="time"
+                    value={formData.startTime}
+                    onChange={(e) => updateForm('startTime', e.target.value)}
+                    className="mt-1 block w-full px-3 py-2 border border-surface-300 rounded-md shadow-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700">End Date</label>
+                  <input
+                    type="date"
+                    value={formData.endDate}
+                    onChange={(e) => updateForm('endDate', e.target.value)}
+                    className="mt-1 block w-full px-3 py-2 border border-surface-300 rounded-md shadow-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700">End Time</label>
+                  <input
+                    type="time"
+                    value={formData.endTime}
+                    onChange={(e) => updateForm('endTime', e.target.value)}
+                    className="mt-1 block w-full px-3 py-2 border border-surface-300 rounded-md shadow-sm"
+                  />
+                </div>
               </div>
             </div>
           </div>

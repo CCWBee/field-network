@@ -5,6 +5,8 @@
   "scripts": {
     "compile": "hardhat compile",
     "test": "hardhat test",
+    "test:coverage": "hardhat coverage",
+    "test:gas": "REPORT_GAS=true hardhat test",
     "deploy:base-sepolia": "hardhat run scripts/deploy.ts --network base-sepolia",
     "deploy:base": "hardhat run scripts/deploy.ts --network base",
     "verify": "hardhat verify"

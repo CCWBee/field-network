@@ -5,6 +5,18 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/lib/store';
+import {
+  Spinner,
+  Alert,
+  Badge,
+  Card,
+  CardBody,
+  Select,
+  Button,
+  EmptyDisputeList,
+  StaggeredList,
+  StaggeredItem,
+} from '@/components/ui';
 
 interface Dispute {
   id: string;
@@ -165,7 +177,7 @@ export default function AdminDisputesPage() {
   if (isLoading && disputes.length === 0) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-field-500"></div>
+        <Spinner size="lg" label="Loading disputes..." />
       </div>
     );
   }
@@ -183,9 +195,9 @@ export default function AdminDisputesPage() {
       </div>
 
       {error && (
-        <div className="mb-6 p-4 rounded-lg bg-red-50 border border-red-200 text-red-700">
+        <Alert variant="error" dismissible className="mb-6">
           {error}
-        </div>
+        </Alert>
       )}
 
       {/* Filters */}
@@ -245,17 +257,16 @@ export default function AdminDisputesPage() {
       {/* Disputes List */}
       <div className="space-y-4">
         {disputes.length === 0 ? (
-          <div className="glass rounded-lg border border-surface-200 p-12 text-center">
-            <svg className="w-12 h-12 mx-auto text-slate-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            <h3 className="text-lg font-medium text-slate-600 mb-1">No disputes found</h3>
-            <p className="text-slate-500 text-sm">
-              {statusFilter !== 'all'
-                ? `No disputes with status "${statusFilter.replace(/_/g, ' ')}"`
-                : 'No disputes have been opened yet'}
-            </p>
-          </div>
+          <Card variant="glass" className="border border-surface-200">
+            <CardBody>
+              <EmptyDisputeList />
+              {statusFilter !== 'all' && (
+                <p className="text-center text-sm text-slate-500 -mt-4">
+                  No disputes with status "{statusFilter.replace(/_/g, ' ')}"
+                </p>
+              )}
+            </CardBody>
+          </Card>
         ) : (
           disputes.map((dispute) => (
             <Link

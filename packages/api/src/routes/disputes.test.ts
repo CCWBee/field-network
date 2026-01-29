@@ -413,7 +413,7 @@ describe('Dispute Resolution', () => {
       });
 
       expect(log).toBeTruthy();
-      const details = JSON.parse(log!.detailsJson);
+      const details = JSON.parse(typeof log!.detailsJson === 'string' ? log!.detailsJson : JSON.stringify(log!.detailsJson || {}));
       expect(details.reason).toBe('Location mismatch detected');
     });
   });

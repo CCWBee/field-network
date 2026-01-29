@@ -4,6 +4,15 @@ import { recalculateUserStats } from '../services/reputation';
 import { authenticate, requireScope } from '../middleware/auth';
 import { NotFoundError, ValidationError, StateTransitionError } from '../middleware/errorHandler';
 import { notifyTaskClaimed } from '../services/notifications';
+import { dispatchWebhookEvent } from '../jobs/webhook-delivery';
+import { createTaskStake, calculateStakeForTask, releaseTaskStake, getTaskStake } from '../services/staking';
+
+// Helper to safely extract string from query param
+function qs(param: any): string | undefined {
+  if (typeof param === 'string') return param;
+  if (Array.isArray(param) && typeof param[0] === 'string') return param[0];
+  return undefined;
+}
 
 const router = Router();
 
@@ -58,6 +67,41 @@ async function expireClaimsForUser(userId: string) {
   await recalculateUserStats(userId);
 }
 
+// GET /v1/tasks/:taskId/stake-info - Get required stake info before claiming
+router.get('/:taskId/stake-info', authenticate, async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const taskId = req.params.taskId as string;
+
+    // Check task exists
+    const task = await prisma.task.findUnique({
+      where: { id: taskId },
+      select: { id: true, bountyAmount: true, currency: true, status: true },
+    });
+
+    if (!task) {
+      throw new NotFoundError('Task');
+    }
+
+    // Calculate required stake for this user
+    const stakeInfo = await calculateStakeForTask(taskId as string, req.user!.userId);
+
+    res.json({
+      task_id: taskId,
+      bounty_amount: task.bountyAmount,
+      currency: task.currency,
+      stake: {
+        required_amount: stakeInfo.amount,
+        percentage: stakeInfo.percentage,
+        strike_count: stakeInfo.strikeCount,
+        reputation_score: stakeInfo.reputationScore,
+      },
+      message: `You must stake ${stakeInfo.amount.toFixed(2)} ${task.currency} (${stakeInfo.percentage.toFixed(1)}% of bounty) to claim this task.`,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
 // GET /v1/claims - List my active claims
 router.get('/', authenticate, async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -87,16 +131,29 @@ router.get('/', authenticate, async (req: Request, res: Response, next: NextFunc
       orderBy: { claimedAt: 'desc' },
     });
 
+    // Fetch stake info for each claim
+    const claimsWithStakes = await Promise.all(
+      claims.map(async (claim) => {
+        const stake = await getTaskStake(claim.taskId, req.user!.userId);
+        return {
+          id: claim.id,
+          task_id: claim.taskId,
+          task: claim.task,
+          claimed_at: claim.claimedAt.toISOString(),
+          claimed_until: claim.claimedUntil.toISOString(),
+          status: claim.status,
+          time_remaining_ms: Math.max(0, claim.claimedUntil.getTime() - Date.now()),
+          stake: stake ? {
+            amount: stake.amount,
+            percentage: stake.stakePercentage,
+            status: stake.status,
+          } : null,
+        };
+      })
+    );
+
     res.json({
-      claims: claims.map(claim => ({
-        id: claim.id,
-        task_id: claim.taskId,
-        task: claim.task,
-        claimed_at: claim.claimedAt.toISOString(),
-        claimed_until: claim.claimedUntil.toISOString(),
-        status: claim.status,
-        time_remaining_ms: Math.max(0, claim.claimedUntil.getTime() - Date.now()),
-      })),
+      claims: claimsWithStakes,
     });
   } catch (error) {
     next(error);
@@ -106,12 +163,12 @@ router.get('/', authenticate, async (req: Request, res: Response, next: NextFunc
 // POST /v1/tasks/:taskId/claim - Claim a task
 router.post('/:taskId/claim', authenticate, requireScope('claims:write'), async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { taskId } = req.params;
+    const taskId = req.params.taskId as string;
 
     await expireClaimsForUser(req.user!.userId);
 
     // Check task exists and is claimable
-    const task = await prisma.task.findUnique({
+    const taskRaw = await prisma.task.findUnique({
       where: { id: taskId },
       include: {
         claims: {
@@ -120,9 +177,11 @@ router.post('/:taskId/claim', authenticate, requireScope('claims:write'), async 
       },
     });
 
-    if (!task) {
+    if (!taskRaw) {
       throw new NotFoundError('Task');
     }
+
+    const task = taskRaw as any;
 
     if (task.status !== 'posted') {
       throw new ValidationError(`Task is not available for claiming (status: ${task.status})`);
@@ -151,6 +210,25 @@ router.post('/:taskId/claim', authenticate, requireScope('claims:write'), async 
       throw new ValidationError('Task time window has passed');
     }
 
+    // Get worker's primary wallet for staking
+    const workerWallet = await prisma.walletLink.findFirst({
+      where: { userId: req.user!.userId, isPrimary: true },
+    });
+
+    // Calculate required stake
+    const stakeInfo = await calculateStakeForTask(taskId as string, req.user!.userId);
+
+    // Create stake (required before claim can proceed)
+    const stakeResult = await createTaskStake(
+      taskId as string,
+      req.user!.userId,
+      workerWallet?.walletAddress
+    );
+
+    if (!stakeResult.success) {
+      throw new ValidationError(`Failed to create stake: ${stakeResult.error}`);
+    }
+
     // Create claim
     const claimedUntil = new Date(Date.now() + CLAIM_TTL_HOURS * 60 * 60 * 1000);
 
@@ -164,7 +242,7 @@ router.post('/:taskId/claim', authenticate, requireScope('claims:write'), async 
       // Create claim record
       return tx.taskClaim.create({
         data: {
-          taskId,
+          taskId: taskId as string,
           workerId: req.user!.userId,
           claimedAt: now,
           claimedUntil,
@@ -195,12 +273,30 @@ router.post('/:taskId/claim', authenticate, requireScope('claims:write'), async 
     const workerName = user?.username || user?.ensName || user?.email?.split('@')[0] || 'A worker';
     await notifyTaskClaimed(task.requesterId, taskId, task.title, workerName);
 
+    // Dispatch webhook event
+    await dispatchWebhookEvent('task.claimed', {
+      task_id: taskId,
+      claim_id: claim.id,
+      worker_id: req.user!.userId,
+      worker_name: workerName,
+      claimed_at: claim.claimedAt.toISOString(),
+      claimed_until: claim.claimedUntil.toISOString(),
+    }, task.requesterId);
+
     res.status(201).json({
       claim_id: claim.id,
       task_id: taskId,
       claimed_at: claim.claimedAt.toISOString(),
       claimed_until: claim.claimedUntil.toISOString(),
       time_remaining_ms: claimedUntil.getTime() - Date.now(),
+      stake: {
+        stake_id: stakeResult.stakeId,
+        amount: stakeResult.amount,
+        percentage: stakeInfo.percentage,
+        strike_count: stakeInfo.strikeCount,
+        reputation_score: stakeInfo.reputationScore,
+        tx_hash: stakeResult.txHash,
+      },
     });
   } catch (error) {
     next(error);
@@ -210,11 +306,11 @@ router.post('/:taskId/claim', authenticate, requireScope('claims:write'), async 
 // POST /v1/tasks/:taskId/unclaim - Release a claim
 router.post('/:taskId/unclaim', authenticate, requireScope('claims:write'), async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { taskId } = req.params;
+    const taskId = req.params.taskId as string;
 
     const claim = await prisma.taskClaim.findFirst({
       where: {
-        taskId,
+        taskId: taskId as string,
         workerId: req.user!.userId,
         status: 'active',
       },
@@ -222,6 +318,13 @@ router.post('/:taskId/unclaim', authenticate, requireScope('claims:write'), asyn
 
     if (!claim) {
       throw new NotFoundError('Active claim');
+    }
+
+    // Release stake back to worker (voluntary unclaim returns stake)
+    const stakeResult = await releaseTaskStake(taskId as string, req.user!.userId);
+    if (!stakeResult.success) {
+      console.error(`Failed to release stake for task ${taskId}: ${stakeResult.error}`);
+      // Continue with unclaim even if stake release fails - can be retried
     }
 
     await prisma.$transaction(async (tx) => {
@@ -246,13 +349,15 @@ router.post('/:taskId/unclaim', authenticate, requireScope('claims:write'), asyn
         objectId: claim.id,
         ip: req.ip || 'unknown',
         userAgent: req.get('user-agent') || 'unknown',
-        detailsJson: JSON.stringify({ taskId }),
+        detailsJson: JSON.stringify({ taskId, stake_released: stakeResult.success }),
       },
     });
 
     res.json({
       message: 'Claim released successfully',
       task_id: taskId,
+      stake_released: stakeResult.success,
+      stake_amount: stakeResult.amount,
     });
   } catch (error) {
     next(error);

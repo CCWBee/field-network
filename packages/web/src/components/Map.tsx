@@ -1,7 +1,15 @@
 'use client';
 
-import { MapContainer, TileLayer, CircleMarker, Marker, Tooltip, useMap, Popup } from 'react-leaflet';
+import { MapContainer as LeafletMapContainer, TileLayer as LeafletTileLayer, CircleMarker as LeafletCircleMarker, Marker as LeafletMarker, Tooltip as LeafletTooltip, useMap, Popup as LeafletPopup } from 'react-leaflet';
 import L from 'leaflet';
+
+// Cast to any to fix React 19 / react-leaflet type incompatibility
+const MapContainer = LeafletMapContainer as any;
+const TileLayer = LeafletTileLayer as any;
+const CircleMarker = LeafletCircleMarker as any;
+const Marker = LeafletMarker as any;
+const Tooltip = LeafletTooltip as any;
+const Popup = LeafletPopup as any;
 import { useEffect, useMemo } from 'react';
 
 // Fix default marker icon issue in Next.js

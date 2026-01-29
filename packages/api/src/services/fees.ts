@@ -1,11 +1,13 @@
 import { prisma } from './database';
 
 // Default fee tiers - used when database has no config
+// Fee rates align with on-chain contract default of 2.5% (250 bps)
+// Higher-tier users get reduced rates; standard rate is 2.5% to match contract
 const DEFAULT_PLATFORM_FEE_TIERS = [
-  { tierOrder: 0, minDays: 180, minAccepted: 50, minReliability: 90, rate: 0.05, name: 'Elite' },
-  { tierOrder: 1, minDays: 90, minAccepted: 20, minReliability: 80, rate: 0.06, name: 'Trusted' },
-  { tierOrder: 2, minDays: 30, minAccepted: 5, minReliability: 70, rate: 0.08, name: 'Established' },
-  { tierOrder: 3, minDays: 0, minAccepted: 0, minReliability: 0, rate: 0.1, name: 'Standard' },
+  { tierOrder: 0, minDays: 180, minAccepted: 50, minReliability: 90, rate: 0.015, name: 'Elite' },      // 1.5%
+  { tierOrder: 1, minDays: 90, minAccepted: 20, minReliability: 80, rate: 0.02, name: 'Trusted' },       // 2.0%
+  { tierOrder: 2, minDays: 30, minAccepted: 5, minReliability: 70, rate: 0.0225, name: 'Established' },  // 2.25%
+  { tierOrder: 3, minDays: 0, minAccepted: 0, minReliability: 0, rate: 0.025, name: 'Standard' },        // 2.5% (matches on-chain default)
 ];
 
 const DEFAULT_ARBITRATION_FEE = {

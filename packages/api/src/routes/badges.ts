@@ -19,7 +19,7 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
         description: badge.description,
         category: badge.category,
         icon_url: badge.iconUrl,
-        tiers: JSON.parse(badge.tiers),
+        tiers: typeof badge.tiers === 'string' ? JSON.parse(badge.tiers) : badge.tiers,
       })),
     });
   } catch (error) {

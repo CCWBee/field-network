@@ -73,7 +73,7 @@ router.get('/me/stats/worker', authenticate, async (req: Request, res: Response,
     });
 
     // Fill in missing months with 0
-    const earningsChart = [];
+    const earningsChart: { month: string; label: string; amount: number }[] = [];
     for (let i = 11; i >= 0; i--) {
       const date = new Date();
       date.setMonth(date.getMonth() - i);
@@ -245,7 +245,7 @@ router.get('/me/stats/requester', authenticate, async (req: Request, res: Respon
     });
 
     // Fill in missing months
-    const spendingChart = [];
+    const spendingChart: { month: string; label: string; amount: number }[] = [];
     for (let i = 11; i >= 0; i--) {
       const date = new Date();
       date.setMonth(date.getMonth() - i);

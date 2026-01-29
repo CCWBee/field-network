@@ -351,13 +351,30 @@ class OnChainEscrowProvider implements EscrowProvider {
   private usdcAddress: `0x${string}`;
 
   constructor() {
+    // Validate required configuration on startup
+    const contractAddress = process.env.ESCROW_CONTRACT_ADDRESS;
+    if (!contractAddress || contractAddress === '0x0' || contractAddress === '0x0000000000000000000000000000000000000000') {
+      throw new Error(
+        'ESCROW_CONTRACT_ADDRESS must be set when using onchain escrow provider. ' +
+        'Deploy the contract first and set the address in your environment variables.'
+      );
+    }
+
+    const operatorKey = process.env.OPERATOR_PRIVATE_KEY;
+    if (!operatorKey) {
+      throw new Error(
+        'OPERATOR_PRIVATE_KEY must be set when using onchain escrow provider. ' +
+        'This wallet will sign transactions for accepting and releasing escrows.'
+      );
+    }
+
     const chainId = process.env.CHAIN_ID === '8453' ? 'mainnet' : 'sepolia';
     const chain = chainId === 'mainnet' ? base : baseSepolia;
     const rpcUrl = process.env.BASE_RPC_URL || (chainId === 'mainnet'
       ? 'https://mainnet.base.org'
       : 'https://sepolia.base.org');
 
-    this.contractAddress = (process.env.ESCROW_CONTRACT_ADDRESS || '0x0') as `0x${string}`;
+    this.contractAddress = contractAddress as `0x${string}`;
     this.usdcAddress = (process.env.USDC_ADDRESS || (chainId === 'mainnet'
       ? '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913' // Base mainnet USDC
       : '0x036CbD53842c5426634e7929541eC2318f3dCF7e' // Base Sepolia USDC
@@ -369,15 +386,17 @@ class OnChainEscrowProvider implements EscrowProvider {
     });
 
     // Create wallet client for operator transactions
-    const operatorKey = process.env.OPERATOR_PRIVATE_KEY;
-    if (operatorKey) {
-      const account = privateKeyToAccount(operatorKey as `0x${string}`);
-      this.walletClient = createWalletClient({
-        account,
-        chain,
-        transport: http(rpcUrl),
-      });
-    }
+    const account = privateKeyToAccount(operatorKey as `0x${string}`);
+    this.walletClient = createWalletClient({
+      account,
+      chain,
+      transport: http(rpcUrl),
+    });
+
+    console.log(`On-chain escrow provider initialized:`);
+    console.log(`  Contract: ${this.contractAddress}`);
+    console.log(`  Chain: ${chain.name} (${chain.id})`);
+    console.log(`  Operator: ${account.address}`);
   }
 
   /**

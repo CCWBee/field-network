@@ -92,7 +92,7 @@ export async function getReputationHistory(
       reason: e.reason,
       taskId: e.taskId,
       badgeType: e.badgeType,
-      metadata: JSON.parse(e.metadata),
+      metadata: JSON.parse(typeof e.metadata === 'string' ? e.metadata : JSON.stringify(e.metadata)),
       createdAt: e.createdAt,
     })),
     total,

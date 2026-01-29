@@ -1,9 +1,11 @@
 import 'dotenv/config';
+import * as Sentry from '@sentry/node';
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import { rateLimit } from 'express-rate-limit';
 
+import { logger } from './lib/logger';
 import authRoutes from './routes/auth';
 import profileRoutes from './routes/profile';
 import taskRoutes from './routes/tasks';
@@ -21,18 +23,59 @@ import statsRoutes from './routes/stats';
 import feeRoutes from './routes/fees';
 import notificationRoutes from './routes/notifications';
 import healthRoutes from './routes/health';
+import usersRoutes from './routes/users';
 import { errorHandler } from './middleware/errorHandler';
 import { requestLogger } from './middleware/requestLogger';
 import { startChainIndexer } from './services/chainIndexer';
 import { disconnectDatabase } from './services/database';
+import { startExpiryJobs, stopExpiryJobs } from './services/expiryJobs';
+
+// Initialize Sentry for error tracking (must be done early)
+if (process.env.SENTRY_DSN) {
+  Sentry.init({
+    dsn: process.env.SENTRY_DSN,
+    environment: process.env.NODE_ENV || 'development',
+    // Sample rate for error events (1.0 = 100%)
+    sampleRate: 1.0,
+    // Performance monitoring sample rate
+    tracesSampleRate: process.env.NODE_ENV === 'production' ? 0.1 : 1.0,
+    // Don't send errors in development by default
+    enabled: process.env.NODE_ENV === 'production',
+    // Filter out sensitive data
+    beforeSend(event) {
+      // Remove any wallet addresses or private keys from error messages
+      if (event.message) {
+        event.message = event.message.replace(/0x[a-fA-F0-9]{40}/g, '[WALLET_ADDRESS]');
+        event.message = event.message.replace(/0x[a-fA-F0-9]{64}/g, '[PRIVATE_KEY]');
+      }
+      // Remove sensitive headers
+      if (event.request?.headers) {
+        delete event.request.headers['authorization'];
+        delete event.request.headers['cookie'];
+      }
+      return event;
+    },
+  });
+  logger.info('Sentry error tracking initialized');
+}
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Parse CORS origins (supports comma-separated list or single origin)
+function parseCorsOrigins(): string | string[] {
+  // Support both CORS_ORIGINS (preferred) and CORS_ORIGIN (legacy)
+  const origins = process.env.CORS_ORIGINS || process.env.CORS_ORIGIN || 'http://localhost:3001';
+  if (origins.includes(',')) {
+    return origins.split(',').map(o => o.trim());
+  }
+  return origins;
+}
+
 // Security middleware
 app.use(helmet());
 app.use(cors({
-  origin: process.env.CORS_ORIGIN || 'http://localhost:3001',
+  origin: parseCorsOrigins(),
   credentials: true,
 }));
 
@@ -70,6 +113,7 @@ app.use('/v1/admin', adminRoutes);
 app.use('/v1/marketplace', marketplaceRoutes);
 app.use('/v1/badges', badgeRoutes);
 app.use('/v1/users', statsRoutes);
+app.use('/v1/users', usersRoutes); // Public profiles, reviews
 app.use('/v1/fees', feeRoutes);
 app.use('/v1/notifications', notificationRoutes);
 
@@ -82,7 +126,10 @@ app.use((req, res) => {
 });
 
 const server = app.listen(PORT, () => {
-  console.log(`Field Network API running on port ${PORT}`);
+  logger.info({ port: PORT }, 'Field Network API running');
+
+  // Start expiry jobs (claim and task expiration checks)
+  startExpiryJobs();
 
   // Start chain indexer if on-chain escrow is enabled
   if (process.env.ESCROW_PROVIDER === 'onchain' && process.env.ESCROW_CONTRACT_ADDRESS) {
@@ -92,30 +139,33 @@ const server = app.listen(PORT, () => {
       contractAddress: process.env.ESCROW_CONTRACT_ADDRESS,
       rpcUrl: process.env.BASE_RPC_URL,
     });
-    console.log(`Chain indexer started for chain ${chainId}`);
+    logger.info({ chainId }, 'Chain indexer started');
   }
 });
 
 // Graceful shutdown
 async function shutdown(signal: string) {
-  console.log(`\nReceived ${signal}. Shutting down gracefully...`);
+  logger.info({ signal }, 'Received shutdown signal, shutting down gracefully');
+
+  // Stop background jobs
+  stopExpiryJobs();
 
   server.close(async () => {
-    console.log('HTTP server closed');
+    logger.info('HTTP server closed');
 
     try {
       await disconnectDatabase();
-      console.log('Database connection closed');
+      logger.info('Database connection closed');
       process.exit(0);
     } catch (error) {
-      console.error('Error during shutdown:', error);
+      logger.error({ err: error }, 'Error during shutdown');
       process.exit(1);
     }
   });
 
   // Force exit if graceful shutdown takes too long
   setTimeout(() => {
-    console.error('Forced shutdown after timeout');
+    logger.error('Forced shutdown after timeout');
     process.exit(1);
   }, 10000);
 }
