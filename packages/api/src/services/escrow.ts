@@ -6,10 +6,10 @@
  */
 
 import { prisma } from './database';
-import { createPublicClient, createWalletClient, http, parseAbi, stringToHex, keccak256, encodePacked } from 'viem';
+import { createPublicClient, http, parseAbi, stringToHex, keccak256, encodePacked } from 'viem';
 import { base, baseSepolia } from 'viem/chains';
-import { privateKeyToAccount } from 'viem/accounts';
 import { calculatePlatformFee } from './fees';
+import { getSignerProvider } from './signer';
 
 // Contract ABI (minimal subset for escrow operations)
 const ESCROW_ABI = parseAbi([
@@ -18,10 +18,13 @@ const ESCROW_ABI = parseAbi([
   'function accept(bytes32 escrowId) external',
   'function release(bytes32 escrowId) external',
   'function refund(bytes32 escrowId) external',
+  'function openDispute(bytes32 escrowId) external',
+  'function resolveDispute(bytes32 escrowId, uint8 workerShare) external',
   'function getEscrowStatus(bytes32 escrowId) external view returns (uint8)',
   'event Deposited(bytes32 indexed escrowId, bytes32 indexed taskId, address indexed requester, uint256 amount)',
   'event Released(bytes32 indexed escrowId, address indexed worker, uint256 amount, uint256 fee)',
   'event Refunded(bytes32 indexed escrowId, address indexed requester, uint256 amount)',
+  'event DisputeResolved(bytes32 indexed escrowId, address indexed winner, uint256 winnerAmount, uint256 loserAmount)',
 ]);
 
 // USDC contract ABI for approval
@@ -360,14 +363,6 @@ class OnChainEscrowProvider implements EscrowProvider {
       );
     }
 
-    const operatorKey = process.env.OPERATOR_PRIVATE_KEY;
-    if (!operatorKey) {
-      throw new Error(
-        'OPERATOR_PRIVATE_KEY must be set when using onchain escrow provider. ' +
-        'This wallet will sign transactions for accepting and releasing escrows.'
-      );
-    }
-
     const chainId = process.env.CHAIN_ID === '8453' ? 'mainnet' : 'sepolia';
     const chain = chainId === 'mainnet' ? base : baseSepolia;
     const rpcUrl = process.env.BASE_RPC_URL || (chainId === 'mainnet'
@@ -385,18 +380,14 @@ class OnChainEscrowProvider implements EscrowProvider {
       transport: http(rpcUrl),
     });
 
-    // Create wallet client for operator transactions
-    const account = privateKeyToAccount(operatorKey as `0x${string}`);
-    this.walletClient = createWalletClient({
-      account,
-      chain,
-      transport: http(rpcUrl),
-    });
+    // Use signer provider for operator wallet (supports env key or KMS)
+    const signer = getSignerProvider();
+    this.walletClient = signer.getWalletClient();
 
     console.log(`On-chain escrow provider initialized:`);
     console.log(`  Contract: ${this.contractAddress}`);
     console.log(`  Chain: ${chain.name} (${chain.id})`);
-    console.log(`  Operator: ${account.address}`);
+    console.log(`  Operator: ${signer.getAddress()}`);
   }
 
   /**
@@ -610,9 +601,7 @@ class OnChainEscrowProvider implements EscrowProvider {
 
   /**
    * Split escrow between worker and requester based on percentage.
-   * For on-chain provider, this requires custom contract interaction.
-   * Note: The current GroundTruthEscrow.sol contract may not support split payments directly.
-   * This implementation uses two separate transactions (release + refund) as a workaround.
+   * Calls resolveDispute() on-chain which handles the split natively.
    */
   async splitPayment(
     taskId: string,
@@ -635,22 +624,35 @@ class OnChainEscrowProvider implements EscrowProvider {
       }
 
       const escrow = await prisma.escrow.findFirst({
-        where: { taskId, status: 'funded' },
+        where: { taskId, status: { in: ['funded', 'disputed'] } },
         include: { task: true },
       });
 
       if (!escrow || !escrow.providerRef) {
-        return { success: false, error: 'No funded escrow found for task' };
+        return { success: false, error: 'No escrow found for task' };
       }
 
-      // Calculate split amounts
-      const workerAmount = Math.floor((escrow.amount * workerPercentage) / 100 * 100) / 100;
-      const requesterAmount = Math.round((escrow.amount - workerAmount) * 100) / 100;
+      const escrowIdBytes = escrow.providerRef as `0x${string}`;
 
-      // For on-chain split, we need to call a special contract function if available
-      // For now, we'll update the database but note that full on-chain implementation
-      // would require a split function in the smart contract
-      const splitTxHash = `split_onchain_${Date.now()}`;
+      // Call resolveDispute on-chain (workerShare is 0-100)
+      const txHash = await this.walletClient.writeContract({
+        address: this.contractAddress,
+        abi: ESCROW_ABI,
+        functionName: 'resolveDispute',
+        args: [escrowIdBytes, workerPercentage],
+      });
+
+      // Wait for confirmation
+      await this.publicClient.waitForTransactionReceipt({ hash: txHash });
+
+      // Calculate split amounts for DB
+      const { fee: platformFee } = await calculatePlatformFee(
+        escrow.task.requesterId,
+        escrow.amount
+      );
+      const netAmount = escrow.amount - platformFee;
+      const workerAmount = Math.floor((netAmount * workerPercentage) / 100 * 100) / 100;
+      const requesterAmount = Math.round((netAmount - workerAmount) * 100) / 100;
 
       const ledgerEntries: any[] = [];
 
@@ -663,12 +665,11 @@ class OnChainEscrowProvider implements EscrowProvider {
           direction: 'debit',
           counterpartyId: workerId,
           walletAddress: workerAddress,
-          txHash: `${splitTxHash}_worker`,
+          txHash,
           metadata: JSON.stringify({
             split_percentage: workerPercentage,
             split_type: 'worker',
             original_amount: escrow.amount,
-            pending_onchain: true, // Indicates this needs manual on-chain processing
           }),
         });
       }
@@ -681,13 +682,23 @@ class OnChainEscrowProvider implements EscrowProvider {
           currency: escrow.currency,
           direction: 'debit',
           counterpartyId: escrow.task.requesterId,
-          txHash: `${splitTxHash}_requester`,
+          txHash: `${txHash}_requester`,
           metadata: JSON.stringify({
             split_percentage: 100 - workerPercentage,
             split_type: 'requester',
             original_amount: escrow.amount,
-            pending_onchain: true,
           }),
+        });
+      }
+
+      if (platformFee > 0) {
+        ledgerEntries.push({
+          taskId,
+          entryType: 'fee',
+          amount: platformFee,
+          currency: escrow.currency,
+          direction: 'debit',
+          txHash: `fee_${txHash}`,
         });
       }
 
@@ -695,21 +706,19 @@ class OnChainEscrowProvider implements EscrowProvider {
         prisma.escrow.update({
           where: { id: escrow.id },
           data: {
-            status: 'disputed', // Mark as disputed for manual review/processing
-            releaseTxHash: splitTxHash,
+            status: 'released',
+            releaseTxHash: txHash,
+            releasedAt: new Date(),
             workerWallet: workerAddress,
           },
         }),
         ...ledgerEntries.map(entry => prisma.ledgerEntry.create({ data: entry })),
       ]);
 
-      // TODO: Implement actual on-chain split when contract supports it
-      // This would involve calling a splitRelease(escrowId, workerAmount, requesterAmount) function
-
       return {
         success: true,
         escrowId: escrow.id,
-        txHash: splitTxHash,
+        txHash,
       };
     } catch (error) {
       return {

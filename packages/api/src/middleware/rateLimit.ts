@@ -145,6 +145,32 @@ export const strictLimiter = rateLimit({
 });
 
 /**
+ * Financial rate limiter
+ *
+ * Moderate limits for escrow, staking, and dispute endpoints.
+ * Applied to: escrow create/release/refund, stake, dispute resolution
+ */
+export const financialLimiter = rateLimit({
+  ...baseOptions,
+  windowMs: config.windowMs, // 15 minutes
+  max: 20,
+  message: 'Too many financial requests, please try again later',
+});
+
+/**
+ * Write rate limiter
+ *
+ * For task/submission mutation endpoints.
+ * Applied to: task create/update, submission upload
+ */
+export const writeLimiter = rateLimit({
+  ...baseOptions,
+  windowMs: config.windowMs, // 15 minutes
+  max: 30,
+  message: 'Too many write requests, please try again later',
+});
+
+/**
  * Create custom limiter with specific options
  */
 export function createLimiter(options: {
@@ -182,6 +208,16 @@ export const rateLimitConfig = {
     windowMs: 60 * 60 * 1000,
     max: 5,
     description: 'Applied to sensitive operations (API tokens, admin)',
+  },
+  financial: {
+    windowMs: config.windowMs,
+    max: 20,
+    description: 'Applied to escrow, staking, and dispute endpoints',
+  },
+  write: {
+    windowMs: config.windowMs,
+    max: 30,
+    description: 'Applied to task/submission mutation endpoints',
   },
 };
 

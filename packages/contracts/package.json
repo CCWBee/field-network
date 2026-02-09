@@ -1,5 +1,5 @@
 {
-  "name": "@ground-truth/contracts",
+  "name": "@field-network/contracts",
   "version": "0.1.0",
   "private": true,
   "scripts": {

@@ -1,5 +1,5 @@
 {
-  "name": "@ground-truth/shared",
+  "name": "@field-network/shared",
   "version": "0.1.0",
   "private": true,
   "main": "./dist/index.js",

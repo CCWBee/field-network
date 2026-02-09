@@ -17,9 +17,9 @@
  */
 
 import { prisma } from './database';
-import { createPublicClient, createWalletClient, http, parseAbi, keccak256, encodePacked } from 'viem';
+import { createPublicClient, http, parseAbi, keccak256, encodePacked } from 'viem';
 import { base, baseSepolia } from 'viem/chains';
-import { privateKeyToAccount } from 'viem/accounts';
+import { getSignerProvider } from './signer';
 
 // Contract ABI (minimal subset for staking operations)
 const STAKING_ABI = parseAbi([
@@ -531,14 +531,12 @@ class OnChainStakingProvider implements StakingProvider {
       transport: http(rpcUrl),
     });
 
-    const operatorKey = process.env.OPERATOR_PRIVATE_KEY;
-    if (operatorKey) {
-      const account = privateKeyToAccount(operatorKey as `0x${string}`);
-      this.walletClient = createWalletClient({
-        account,
-        chain,
-        transport: http(rpcUrl),
-      });
+    // Use signer provider for operator wallet (supports env key or KMS)
+    try {
+      const signer = getSignerProvider();
+      this.walletClient = signer.getWalletClient();
+    } catch {
+      // Signer not configured — read-only mode (calculateRequiredStake still works)
     }
   }
 

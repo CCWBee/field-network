@@ -66,15 +66,20 @@ describe("WorkerStaking", function () {
     await usdc.connect(worker).approve(await staking.getAddress(), ethers.MaxUint256);
     await usdc.connect(worker2).approve(await staking.getAddress(), ethers.MaxUint256);
 
+    // Mint USDC to operator and approve (for stake() which uses msg.sender)
+    await usdc.mint(operator.address, 10000n * ONE_USDC);
+    await usdc.connect(operator).approve(await staking.getAddress(), ethers.MaxUint256);
+
     return { staking, usdc, owner, operator, disputeResolver, worker, worker2, requester, platformRecipient, other };
   }
 
-  // Fixture with an active stake
+  // Fixture with an active stake (operator creates on behalf of worker)
   async function activeStakeFixture() {
     const base = await loadFixture(deployFixture);
     const taskId = generateTaskId();
 
-    await base.staking.connect(base.worker).stake(
+    await base.staking.connect(base.operator).stakeFor(
+      base.worker.address,
       taskId,
       BOUNTY_AMOUNT,
       0, // no strikes
@@ -243,13 +248,37 @@ describe("WorkerStaking", function () {
     });
   });
 
-  // ==================== STAKING TESTS ====================
+  // ==================== STAKING TESTS (OPERATOR-ONLY) ====================
   describe("Staking", function () {
-    it("should create stake with correct data", async function () {
+    it("should allow operator to create stake", async function () {
+      const { staking, operator, worker } = await loadFixture(deployFixture);
+      const taskId = generateTaskId();
+
+      // stake() is now operator-only, so it uses msg.sender as worker
+      // Since operator calls it, the stake is for the operator address
+      // For proper usage, stakeFor() should be used instead
+      await staking.connect(operator).stake(taskId, BOUNTY_AMOUNT, 0, 5000);
+
+      const stakeData = await staking.getStake(taskId, operator.address);
+      expect(stakeData.taskId).to.equal(taskId);
+      expect(stakeData.worker).to.equal(operator.address);
+      expect(stakeData.bountyAmount).to.equal(BOUNTY_AMOUNT);
+      expect(stakeData.status).to.equal(0n); // Active
+    });
+
+    it("should revert if non-operator tries to stake", async function () {
       const { staking, worker } = await loadFixture(deployFixture);
       const taskId = generateTaskId();
 
-      await staking.connect(worker).stake(taskId, BOUNTY_AMOUNT, 0, 5000);
+      await expect(staking.connect(worker).stake(taskId, BOUNTY_AMOUNT, 0, 5000))
+        .to.be.revertedWithCustomError(staking, "AccessControlUnauthorizedAccount");
+    });
+
+    it("should create stake via stakeFor with correct data", async function () {
+      const { staking, operator, worker } = await loadFixture(deployFixture);
+      const taskId = generateTaskId();
+
+      await staking.connect(operator).stakeFor(worker.address, taskId, BOUNTY_AMOUNT, 0, 5000);
 
       const stakeData = await staking.getStake(taskId, worker.address);
       expect(stakeData.taskId).to.equal(taskId);
@@ -258,24 +287,24 @@ describe("WorkerStaking", function () {
       expect(stakeData.status).to.equal(0n); // Active
     });
 
-    it("should calculate and transfer correct stake amount", async function () {
-      const { staking, usdc, worker } = await loadFixture(deployFixture);
+    it("should calculate and transfer correct stake amount via stakeFor", async function () {
+      const { staking, usdc, operator, worker } = await loadFixture(deployFixture);
       const taskId = generateTaskId();
 
       const balanceBefore = await usdc.balanceOf(worker.address);
-      await staking.connect(worker).stake(taskId, BOUNTY_AMOUNT, 0, 5000);
+      await staking.connect(operator).stakeFor(worker.address, taskId, BOUNTY_AMOUNT, 0, 5000);
       const balanceAfter = await usdc.balanceOf(worker.address);
 
       const expectedStake = (BOUNTY_AMOUNT * BASE_STAKE_BPS) / 10000n;
       expect(balanceBefore - balanceAfter).to.equal(expectedStake);
     });
 
-    it("should emit Staked event", async function () {
-      const { staking, worker } = await loadFixture(deployFixture);
+    it("should emit Staked event via stakeFor", async function () {
+      const { staking, operator, worker } = await loadFixture(deployFixture);
       const taskId = generateTaskId();
       const expectedStake = (BOUNTY_AMOUNT * BASE_STAKE_BPS) / 10000n;
 
-      await expect(staking.connect(worker).stake(taskId, BOUNTY_AMOUNT, 0, 5000))
+      await expect(staking.connect(operator).stakeFor(worker.address, taskId, BOUNTY_AMOUNT, 0, 5000))
         .to.emit(staking, "Staked")
         .withArgs(
           ethers.keccak256(ethers.solidityPacked(["bytes32", "address"], [taskId, worker.address])),
@@ -287,18 +316,18 @@ describe("WorkerStaking", function () {
     });
 
     it("should revert if stake already exists", async function () {
-      const { staking, worker, taskId } = await loadFixture(activeStakeFixture);
+      const { staking, operator, worker, taskId } = await loadFixture(activeStakeFixture);
 
-      await expect(staking.connect(worker).stake(taskId, BOUNTY_AMOUNT, 0, 5000))
+      await expect(staking.connect(operator).stakeFor(worker.address, taskId, BOUNTY_AMOUNT, 0, 5000))
         .to.be.revertedWithCustomError(staking, "StakeAlreadyExists");
     });
 
     it("should revert when contract is paused", async function () {
-      const { staking, owner, worker } = await loadFixture(deployFixture);
+      const { staking, owner, operator, worker } = await loadFixture(deployFixture);
       await staking.connect(owner).pause();
 
       const taskId = generateTaskId();
-      await expect(staking.connect(worker).stake(taskId, BOUNTY_AMOUNT, 0, 5000))
+      await expect(staking.connect(operator).stakeFor(worker.address, taskId, BOUNTY_AMOUNT, 0, 5000))
         .to.be.revertedWithCustomError(staking, "EnforcedPause");
     });
   });
@@ -691,21 +720,21 @@ describe("WorkerStaking", function () {
   // ==================== EDGE CASES TESTS ====================
   describe("Edge Cases", function () {
     it("should handle zero bounty gracefully", async function () {
-      const { staking, worker } = await loadFixture(deployFixture);
+      const { staking, operator, worker } = await loadFixture(deployFixture);
       const taskId = generateTaskId();
 
       // Zero bounty would result in zero stake
-      await expect(staking.connect(worker).stake(taskId, 0n, 0, 5000))
+      await expect(staking.connect(operator).stakeFor(worker.address, taskId, 0n, 0, 5000))
         .to.be.revertedWithCustomError(staking, "InsufficientAmount");
     });
 
     it("should handle multiple stakes from same worker on different tasks", async function () {
-      const { staking, worker } = await loadFixture(deployFixture);
+      const { staking, operator, worker } = await loadFixture(deployFixture);
       const taskId1 = generateTaskId();
       const taskId2 = generateTaskId();
 
-      await staking.connect(worker).stake(taskId1, BOUNTY_AMOUNT, 0, 5000);
-      await staking.connect(worker).stake(taskId2, BOUNTY_AMOUNT, 0, 5000);
+      await staking.connect(operator).stakeFor(worker.address, taskId1, BOUNTY_AMOUNT, 0, 5000);
+      await staking.connect(operator).stakeFor(worker.address, taskId2, BOUNTY_AMOUNT, 0, 5000);
 
       const stake1 = await staking.getStake(taskId1, worker.address);
       const stake2 = await staking.getStake(taskId2, worker.address);
@@ -715,11 +744,11 @@ describe("WorkerStaking", function () {
     });
 
     it("should handle different workers staking on same task", async function () {
-      const { staking, worker, worker2 } = await loadFixture(deployFixture);
+      const { staking, operator, worker, worker2 } = await loadFixture(deployFixture);
       const taskId = generateTaskId();
 
-      await staking.connect(worker).stake(taskId, BOUNTY_AMOUNT, 0, 5000);
-      await staking.connect(worker2).stake(taskId, BOUNTY_AMOUNT, 0, 5000);
+      await staking.connect(operator).stakeFor(worker.address, taskId, BOUNTY_AMOUNT, 0, 5000);
+      await staking.connect(operator).stakeFor(worker2.address, taskId, BOUNTY_AMOUNT, 0, 5000);
 
       const stake1 = await staking.getStake(taskId, worker.address);
       const stake2 = await staking.getStake(taskId, worker2.address);

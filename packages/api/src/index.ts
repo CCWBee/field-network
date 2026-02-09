@@ -3,7 +3,6 @@ import * as Sentry from '@sentry/node';
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
-import { rateLimit } from 'express-rate-limit';
 
 import { logger } from './lib/logger';
 import authRoutes from './routes/auth';
@@ -24,8 +23,12 @@ import feeRoutes from './routes/fees';
 import notificationRoutes from './routes/notifications';
 import healthRoutes from './routes/health';
 import usersRoutes from './routes/users';
+import gdprRoutes from './routes/gdpr';
 import { errorHandler } from './middleware/errorHandler';
 import { requestLogger } from './middleware/requestLogger';
+import { generalLimiter, authLimiter, financialLimiter, writeLimiter } from './middleware/rateLimit';
+import { geoblockMiddleware } from './middleware/geoblock';
+import { sanctionsMiddleware } from './services/sanctions';
 import { startChainIndexer } from './services/chainIndexer';
 import { disconnectDatabase } from './services/database';
 import { startExpiryJobs, stopExpiryJobs } from './services/expiryJobs';
@@ -79,43 +82,51 @@ app.use(cors({
   credentials: true,
 }));
 
-// Rate limiting
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // limit each IP to 100 requests per windowMs
-  standardHeaders: true,
-  legacyHeaders: false,
-});
-app.use(limiter);
+// Geoblock US/UK (before auth, after CORS/helmet)
+app.use(geoblockMiddleware);
 
 // Body parsing
 app.use(express.json({ limit: '10mb' }));
 
+// General rate limiting (applied to all routes)
+app.use(generalLimiter);
+
 // Request logging
 app.use(requestLogger);
 
-// Health check routes (no rate limiting)
+// Health check routes (no additional rate limiting)
 app.use('/health', healthRoutes);
 
-// API routes (v1)
-app.use('/v1/auth', authRoutes);
+// Auth routes (stricter rate limit)
+app.use('/v1/auth', authLimiter, authRoutes);
+
+// Read-only routes (general limiter only)
 app.use('/v1/profile', profileRoutes);
-app.use('/v1/tasks', taskRoutes);
-app.use('/v1/claims', claimRoutes);
-app.use('/v1/submissions', submissionRoutes);
-app.use('/v1/webhooks', webhookRoutes);
-app.use('/v1/uploads', uploadRoutes);
-app.use('/v1/artefacts', artefactRoutes);
-app.use('/v1/storage', storageRoutes);
-app.use('/v1/disputes', disputeRoutes);
-app.use('/v1', disputeRoutes); // For /v1/submissions/:id/dispute route
-app.use('/v1/admin', adminRoutes);
 app.use('/v1/marketplace', marketplaceRoutes);
 app.use('/v1/badges', badgeRoutes);
 app.use('/v1/users', statsRoutes);
 app.use('/v1/users', usersRoutes); // Public profiles, reviews
 app.use('/v1/fees', feeRoutes);
 app.use('/v1/notifications', notificationRoutes);
+
+// Write routes (write limiter + sanctions screening)
+app.use('/v1/tasks', writeLimiter, taskRoutes);
+app.use('/v1/claims', writeLimiter, claimRoutes);
+app.use('/v1/submissions', writeLimiter, submissionRoutes);
+app.use('/v1/uploads', writeLimiter, uploadRoutes);
+app.use('/v1/artefacts', writeLimiter, artefactRoutes);
+app.use('/v1/storage', writeLimiter, storageRoutes);
+
+// Financial routes (financial limiter + sanctions screening)
+app.use('/v1/disputes', financialLimiter, sanctionsMiddleware, disputeRoutes);
+app.use('/v1', financialLimiter, sanctionsMiddleware, disputeRoutes); // For /v1/submissions/:id/dispute route
+
+// GDPR routes
+app.use('/v1/users', gdprRoutes);
+
+// Webhook and admin routes
+app.use('/v1/webhooks', webhookRoutes);
+app.use('/v1/admin', adminRoutes);
 
 // Error handling
 app.use(errorHandler);
