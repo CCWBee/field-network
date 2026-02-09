@@ -119,14 +119,14 @@ contract GroundTruthEscrow is AccessControl, ReentrancyGuard, Pausable {
     }
 
     /**
-     * @notice Assign worker to escrow (permissionless - anyone can claim if no worker assigned)
+     * @notice Assign worker to escrow (operator-only)
      * @param escrowId Escrow identifier
      * @param worker Worker's wallet address
      */
     function assignWorker(
         bytes32 escrowId,
         address worker
-    ) external {
+    ) external onlyRole(OPERATOR_ROLE) {
         Escrow storage escrow = escrows[escrowId];
         if (escrow.createdAt == 0) revert EscrowNotFound();
         if (escrow.status != EscrowStatus.Funded) revert InvalidEscrowStatus();
@@ -201,8 +201,13 @@ contract GroundTruthEscrow is AccessControl, ReentrancyGuard, Pausable {
         bool isOperator = hasRole(OPERATOR_ROLE, msg.sender);
 
         if (escrow.status == EscrowStatus.Funded) {
-            // Only requester or operator can refund funded escrow
-            if (!isRequester && !isOperator) revert UnauthorizedCaller();
+            // If worker is assigned, only operator can refund (protect in-progress work)
+            if (escrow.worker != address(0)) {
+                if (!isOperator) revert UnauthorizedCaller();
+            } else {
+                // No worker assigned - requester or operator can refund
+                if (!isRequester && !isOperator) revert UnauthorizedCaller();
+            }
         } else {
             revert InvalidEscrowStatus();
         }

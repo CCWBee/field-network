@@ -201,7 +201,7 @@ contract WorkerStaking is AccessControl, ReentrancyGuard, Pausable {
         uint256 bountyAmount,
         uint256 strikeCount,
         uint256 reputationScore
-    ) external nonReentrant whenNotPaused {
+    ) external nonReentrant whenNotPaused onlyRole(OPERATOR_ROLE) {
         bytes32 stakeId = keccak256(abi.encodePacked(taskId, msg.sender));
 
         if (stakes[stakeId].createdAt != 0) {

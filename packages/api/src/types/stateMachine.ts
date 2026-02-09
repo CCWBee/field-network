@@ -3,10 +3,10 @@ export type {
   TaskStatus,
   SubmissionStatus,
   UserRole,
-} from '@ground-truth/shared';
+} from '@field-network/shared';
 
 // Import for use in state machine
-import type { TaskStatus, SubmissionStatus } from '@ground-truth/shared';
+import type { TaskStatus, SubmissionStatus } from '@field-network/shared';
 
 export const TASK_TRANSITIONS: Record<TaskStatus, TaskStatus[]> = {
   draft: ['posted', 'cancelled'],
@@ -29,7 +29,7 @@ export const CLAIM_TRANSITIONS: Record<ClaimStatus, ClaimStatus[]> = {
   converted: [],
 };
 
-// Submission Status State Machine (type imported from @ground-truth/shared)
+// Submission Status State Machine (type imported from @field-network/shared)
 
 export const SUBMISSION_TRANSITIONS: Record<SubmissionStatus, SubmissionStatus[]> = {
   created: ['uploading'],

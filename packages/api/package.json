@@ -1,5 +1,5 @@
 {
-  "name": "@ground-truth/api",
+  "name": "@field-network/api",
   "version": "0.1.0",
   "private": true,
   "main": "./dist/index.js",
@@ -12,6 +12,7 @@
     "test": "vitest",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
+    "db:migrate:deploy": "prisma migrate deploy",
     "db:push": "prisma db push",
     "db:seed": "tsx prisma/seed.ts",
     "db:studio": "prisma studio"
@@ -23,7 +24,7 @@
     "@aws-sdk/client-s3": "^3.971.0",
     "@aws-sdk/lib-storage": "^3.971.0",
     "@aws-sdk/s3-request-presigner": "^3.971.0",
-    "@ground-truth/shared": "*",
+    "@field-network/shared": "*",
     "@prisma/client": "^6.3.0",
     "@sendgrid/mail": "^8.1.6",
     "@sentry/node": "^8.48.0",

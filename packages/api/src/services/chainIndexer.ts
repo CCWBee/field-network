@@ -254,10 +254,20 @@ export class ChainIndexer {
         const amount = Number(args.amount) / 1e6;
         const fee = Number(args.fee) / 1e6;
 
-        const escrow = await prisma.escrow.findFirst({
-          where: { depositTxHash: { not: null } },
-          orderBy: { createdAt: 'desc' },
+        // Match by escrowId from event
+        let escrow = await prisma.escrow.findFirst({
+          where: { id: escrowIdLookup },
         });
+        // Fallback: match by providerRef (on-chain escrow ID)
+        if (!escrow) {
+          escrow = await prisma.escrow.findFirst({
+            where: { providerRef: escrowIdHex },
+          });
+        }
+        if (!escrow) {
+          console.warn(`[ChainIndexer] Released: No escrow found for escrowId ${escrowIdLookup} (hex: ${escrowIdHex})`);
+          break;
+        }
 
         if (escrow) {
           await prisma.escrow.update({
@@ -306,11 +316,19 @@ export class ChainIndexer {
         const requester = (args.requester as string).toLowerCase();
         const amount = Number(args.amount) / 1e6;
 
-        // Find escrow and update
-        const escrow = await prisma.escrow.findFirst({
-          where: { requesterWallet: requester, status: 'funded' },
-          orderBy: { createdAt: 'desc' },
+        // Match by escrowId from event
+        let escrow = await prisma.escrow.findFirst({
+          where: { id: escrowIdLookup },
         });
+        if (!escrow) {
+          escrow = await prisma.escrow.findFirst({
+            where: { providerRef: escrowIdHex },
+          });
+        }
+        if (!escrow) {
+          console.warn(`[ChainIndexer] Refunded: No escrow found for escrowId ${escrowIdLookup} (hex: ${escrowIdHex})`);
+          break;
+        }
 
         if (escrow) {
           await prisma.escrow.update({
@@ -343,15 +361,77 @@ export class ChainIndexer {
 
       case 'DisputeOpened': {
         const opener = (args.opener as string).toLowerCase();
-        console.log(`[ChainIndexer] Dispute opened by ${opener}`);
-        // Update escrow status to disputed
+
+        // Match by escrowId from event
+        let disputeEscrow = await prisma.escrow.findFirst({
+          where: { id: escrowIdLookup },
+        });
+        if (!disputeEscrow) {
+          disputeEscrow = await prisma.escrow.findFirst({
+            where: { providerRef: escrowIdHex },
+          });
+        }
+
+        if (disputeEscrow) {
+          await prisma.escrow.update({
+            where: { id: disputeEscrow.id },
+            data: { status: 'disputed' },
+          });
+          console.log(`[ChainIndexer] Dispute opened by ${opener} for escrow ${disputeEscrow.id}`);
+        } else {
+          console.warn(`[ChainIndexer] DisputeOpened: No escrow found for escrowId ${escrowIdLookup}`);
+        }
         break;
       }
 
       case 'DisputeResolved': {
         const winner = (args.winner as string).toLowerCase();
         const winnerAmount = Number(args.winnerAmount) / 1e6;
-        console.log(`[ChainIndexer] Dispute resolved: ${winner} wins ${winnerAmount} USDC`);
+        const loserAmount = Number(args.loserAmount) / 1e6;
+
+        // Match by escrowId from event
+        let resolvedEscrow = await prisma.escrow.findFirst({
+          where: { id: escrowIdLookup },
+        });
+        if (!resolvedEscrow) {
+          resolvedEscrow = await prisma.escrow.findFirst({
+            where: { providerRef: escrowIdHex },
+          });
+        }
+
+        if (resolvedEscrow) {
+          await prisma.escrow.update({
+            where: { id: resolvedEscrow.id },
+            data: {
+              status: 'released',
+              releaseTxHash: log.transactionHash,
+              releasedAt: new Date(),
+            },
+          });
+
+          // Create ledger entries for dispute resolution
+          const entries: any[] = [];
+          if (winnerAmount > 0) {
+            entries.push({
+              taskId: resolvedEscrow.taskId,
+              entryType: 'dispute_resolution',
+              amount: winnerAmount,
+              currency: 'USDC',
+              direction: 'debit' as const,
+              walletAddress: winner,
+              txHash: log.transactionHash,
+              blockNumber: Number(log.blockNumber),
+              chainId: this.chainId,
+            });
+          }
+          if (entries.length > 0) {
+            await prisma.ledgerEntry.createMany({ data: entries });
+          }
+
+          console.log(`[ChainIndexer] Dispute resolved: ${winner} wins ${winnerAmount} USDC`);
+        } else {
+          console.warn(`[ChainIndexer] DisputeResolved: No escrow found for escrowId ${escrowIdLookup}`);
+        }
         break;
       }
     }
