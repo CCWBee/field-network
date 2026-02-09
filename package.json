@@ -2,7 +2,7 @@
   "name": "field-network",
   "version": "0.1.0",
   "private": true,
-  "description": "Ground Truth on Demand - A marketplace for verifiable real-world observations",
+  "description": "Field Network - A marketplace for verifiable real-world observations",
   "workspaces": [
     "packages/*"
   ],

@@ -1,4 +1,4 @@
-import type { TaskStatus, SubmissionStatus, UserRole } from '@ground-truth/shared';
+import type { TaskStatus, SubmissionStatus, UserRole } from '@field-network/shared';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
 

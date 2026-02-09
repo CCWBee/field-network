@@ -5,7 +5,7 @@ async function mockAuth(page: any) {
   // Set mock auth token in localStorage before navigation
   await page.addInitScript(() => {
     window.localStorage.setItem(
-      'ground-truth-auth',
+      'field-network-auth',
       JSON.stringify({
         state: {
           token: 'mock-jwt-token',

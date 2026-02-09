@@ -4,7 +4,7 @@ import { test, expect } from '@playwright/test';
 async function mockAdminAuth(page: any) {
   await page.addInitScript(() => {
     window.localStorage.setItem(
-      'ground-truth-auth',
+      'field-network-auth',
       JSON.stringify({
         state: {
           token: 'mock-admin-jwt-token',

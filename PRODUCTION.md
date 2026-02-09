@@ -159,7 +159,7 @@ Add these secrets:
 
 ```bash
 # Fund deployer wallet from faucet first
-npm run deploy:base-sepolia --workspace=@ground-truth/contracts
+npm run deploy:base-sepolia --workspace=@field-network/contracts
 ```
 
 Save the deployed contract address.
@@ -167,7 +167,7 @@ Save the deployed contract address.
 ### 7.2 Mainnet (When Ready)
 
 ```bash
-npm run deploy:base --workspace=@ground-truth/contracts
+npm run deploy:base --workspace=@field-network/contracts
 ```
 
 Update Railway environment:
