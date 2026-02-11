@@ -47,10 +47,10 @@ export function AutoScoreBreakdown({ autoScoreResult, className = '' }: AutoScor
   const recommendation = getRecommendationLabel(autoScoreResult.recommendation);
 
   return (
-    <div className={`glass rounded-lg border border-purple-200 bg-purple-50 p-4 ${className}`}>
+    <div className={`bg-purple-50 rounded-sm border border-purple-200 p-4 ${className}`}>
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-sm font-semibold text-purple-800">Tier 1 Automated Analysis</h3>
-        <span className={`px-2 py-0.5 text-xs font-medium rounded ${recommendation.className}`}>
+        <span className={`px-2 py-0.5 text-xs font-medium rounded-sm ${recommendation.className}`}>
           {recommendation.text}
         </span>
       </div>
@@ -58,13 +58,13 @@ export function AutoScoreBreakdown({ autoScoreResult, className = '' }: AutoScor
       <div className="mb-3">
         <div className="flex items-center justify-between text-sm mb-1">
           <span className="text-purple-700">Overall Score</span>
-          <span className={`font-bold ${getScoreColor(autoScoreResult.totalScore)}`}>
+          <span className={`font-mono tabular-nums font-bold ${getScoreColor(autoScoreResult.totalScore)}`}>
             {autoScoreResult.totalScore.toFixed(1)}%
           </span>
         </div>
-        <div className="w-full bg-purple-200 rounded-full h-2">
+        <div className="w-full bg-purple-200 rounded-sm h-2">
           <div
-            className={`h-2 rounded-full ${getProgressColor(autoScoreResult.totalScore)}`}
+            className={`h-2 rounded-sm ${getProgressColor(autoScoreResult.totalScore)}`}
             style={{ width: `${autoScoreResult.totalScore}%` }}
           ></div>
         </div>
@@ -88,7 +88,7 @@ export function AutoScoreBreakdown({ autoScoreResult, className = '' }: AutoScor
                 <span className="text-purple-500 text-xs">({check.details})</span>
               )}
             </div>
-            <span className="text-purple-600">{check.score.toFixed(0)}% (w:{check.weight})</span>
+            <span className="font-mono tabular-nums text-purple-600">{check.score.toFixed(0)}% (w:{check.weight})</span>
           </div>
         ))}
       </div>

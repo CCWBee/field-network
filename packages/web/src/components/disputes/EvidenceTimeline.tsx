@@ -82,10 +82,10 @@ export function EvidenceTimeline({
 
   if (!evidence || evidence.length === 0) {
     return (
-      <div className="glass rounded-lg border border-surface-200 p-6">
-        <h2 className="text-lg font-semibold text-slate-800 mb-4">Evidence</h2>
-        <div className="text-center py-8 text-slate-500">
-          <svg className="w-12 h-12 mx-auto mb-3 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <div className="bg-paper rounded-sm border border-ink-200 p-6">
+        <h2 className="text-lg font-semibold text-ink-900 mb-4">Evidence</h2>
+        <div className="text-center py-8 text-ink-500">
+          <svg className="w-12 h-12 mx-auto mb-3 text-ink-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
           </svg>
           <p>No evidence has been submitted yet</p>
@@ -100,16 +100,16 @@ export function EvidenceTimeline({
   }
 
   return (
-    <div className="glass rounded-lg border border-surface-200 p-6">
+    <div className="bg-paper rounded-sm border border-ink-200 p-6">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-lg font-semibold text-slate-800">Evidence Timeline</h2>
+        <h2 className="text-lg font-semibold text-ink-900">Evidence Timeline</h2>
         {evidenceCount && (
           <div className="flex items-center gap-4 text-sm">
-            <span className="text-slate-500">
-              Worker: <span className="font-medium text-green-600">{evidenceCount.worker}</span>
+            <span className="text-ink-500">
+              Worker: <span className="font-mono tabular-nums font-medium text-signal-green">{evidenceCount.worker}</span>
             </span>
-            <span className="text-slate-500">
-              Requester: <span className="font-medium text-blue-600">{evidenceCount.requester}</span>
+            <span className="text-ink-500">
+              Requester: <span className="font-mono tabular-nums font-medium text-blue-600">{evidenceCount.requester}</span>
             </span>
           </div>
         )}
@@ -117,7 +117,7 @@ export function EvidenceTimeline({
 
       {/* Evidence deadline notice */}
       {evidenceDeadline && (
-        <div className={`mb-4 p-3 rounded-lg border ${
+        <div className={`mb-4 p-3 rounded-sm border ${
           evidenceDeadlinePassed
             ? 'bg-red-50 border-red-200'
             : 'bg-blue-50 border-blue-200'
@@ -136,7 +136,7 @@ export function EvidenceTimeline({
           <div
             key={item.id}
             className={`relative pl-8 pb-4 ${
-              index !== evidence.length - 1 ? 'border-l-2 border-slate-200 ml-2' : 'ml-2'
+              index !== evidence.length - 1 ? 'border-l-2 border-ink-200 ml-2' : 'ml-2'
             }`}
           >
             {/* Timeline dot */}
@@ -146,7 +146,7 @@ export function EvidenceTimeline({
                 : 'bg-blue-100 border-blue-500'
             }`}></div>
 
-            <div className={`p-4 rounded-lg border ${
+            <div className={`p-4 rounded-sm border ${
               item.party === 'worker'
                 ? 'bg-green-50 border-green-200'
                 : 'bg-blue-50 border-blue-200'
@@ -154,43 +154,43 @@ export function EvidenceTimeline({
               {/* Header */}
               <div className="flex items-start justify-between mb-2">
                 <div className="flex items-center gap-2">
-                  <span className={`px-2 py-0.5 text-xs font-medium rounded ${
+                  <span className={`px-2 py-0.5 text-xs font-medium rounded-sm ${
                     item.party === 'worker'
                       ? 'bg-green-200 text-green-800'
                       : 'bg-blue-200 text-blue-800'
                   }`}>
                     {item.party === 'worker' ? 'Worker' : 'Requester'}
                   </span>
-                  <span className="text-sm text-slate-600">
+                  <span className="text-sm text-ink-700">
                     {item.submitter.username || item.submitter.email}
                   </span>
                 </div>
-                <span className="text-xs text-slate-400">{formatDate(item.created_at)}</span>
+                <span className="text-xs text-ink-500">{formatDate(item.created_at)}</span>
               </div>
 
               {/* Description */}
-              <p className="text-sm text-slate-700 whitespace-pre-wrap mb-3">{item.description}</p>
+              <p className="text-sm text-ink-700 whitespace-pre-wrap mb-3">{item.description}</p>
 
               {/* File attachment */}
               {item.type !== 'text' && item.storage_key && (
-                <div className="flex items-center gap-3 p-3 bg-white/60 rounded-lg border border-slate-200">
-                  <div className={`p-2 rounded ${
+                <div className="flex items-center gap-3 p-3 bg-paper rounded-sm border border-ink-200">
+                  <div className={`p-2 rounded-sm ${
                     item.type === 'image' ? 'bg-purple-100 text-purple-600' : 'bg-red-100 text-red-600'
                   }`}>
                     {getEvidenceIcon(item.type)}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-slate-700 truncate">
+                    <p className="text-sm font-medium text-ink-700 truncate">
                       {item.type === 'image' ? 'Image attachment' : 'PDF document'}
                     </p>
-                    <p className="text-xs text-slate-500">
+                    <p className="text-xs text-ink-500">
                       {item.mime_type} - {formatFileSize(item.size_bytes)}
                     </p>
                   </div>
                   {item.type === 'image' && onViewImage && (
                     <button
                       onClick={() => onViewImage(item)}
-                      className="px-3 py-1.5 text-xs font-medium text-slate-600 bg-white border border-slate-300 rounded hover:bg-slate-50"
+                      className="px-3 py-1.5 text-xs font-medium text-ink-700 bg-paper border border-ink-200 rounded-sm hover:bg-ink-50"
                     >
                       View
                     </button>
@@ -200,7 +200,7 @@ export function EvidenceTimeline({
                       href={`${apiUrl}${item.download_url}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="px-3 py-1.5 text-xs font-medium text-white bg-field-500 rounded hover:bg-field-600"
+                      className="px-3 py-1.5 text-xs font-medium text-white bg-field-500 rounded-sm hover:bg-field-600"
                     >
                       Download
                     </a>

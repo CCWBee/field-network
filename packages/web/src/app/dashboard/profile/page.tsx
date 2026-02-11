@@ -180,11 +180,11 @@ export default function ProfilePage() {
       {/* Header */}
       <div className="flex justify-between items-start">
         <div>
-          <h1 className="text-2xl font-bold text-slate-800">My Profile</h1>
+          <h1 className="text-2xl font-bold text-ink-900 tracking-tight">My Profile</h1>
           {user?.username && (
             <Link
               href={`/users/${user.username}`}
-              className="text-sm text-field-600 hover:text-field-700 flex items-center gap-1 mt-1"
+              className="text-sm text-field-500 hover:text-field-600 flex items-center gap-1 mt-1"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
@@ -196,7 +196,7 @@ export default function ProfilePage() {
         {!isEditing && (
           <button
             onClick={() => setIsEditing(true)}
-            className="px-4 py-2 text-sm bg-field-500 text-white rounded-lg hover:bg-field-600 transition-colors"
+            className="px-4 py-2 text-sm bg-field-500 text-white rounded-sm hover:bg-field-600 transition-colors"
           >
             Edit Profile
           </button>
@@ -205,75 +205,75 @@ export default function ProfilePage() {
 
       {/* Alerts */}
       {error && (
-        <div className="p-4 bg-red-50 border border-red-200 text-red-700 rounded-lg">
+        <div className="p-4 border border-signal-red/30 text-signal-red rounded-sm">
           {error}
         </div>
       )}
       {success && (
-        <div className="p-4 bg-green-50 border border-green-200 text-green-700 rounded-lg">
+        <div className="p-4 border border-signal-green/30 text-signal-green rounded-sm">
           {success}
         </div>
       )}
 
       {/* Field ID */}
-      <div className="glass rounded-xl p-6 border border-surface-200">
+      <div className="bg-paper rounded-sm p-6 border border-ink-200">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
-            <p className="text-sm uppercase tracking-[0.35em] text-slate-400">Field ID</p>
-            <h2 className="text-2xl font-semibold text-slate-800">{rank}</h2>
-            <p className="text-sm text-slate-500 mt-1">Reliability drives access tiers, fee reductions, and priority claims.</p>
+            <p className="text-xs uppercase tracking-wider text-ink-300">Field ID</p>
+            <h2 className="text-2xl font-semibold text-ink-900">{rank}</h2>
+            <p className="text-sm text-ink-500 mt-1">Reliability drives access tiers, fee reductions, and priority claims.</p>
           </div>
           <div className="flex items-center gap-6">
             <div className="text-center">
-              <p className="text-xs uppercase tracking-wide text-slate-400">Reliability</p>
-              <p className="text-2xl font-semibold text-slate-800">{reliabilityScore.toFixed(0)}%</p>
+              <p className="text-xs uppercase tracking-wider text-ink-300">Reliability</p>
+              <p className="text-2xl font-semibold font-mono tabular-nums text-ink-900">{reliabilityScore.toFixed(0)}%</p>
             </div>
             <div className="text-center">
-              <p className="text-xs uppercase tracking-wide text-slate-400">Dispute Rate</p>
-              <p className="text-2xl font-semibold text-slate-800">{disputeRate.toFixed(1)}%</p>
+              <p className="text-xs uppercase tracking-wider text-ink-300">Dispute Rate</p>
+              <p className="text-2xl font-semibold font-mono tabular-nums text-ink-900">{disputeRate.toFixed(1)}%</p>
             </div>
             <div className="text-center">
-              <p className="text-xs uppercase tracking-wide text-slate-400">Accepted</p>
-              <p className="text-2xl font-semibold text-slate-800">{totalAccepted}</p>
+              <p className="text-xs uppercase tracking-wider text-ink-300">Accepted</p>
+              <p className="text-2xl font-semibold font-mono tabular-nums text-ink-900">{totalAccepted}</p>
             </div>
             <div className="text-center">
-              <p className="text-xs uppercase tracking-wide text-slate-400">Lifetime Earned</p>
-              <p className="text-2xl font-semibold text-slate-800">USDC {lifetimeEarned.toFixed(2)}</p>
+              <p className="text-xs uppercase tracking-wider text-ink-300">Lifetime Earned</p>
+              <p className="text-2xl font-semibold font-mono tabular-nums text-ink-900">USDC {lifetimeEarned.toFixed(2)}</p>
             </div>
           </div>
         </div>
         {user?.badges?.length ? (
           <div className="mt-6 flex flex-wrap gap-3">
             {user.badges.slice(0, 4).map((badge, i) => (
-              <div key={`${badge.badgeType}-${i}`} className="flex items-center gap-2 px-3 py-2 rounded-full bg-slate-50 text-xs text-slate-600 border border-surface-200">
-                <span className="text-field-600">*</span>
+              <div key={`${badge.badgeType}-${i}`} className="flex items-center gap-2 px-3 py-2 rounded-sm bg-ink-50 text-xs text-ink-700 border border-ink-200">
+                <span className="text-field-500">*</span>
                 {badge.title}
               </div>
             ))}
           </div>
         ) : (
-          <div className="mt-6 rounded-lg border border-dashed border-surface-300 p-4 text-sm text-slate-500">
+          <div className="mt-6 rounded-sm border border-dashed border-ink-200 p-4 text-sm text-ink-500">
             Badges will appear as you complete missions, resolve disputes cleanly, and maintain streaks.
           </div>
         )}
       </div>
 
       {/* Fee Tier & Progress */}
-      <div className="glass rounded-xl p-6 border border-surface-200">
-        <h3 className="text-lg font-semibold text-slate-800 mb-4">Fee Tier & Progress</h3>
+      <div className="bg-paper rounded-sm p-6 border border-ink-200">
+        <h3 className="text-lg font-semibold text-ink-900 mb-4">Fee Tier & Progress</h3>
         {feeLoading ? (
-          <p className="text-sm text-slate-500">Loading fee information...</p>
+          <p className="text-sm text-ink-500">Loading fee information...</p>
         ) : feeTier ? (
           <div className="space-y-6">
             {/* Current Tier */}
-            <div className="flex items-center justify-between p-4 bg-field-50 rounded-lg">
+            <div className="flex items-center justify-between p-4 bg-field-50 rounded-sm">
               <div>
-                <p className="text-sm text-slate-500">Current Fee Tier</p>
-                <p className="text-xl font-semibold text-slate-800">{feeTier.current_tier.name}</p>
+                <p className="text-xs uppercase tracking-wider text-ink-500">Current Fee Tier</p>
+                <p className="text-xl font-semibold text-ink-900">{feeTier.current_tier.name}</p>
               </div>
               <div className="text-right">
-                <p className="text-sm text-slate-500">Platform Fee Rate</p>
-                <p className="text-2xl font-bold text-field-600">{feeTier.current_tier.rate_percent}</p>
+                <p className="text-xs uppercase tracking-wider text-ink-500">Platform Fee Rate</p>
+                <p className="text-2xl font-bold font-mono tabular-nums text-field-500">{feeTier.current_tier.rate_percent}</p>
               </div>
             </div>
 
@@ -281,23 +281,23 @@ export default function ProfilePage() {
             {feeTier.next_tier && feeTier.progress && (
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
-                  <p className="text-sm font-medium text-slate-700">
+                  <p className="text-sm font-medium text-ink-700">
                     Progress to {feeTier.next_tier.name} tier
                   </p>
-                  <p className="text-sm text-field-600">
+                  <p className="text-sm text-field-500">
                     Save {feeTier.next_tier.savings_percent} on fees
                   </p>
                 </div>
 
                 {/* Account Age Progress */}
                 <div className="space-y-1">
-                  <div className="flex justify-between text-xs text-slate-500">
+                  <div className="flex justify-between text-xs text-ink-500">
                     <span>Account Age</span>
-                    <span>{feeTier.progress.account_days.current} / {feeTier.progress.account_days.required} days</span>
+                    <span className="font-mono tabular-nums">{feeTier.progress.account_days.current} / {feeTier.progress.account_days.required} days</span>
                   </div>
-                  <div className="h-2 bg-slate-200 rounded-full overflow-hidden">
+                  <div className="h-2 bg-ink-200 rounded-sm overflow-hidden">
                     <div
-                      className={`h-full rounded-full transition-all ${feeTier.progress.account_days.met ? 'bg-green-500' : 'bg-field-500'}`}
+                      className={`h-full rounded-sm transition-all ${feeTier.progress.account_days.met ? 'bg-signal-green' : 'bg-field-500'}`}
                       style={{ width: `${Math.min(100, (feeTier.progress.account_days.current / feeTier.progress.account_days.required) * 100)}%` }}
                     />
                   </div>
@@ -305,13 +305,13 @@ export default function ProfilePage() {
 
                 {/* Tasks Accepted Progress */}
                 <div className="space-y-1">
-                  <div className="flex justify-between text-xs text-slate-500">
+                  <div className="flex justify-between text-xs text-ink-500">
                     <span>Tasks Accepted</span>
-                    <span>{feeTier.progress.tasks_accepted.current} / {feeTier.progress.tasks_accepted.required}</span>
+                    <span className="font-mono tabular-nums">{feeTier.progress.tasks_accepted.current} / {feeTier.progress.tasks_accepted.required}</span>
                   </div>
-                  <div className="h-2 bg-slate-200 rounded-full overflow-hidden">
+                  <div className="h-2 bg-ink-200 rounded-sm overflow-hidden">
                     <div
-                      className={`h-full rounded-full transition-all ${feeTier.progress.tasks_accepted.met ? 'bg-green-500' : 'bg-field-500'}`}
+                      className={`h-full rounded-sm transition-all ${feeTier.progress.tasks_accepted.met ? 'bg-signal-green' : 'bg-field-500'}`}
                       style={{ width: `${Math.min(100, (feeTier.progress.tasks_accepted.current / feeTier.progress.tasks_accepted.required) * 100)}%` }}
                     />
                   </div>
@@ -319,13 +319,13 @@ export default function ProfilePage() {
 
                 {/* Reliability Progress */}
                 <div className="space-y-1">
-                  <div className="flex justify-between text-xs text-slate-500">
+                  <div className="flex justify-between text-xs text-ink-500">
                     <span>Reliability Score</span>
-                    <span>{feeTier.progress.reliability.current.toFixed(0)}% / {feeTier.progress.reliability.required}%</span>
+                    <span className="font-mono tabular-nums">{feeTier.progress.reliability.current.toFixed(0)}% / {feeTier.progress.reliability.required}%</span>
                   </div>
-                  <div className="h-2 bg-slate-200 rounded-full overflow-hidden">
+                  <div className="h-2 bg-ink-200 rounded-sm overflow-hidden">
                     <div
-                      className={`h-full rounded-full transition-all ${feeTier.progress.reliability.met ? 'bg-green-500' : 'bg-field-500'}`}
+                      className={`h-full rounded-sm transition-all ${feeTier.progress.reliability.met ? 'bg-signal-green' : 'bg-field-500'}`}
                       style={{ width: `${Math.min(100, (feeTier.progress.reliability.current / feeTier.progress.reliability.required) * 100)}%` }}
                     />
                   </div>
@@ -334,56 +334,56 @@ export default function ProfilePage() {
             )}
 
             {!feeTier.next_tier && (
-              <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
-                <p className="text-sm text-green-700">
+              <div className="p-3 border border-signal-green/30 rounded-sm">
+                <p className="text-sm text-signal-green">
                   Congratulations! You have reached the highest fee tier ({feeTier.current_tier.name}).
                 </p>
               </div>
             )}
           </div>
         ) : (
-          <p className="text-sm text-slate-500">Unable to load fee tier information</p>
+          <p className="text-sm text-ink-500">Unable to load fee tier information</p>
         )}
       </div>
 
       {/* Fee History */}
-      <div className="glass rounded-xl p-6 border border-surface-200">
+      <div className="bg-paper rounded-sm p-6 border border-ink-200">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold text-slate-800">Fee History</h3>
+          <h3 className="text-lg font-semibold text-ink-900">Fee History</h3>
           <div className="text-right">
-            <p className="text-xs text-slate-500">Total Fees Paid</p>
-            <p className="text-lg font-semibold text-slate-800">USDC {totalFeesPaid.toFixed(2)}</p>
+            <p className="text-xs uppercase tracking-wider text-ink-500">Total Fees Paid</p>
+            <p className="text-lg font-semibold font-mono tabular-nums text-ink-900">USDC {totalFeesPaid.toFixed(2)}</p>
           </div>
         </div>
 
         {feeHistory.length > 0 ? (
           <div className="space-y-2">
             {feeHistory.map((entry) => (
-              <div key={entry.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
+              <div key={entry.id} className="flex items-center justify-between p-3 bg-ink-50 rounded-sm">
                 <div>
-                  <p className="text-sm font-medium text-slate-700">
+                  <p className="text-sm font-medium text-ink-700">
                     {entry.fee_type === 'platform' ? 'Platform Fee' : 'Arbitration Fee'}
                   </p>
-                  <p className="text-xs text-slate-500">
+                  <p className="text-xs text-ink-500">
                     {new Date(entry.created_at).toLocaleDateString()}
                     {entry.task_id && ` - Task ${entry.task_id.slice(0, 8)}...`}
                   </p>
                 </div>
-                <p className="text-sm font-medium text-slate-800">
+                <p className="text-sm font-medium font-mono tabular-nums text-ink-900">
                   {entry.currency} {entry.amount.toFixed(2)}
                 </p>
               </div>
             ))}
           </div>
         ) : (
-          <div className="p-4 border border-dashed border-surface-300 rounded-lg text-center">
-            <p className="text-sm text-slate-500">No fee transactions yet</p>
+          <div className="p-4 border border-dashed border-ink-200 rounded-sm text-center">
+            <p className="text-sm text-ink-500">No fee transactions yet</p>
           </div>
         )}
       </div>
 
       {/* Profile Card */}
-      <div className="glass rounded-xl p-6 border border-surface-200">
+      <div className="bg-paper rounded-sm p-6 border border-ink-200">
         <div className="flex items-start space-x-6">
           {/* Avatar */}
           <div className="flex-shrink-0">
@@ -391,10 +391,10 @@ export default function ProfilePage() {
               <img
                 src={avatarUrl}
                 alt="Avatar"
-                className="w-24 h-24 rounded-full object-cover border-2 border-surface-200"
+                className="w-24 h-24 rounded-full object-cover border-2 border-ink-200"
               />
             ) : (
-              <div className="w-24 h-24 rounded-full bg-field-100 flex items-center justify-center text-field-600 font-bold text-3xl">
+              <div className="w-24 h-24 rounded-full bg-field-50 flex items-center justify-center text-field-500 font-bold text-3xl">
                 {displayName[0].toUpperCase()}
               </div>
             )}
@@ -405,74 +405,74 @@ export default function ProfilePage() {
             {isEditing ? (
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Username</label>
+                  <label className="block text-xs uppercase tracking-wider text-ink-500 mb-1">Username</label>
                   <input
                     type="text"
                     value={formData.username}
                     onChange={(e) => setFormData({ ...formData, username: e.target.value })}
                     placeholder="Choose a username"
-                    className="w-full px-3 py-2 border border-surface-300 rounded-lg focus:ring-2 focus:ring-field-500 focus:border-transparent"
+                    className="w-full px-3 py-2 border border-ink-200 rounded-sm focus:ring-2 focus:ring-field-500 focus:border-transparent"
                   />
-                  <p className="text-xs text-slate-500 mt-1">Letters, numbers, and underscores only</p>
+                  <p className="text-xs text-ink-500 mt-1">Letters, numbers, and underscores only</p>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Bio</label>
+                  <label className="block text-xs uppercase tracking-wider text-ink-500 mb-1">Bio</label>
                   <textarea
                     value={formData.bio}
                     onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
                     placeholder="Tell others about yourself"
                     rows={3}
                     maxLength={500}
-                    className="w-full px-3 py-2 border border-surface-300 rounded-lg focus:ring-2 focus:ring-field-500 focus:border-transparent resize-none"
+                    className="w-full px-3 py-2 border border-ink-200 rounded-sm focus:ring-2 focus:ring-field-500 focus:border-transparent resize-none"
                   />
-                  <p className="text-xs text-slate-500 mt-1">{formData.bio.length}/500 characters</p>
+                  <p className="text-xs text-ink-500 mt-1">{formData.bio.length}/500 characters</p>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1">Location</label>
+                    <label className="block text-xs uppercase tracking-wider text-ink-500 mb-1">Location</label>
                     <input
                       type="text"
                       value={formData.location}
                       onChange={(e) => setFormData({ ...formData, location: e.target.value })}
                       placeholder="City, Country"
-                      className="w-full px-3 py-2 border border-surface-300 rounded-lg focus:ring-2 focus:ring-field-500 focus:border-transparent"
+                      className="w-full px-3 py-2 border border-ink-200 rounded-sm focus:ring-2 focus:ring-field-500 focus:border-transparent"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1">Twitter</label>
+                    <label className="block text-xs uppercase tracking-wider text-ink-500 mb-1">Twitter</label>
                     <div className="flex">
-                      <span className="inline-flex items-center px-3 bg-slate-100 border border-r-0 border-surface-300 rounded-l-lg text-slate-500">@</span>
+                      <span className="inline-flex items-center px-3 bg-ink-50 border border-r-0 border-ink-200 rounded-l-sm text-ink-500">@</span>
                       <input
                         type="text"
                         value={formData.twitter_handle}
                         onChange={(e) => setFormData({ ...formData, twitter_handle: e.target.value })}
                         placeholder="username"
-                        className="flex-1 px-3 py-2 border border-surface-300 rounded-r-lg focus:ring-2 focus:ring-field-500 focus:border-transparent"
+                        className="flex-1 px-3 py-2 border border-ink-200 rounded-r-sm focus:ring-2 focus:ring-field-500 focus:border-transparent"
                       />
                     </div>
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Website</label>
+                  <label className="block text-xs uppercase tracking-wider text-ink-500 mb-1">Website</label>
                   <input
                     type="url"
                     value={formData.website}
                     onChange={(e) => setFormData({ ...formData, website: e.target.value })}
                     placeholder="https://your-website.com"
-                    className="w-full px-3 py-2 border border-surface-300 rounded-lg focus:ring-2 focus:ring-field-500 focus:border-transparent"
+                    className="w-full px-3 py-2 border border-ink-200 rounded-sm focus:ring-2 focus:ring-field-500 focus:border-transparent"
                   />
                 </div>
                 <div className="flex space-x-3">
                   <button
                     onClick={handleSave}
                     disabled={isSaving}
-                    className="px-4 py-2 bg-field-500 text-white rounded-lg hover:bg-field-600 transition-colors disabled:opacity-50"
+                    className="px-4 py-2 bg-field-500 text-white rounded-sm hover:bg-field-600 transition-colors disabled:opacity-50"
                   >
                     {isSaving ? 'Saving...' : 'Save Changes'}
                   </button>
                   <button
                     onClick={() => setIsEditing(false)}
-                    className="px-4 py-2 text-slate-600 hover:text-slate-800 transition-colors"
+                    className="px-4 py-2 text-ink-700 hover:text-ink-900 transition-colors"
                   >
                     Cancel
                   </button>
@@ -481,16 +481,16 @@ export default function ProfilePage() {
             ) : (
               <>
                 <div>
-                  <h2 className="text-xl font-semibold text-slate-800 flex items-center space-x-2">
+                  <h2 className="text-xl font-semibold text-ink-900 flex items-center space-x-2">
                     <span>{displayName}</span>
                     {user?.ensName && user?.username && (
-                      <span className="text-sm font-normal text-field-600">{user.ensName}</span>
+                      <span className="text-sm font-normal text-field-500">{user.ensName}</span>
                     )}
                   </h2>
-                  {user?.bio && <p className="text-slate-600 mt-1">{user.bio}</p>}
+                  {user?.bio && <p className="text-ink-700 mt-1">{user.bio}</p>}
                 </div>
 
-                <div className="flex flex-wrap gap-4 text-sm text-slate-600">
+                <div className="flex flex-wrap gap-4 text-sm text-ink-700">
                   {user?.location && (
                     <span className="flex items-center space-x-1">
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -501,7 +501,7 @@ export default function ProfilePage() {
                     </span>
                   )}
                   {user?.website && (
-                    <a href={user.website} target="_blank" rel="noopener noreferrer" className="flex items-center space-x-1 text-field-600 hover:text-field-700">
+                    <a href={user.website} target="_blank" rel="noopener noreferrer" className="flex items-center space-x-1 text-field-500 hover:text-field-600">
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
                       </svg>
@@ -509,7 +509,7 @@ export default function ProfilePage() {
                     </a>
                   )}
                   {user?.twitterHandle && (
-                    <a href={`https://twitter.com/${user.twitterHandle}`} target="_blank" rel="noopener noreferrer" className="flex items-center space-x-1 text-field-600 hover:text-field-700">
+                    <a href={`https://twitter.com/${user.twitterHandle}`} target="_blank" rel="noopener noreferrer" className="flex items-center space-x-1 text-field-500 hover:text-field-600">
                       <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
                         <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
                       </svg>
@@ -532,30 +532,30 @@ export default function ProfilePage() {
       </div>
 
       {/* Wallet & ENS */}
-      <div className="glass rounded-xl p-6 border border-surface-200">
-        <h3 className="text-lg font-semibold text-slate-800 mb-4">Wallet & ENS</h3>
+      <div className="bg-paper rounded-sm p-6 border border-ink-200">
+        <h3 className="text-lg font-semibold text-ink-900 mb-4">Wallet & ENS</h3>
         <div className="space-y-4">
           {primaryWallet && (
-            <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
+            <div className="flex items-center justify-between p-3 bg-ink-50 rounded-sm">
               <div>
-                <p className="text-sm font-medium text-slate-700">Primary Wallet</p>
-                <p className="text-sm text-slate-500 font-mono">{primaryWallet.address}</p>
+                <p className="text-sm font-medium text-ink-700">Primary Wallet</p>
+                <p className="text-sm text-ink-500 font-mono">{primaryWallet.address}</p>
               </div>
               {user?.stats?.walletVerified && (
-                <span className="px-2 py-1 text-xs bg-green-100 text-green-700 rounded-full">Verified</span>
+                <span className="px-2 py-1 text-xs text-signal-green border border-signal-green/30 rounded-sm">Verified</span>
               )}
             </div>
           )}
 
           {user?.ensName ? (
-            <div className="flex items-center justify-between p-3 bg-field-50 rounded-lg">
+            <div className="flex items-center justify-between p-3 bg-field-50 rounded-sm">
               <div>
-                <p className="text-sm font-medium text-slate-700">ENS Name</p>
-                <p className="text-sm text-field-600 font-medium">{user.ensName}</p>
+                <p className="text-sm font-medium text-ink-700">ENS Name</p>
+                <p className="text-sm text-field-500 font-medium">{user.ensName}</p>
               </div>
               <button
                 onClick={handleRefreshENS}
-                className="text-sm text-field-600 hover:text-field-700"
+                className="text-sm text-field-500 hover:text-field-600"
               >
                 Refresh
               </button>
@@ -563,7 +563,7 @@ export default function ProfilePage() {
           ) : primaryWallet && (
             <button
               onClick={handleRefreshENS}
-              className="w-full p-3 border border-dashed border-surface-300 rounded-lg text-sm text-slate-600 hover:bg-slate-50 transition-colors"
+              className="w-full p-3 border border-dashed border-ink-200 rounded-sm text-sm text-ink-700 hover:bg-ink-50 transition-colors"
             >
               Check for ENS name
             </button>
@@ -573,43 +573,43 @@ export default function ProfilePage() {
 
       {/* Stats */}
       {user?.stats && (
-        <div className="glass rounded-xl p-6 border border-surface-200">
-          <h3 className="text-lg font-semibold text-slate-800 mb-4">Activity & Reputation</h3>
+        <div className="bg-paper rounded-sm p-6 border border-ink-200">
+          <h3 className="text-lg font-semibold text-ink-900 mb-4">Activity & Reputation</h3>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="text-center p-4 bg-slate-50 rounded-lg">
-              <p className="text-2xl font-bold text-field-600">{user.stats.tasksPosted}</p>
-              <p className="text-sm text-slate-600">Tasks Posted</p>
+            <div className="text-center p-4 bg-ink-50 rounded-sm">
+              <p className="text-2xl font-bold font-mono tabular-nums text-field-500">{user.stats.tasksPosted}</p>
+              <p className="text-sm text-ink-700">Tasks Posted</p>
             </div>
-            <div className="text-center p-4 bg-slate-50 rounded-lg">
-              <p className="text-2xl font-bold text-field-600">{user.stats.tasksAccepted}</p>
-              <p className="text-sm text-slate-600">Deliveries Accepted</p>
+            <div className="text-center p-4 bg-ink-50 rounded-sm">
+              <p className="text-2xl font-bold font-mono tabular-nums text-field-500">{user.stats.tasksAccepted}</p>
+              <p className="text-sm text-ink-700">Deliveries Accepted</p>
             </div>
-            <div className="text-center p-4 bg-slate-50 rounded-lg">
-              <p className="text-2xl font-bold text-field-600">{user.stats.reliabilityScore}%</p>
-              <p className="text-sm text-slate-600">Reliability</p>
+            <div className="text-center p-4 bg-ink-50 rounded-sm">
+              <p className="text-2xl font-bold font-mono tabular-nums text-field-500">{user.stats.reliabilityScore}%</p>
+              <p className="text-sm text-ink-700">Reliability</p>
             </div>
-            <div className="text-center p-4 bg-slate-50 rounded-lg">
-              <p className="text-2xl font-bold text-field-600">{user.stats.currentStreak}</p>
-              <p className="text-sm text-slate-600">Current Streak</p>
+            <div className="text-center p-4 bg-ink-50 rounded-sm">
+              <p className="text-2xl font-bold font-mono tabular-nums text-field-500">{user.stats.currentStreak}</p>
+              <p className="text-sm text-ink-700">Current Streak</p>
             </div>
           </div>
 
           <div className="mt-6 grid grid-cols-2 gap-4 text-sm">
             <div className="flex justify-between">
-              <span className="text-slate-600">Total Earned</span>
-              <span className="font-medium text-slate-800">${user.stats.totalEarned.toFixed(2)}</span>
+              <span className="text-ink-700">Total Earned</span>
+              <span className="font-medium font-mono tabular-nums text-ink-900">${user.stats.totalEarned.toFixed(2)}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-slate-600">Total Paid</span>
-              <span className="font-medium text-slate-800">${user.stats.totalBountiesPaid.toFixed(2)}</span>
+              <span className="text-ink-700">Total Paid</span>
+              <span className="font-medium font-mono tabular-nums text-ink-900">${user.stats.totalBountiesPaid.toFixed(2)}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-slate-600">Longest Streak</span>
-              <span className="font-medium text-slate-800">{user.stats.longestStreak} tasks</span>
+              <span className="text-ink-700">Longest Streak</span>
+              <span className="font-medium font-mono tabular-nums text-ink-900">{user.stats.longestStreak} tasks</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-slate-600">Repeat Customers</span>
-              <span className="font-medium text-slate-800">{user.stats.repeatCustomers}</span>
+              <span className="text-ink-700">Repeat Customers</span>
+              <span className="font-medium font-mono tabular-nums text-ink-900">{user.stats.repeatCustomers}</span>
             </div>
           </div>
         </div>
@@ -617,12 +617,12 @@ export default function ProfilePage() {
 
       {/* Badges */}
       {user?.badges && user.badges.length > 0 && (
-        <div className="glass rounded-xl p-6 border border-surface-200">
-          <h3 className="text-lg font-semibold text-slate-800 mb-4">Badges & Achievements</h3>
+        <div className="bg-paper rounded-sm p-6 border border-ink-200">
+          <h3 className="text-lg font-semibold text-ink-900 mb-4">Badges & Achievements</h3>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
             {user.badges.map((badge, i) => (
-              <div key={i} className="flex items-center space-x-3 p-3 bg-slate-50 rounded-lg">
-                <div className="w-10 h-10 rounded-full bg-field-100 flex items-center justify-center text-field-600">
+              <div key={i} className="flex items-center space-x-3 p-3 bg-ink-50 rounded-sm">
+                <div className="w-10 h-10 rounded-sm bg-field-50 border border-field-500/20 flex items-center justify-center text-field-500">
                   {badge.iconUrl ? (
                     <img src={badge.iconUrl} alt="" className="w-6 h-6" />
                   ) : (
@@ -632,8 +632,8 @@ export default function ProfilePage() {
                   )}
                 </div>
                 <div>
-                  <p className="font-medium text-slate-800">{badge.title}</p>
-                  <p className="text-xs text-slate-500">{badge.tier}</p>
+                  <p className="font-medium text-ink-900">{badge.title}</p>
+                  <p className="text-xs text-ink-500">{badge.tier}</p>
                 </div>
               </div>
             ))}
@@ -642,46 +642,46 @@ export default function ProfilePage() {
       )}
 
       {/* Verification Status */}
-      <div className="glass rounded-xl p-6 border border-surface-200">
-        <h3 className="text-lg font-semibold text-slate-800 mb-4">Verification Status</h3>
+      <div className="bg-paper rounded-sm p-6 border border-ink-200">
+        <h3 className="text-lg font-semibold text-ink-900 mb-4">Verification Status</h3>
         <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <span className="text-slate-600">Email Verified</span>
+            <span className="text-ink-700">Email Verified</span>
             {user?.stats?.emailVerified ? (
-              <span className="flex items-center text-green-600">
+              <span className="flex items-center text-signal-green">
                 <svg className="w-5 h-5 mr-1" fill="currentColor" viewBox="0 0 20 20">
                   <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                 </svg>
                 Verified
               </span>
             ) : (
-              <button className="text-sm text-field-600 hover:text-field-700">Verify Email</button>
+              <button className="text-sm text-field-500 hover:text-field-600">Verify Email</button>
             )}
           </div>
           <div className="flex items-center justify-between">
-            <span className="text-slate-600">Wallet Verified</span>
+            <span className="text-ink-700">Wallet Verified</span>
             {user?.stats?.walletVerified ? (
-              <span className="flex items-center text-green-600">
+              <span className="flex items-center text-signal-green">
                 <svg className="w-5 h-5 mr-1" fill="currentColor" viewBox="0 0 20 20">
                   <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                 </svg>
                 Verified
               </span>
             ) : (
-              <span className="text-sm text-slate-400">Connect wallet</span>
+              <span className="text-sm text-ink-300">Connect wallet</span>
             )}
           </div>
           <div className="flex items-center justify-between">
-            <span className="text-slate-600">Identity Verified (KYC)</span>
+            <span className="text-ink-700">Identity Verified (KYC)</span>
             {user?.stats?.identityVerified ? (
-              <span className="flex items-center text-green-600">
+              <span className="flex items-center text-signal-green">
                 <svg className="w-5 h-5 mr-1" fill="currentColor" viewBox="0 0 20 20">
                   <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                 </svg>
                 Verified
               </span>
             ) : (
-              <span className="text-sm text-slate-400">Optional</span>
+              <span className="text-sm text-ink-300">Optional</span>
             )}
           </div>
         </div>
@@ -691,18 +691,18 @@ export default function ProfilePage() {
       <ReputationChart />
 
       {/* Notification Preferences */}
-      <div className="glass rounded-xl p-6 border border-surface-200">
-        <h3 className="text-lg font-semibold text-slate-800 mb-4">Notification Preferences</h3>
+      <div className="bg-paper rounded-sm p-6 border border-ink-200">
+        <h3 className="text-lg font-semibold text-ink-900 mb-4">Notification Preferences</h3>
         {prefsSuccess && (
-          <div className="mb-4 p-3 bg-green-50 border border-green-200 text-green-700 rounded-lg text-sm">
+          <div className="mb-4 p-3 border border-signal-green/30 text-signal-green rounded-sm text-sm">
             {prefsSuccess}
           </div>
         )}
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <div>
-              <p className="font-medium text-slate-700">Task Claimed</p>
-              <p className="text-sm text-slate-500">When someone claims your posted task</p>
+              <p className="font-medium text-ink-700">Task Claimed</p>
+              <p className="text-sm text-ink-500">When someone claims your posted task</p>
             </div>
             <label className="relative inline-flex items-center cursor-pointer">
               <input
@@ -712,13 +712,13 @@ export default function ProfilePage() {
                 disabled={isLoadingPrefs}
                 className="sr-only peer"
               />
-              <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-field-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-field-500"></div>
+              <div className="w-11 h-6 bg-ink-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-field-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-ink-200 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-field-500"></div>
             </label>
           </div>
           <div className="flex items-center justify-between">
             <div>
-              <p className="font-medium text-slate-700">Submission Received</p>
-              <p className="text-sm text-slate-500">When a worker submits work for your task</p>
+              <p className="font-medium text-ink-700">Submission Received</p>
+              <p className="text-sm text-ink-500">When a worker submits work for your task</p>
             </div>
             <label className="relative inline-flex items-center cursor-pointer">
               <input
@@ -728,13 +728,13 @@ export default function ProfilePage() {
                 disabled={isLoadingPrefs}
                 className="sr-only peer"
               />
-              <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-field-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-field-500"></div>
+              <div className="w-11 h-6 bg-ink-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-field-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-ink-200 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-field-500"></div>
             </label>
           </div>
           <div className="flex items-center justify-between">
             <div>
-              <p className="font-medium text-slate-700">Submission Accepted</p>
-              <p className="text-sm text-slate-500">When your work is accepted and payment released</p>
+              <p className="font-medium text-ink-700">Submission Accepted</p>
+              <p className="text-sm text-ink-500">When your work is accepted and payment released</p>
             </div>
             <label className="relative inline-flex items-center cursor-pointer">
               <input
@@ -744,13 +744,13 @@ export default function ProfilePage() {
                 disabled={isLoadingPrefs}
                 className="sr-only peer"
               />
-              <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-field-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-field-500"></div>
+              <div className="w-11 h-6 bg-ink-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-field-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-ink-200 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-field-500"></div>
             </label>
           </div>
           <div className="flex items-center justify-between">
             <div>
-              <p className="font-medium text-slate-700">Submission Rejected</p>
-              <p className="text-sm text-slate-500">When your work is rejected</p>
+              <p className="font-medium text-ink-700">Submission Rejected</p>
+              <p className="text-sm text-ink-500">When your work is rejected</p>
             </div>
             <label className="relative inline-flex items-center cursor-pointer">
               <input
@@ -760,13 +760,13 @@ export default function ProfilePage() {
                 disabled={isLoadingPrefs}
                 className="sr-only peer"
               />
-              <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-field-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-field-500"></div>
+              <div className="w-11 h-6 bg-ink-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-field-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-ink-200 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-field-500"></div>
             </label>
           </div>
           <div className="flex items-center justify-between">
             <div>
-              <p className="font-medium text-slate-700">Dispute Updates</p>
-              <p className="text-sm text-slate-500">When disputes are opened or resolved</p>
+              <p className="font-medium text-ink-700">Dispute Updates</p>
+              <p className="text-sm text-ink-500">When disputes are opened or resolved</p>
             </div>
             <label className="relative inline-flex items-center cursor-pointer">
               <input
@@ -779,13 +779,13 @@ export default function ProfilePage() {
                 disabled={isLoadingPrefs}
                 className="sr-only peer"
               />
-              <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-field-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-field-500"></div>
+              <div className="w-11 h-6 bg-ink-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-field-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-ink-200 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-field-500"></div>
             </label>
           </div>
           <div className="flex items-center justify-between">
             <div>
-              <p className="font-medium text-slate-700">Badge Earned</p>
-              <p className="text-sm text-slate-500">When you earn a new badge or achievement</p>
+              <p className="font-medium text-ink-700">Badge Earned</p>
+              <p className="text-sm text-ink-500">When you earn a new badge or achievement</p>
             </div>
             <label className="relative inline-flex items-center cursor-pointer">
               <input
@@ -795,13 +795,13 @@ export default function ProfilePage() {
                 disabled={isLoadingPrefs}
                 className="sr-only peer"
               />
-              <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-field-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-field-500"></div>
+              <div className="w-11 h-6 bg-ink-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-field-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-ink-200 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-field-500"></div>
             </label>
           </div>
           <div className="flex items-center justify-between">
             <div>
-              <p className="font-medium text-slate-700">Fee Tier Upgrades</p>
-              <p className="text-sm text-slate-500">When you qualify for a lower fee tier</p>
+              <p className="font-medium text-ink-700">Fee Tier Upgrades</p>
+              <p className="text-sm text-ink-500">When you qualify for a lower fee tier</p>
             </div>
             <label className="relative inline-flex items-center cursor-pointer">
               <input
@@ -811,7 +811,7 @@ export default function ProfilePage() {
                 disabled={isLoadingPrefs}
                 className="sr-only peer"
               />
-              <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-field-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-field-500"></div>
+              <div className="w-11 h-6 bg-ink-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-field-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-ink-200 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-field-500"></div>
             </label>
           </div>
         </div>

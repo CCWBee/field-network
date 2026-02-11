@@ -84,11 +84,11 @@ export default function AdminUsersPage() {
 
   const statusBadge = (status: string) => {
     const styles: Record<string, string> = {
-      active: 'bg-emerald-100 text-emerald-700',
-      suspended: 'bg-amber-100 text-amber-700',
-      banned: 'bg-rose-100 text-rose-700',
+      active: 'bg-signal-green/10 text-signal-green',
+      suspended: 'bg-signal-amber/10 text-signal-amber',
+      banned: 'bg-signal-red/10 text-signal-red',
     };
-    return styles[status] || 'bg-slate-100 text-slate-700';
+    return styles[status] || 'bg-ink-50 text-ink-700';
   };
 
   if (isLoading) {
@@ -103,11 +103,11 @@ export default function AdminUsersPage() {
     <div>
       <div className="flex flex-wrap items-center justify-between gap-4 mb-8">
         <div>
-          <Link href="/dashboard/admin" className="text-sm text-slate-500 hover:text-slate-700 mb-2 inline-block">
+          <Link href="/dashboard/admin" className="text-sm text-ink-500 hover:text-ink-700 mb-2 inline-block">
             &larr; Back to Admin
           </Link>
-          <h1 className="text-2xl font-bold text-slate-900">User Management</h1>
-          <p className="text-sm text-slate-500">Review user health and enforce account status.</p>
+          <h1 className="text-xl font-bold text-ink-900 tracking-tight">User Management</h1>
+          <p className="text-sm text-ink-500">Review user health and enforce account status.</p>
         </div>
 
         <div className="flex gap-2">
@@ -115,10 +115,10 @@ export default function AdminUsersPage() {
             <button
               key={status}
               onClick={() => setStatusFilter(status)}
-              className={`px-4 py-2 rounded-md text-sm ${
+              className={`px-4 py-2 rounded-sm text-sm ${
                 statusFilter === status
                   ? 'bg-field-500 text-white'
-                  : 'bg-white text-slate-600 border border-surface-300 hover:bg-slate-50'
+                  : 'bg-white text-ink-700 border border-ink-200 hover:bg-paper-warm'
               }`}
             >
               {status.charAt(0).toUpperCase() + status.slice(1)}
@@ -132,82 +132,82 @@ export default function AdminUsersPage() {
           value={query}
           onChange={(event) => setQuery(event.target.value)}
           placeholder="Search by email, username, or ENS"
-          className="w-full md:w-96 px-4 py-2 rounded-md border border-surface-300 bg-white"
+          className="w-full md:w-96 px-4 py-2 rounded-sm border border-ink-200 bg-white text-ink-900"
         />
         <button
           onClick={loadUsers}
-          className="px-4 py-2 rounded-md bg-slate-900 text-white text-sm"
+          className="px-4 py-2 rounded-sm bg-ink-900 text-white text-sm"
         >
           Refresh
         </button>
       </div>
 
       {error && (
-        <div className="mb-6 p-4 bg-rose-50 border border-rose-200 rounded-md">
-          <p className="text-sm text-rose-600">{error}</p>
+        <div className="mb-6 p-4 bg-signal-red/10 border border-signal-red/20 rounded-sm">
+          <p className="text-sm text-signal-red">{error}</p>
         </div>
       )}
 
       {filteredUsers.length === 0 ? (
-        <div className="glass rounded-lg border border-surface-200 p-12 text-center">
-          <p className="text-slate-500">No users found</p>
+        <div className="bg-paper rounded-sm border border-ink-200 p-12 text-center">
+          <p className="text-ink-500">No users found</p>
         </div>
       ) : (
-        <div className="glass rounded-lg border border-surface-200 overflow-hidden">
-          <table className="min-w-full divide-y divide-surface-200">
-            <thead className="bg-slate-50">
+        <div className="bg-paper rounded-sm border border-ink-200 overflow-hidden">
+          <table className="min-w-full">
+            <thead className="bg-ink-50">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">User</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Status</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Reliability</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Dispute Rate</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Earned</th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase">Actions</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-ink-500 uppercase tracking-wider">User</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-ink-500 uppercase tracking-wider">Status</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-ink-500 uppercase tracking-wider">Reliability</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-ink-500 uppercase tracking-wider">Dispute Rate</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-ink-500 uppercase tracking-wider">Earned</th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-ink-500 uppercase tracking-wider">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-surface-200">
+            <tbody className="divide-y divide-ink-100">
               {filteredUsers.map((userRow) => (
-                <tr key={userRow.id} className="hover:bg-slate-50">
+                <tr key={userRow.id} className="hover:bg-paper-warm">
                   <td className="px-6 py-4">
-                    <div className="text-sm font-medium text-slate-900">
+                    <div className="text-sm font-medium text-ink-900">
                       {userRow.username || userRow.email || userRow.ens_name || 'Unnamed user'}
                     </div>
-                    <div className="text-xs text-slate-500">{userRow.email || userRow.ens_name || userRow.id.slice(0, 8)}</div>
+                    <div className="text-xs text-ink-500">{userRow.email || userRow.ens_name || userRow.id.slice(0, 8)}</div>
                   </td>
                   <td className="px-6 py-4">
-                    <span className={`px-2 py-1 text-xs rounded-full ${statusBadge(userRow.status)}`}>
+                    <span className={`px-2 py-1 text-xs rounded-sm ${statusBadge(userRow.status)}`}>
                       {userRow.status}
                     </span>
                   </td>
-                  <td className="px-6 py-4 text-sm text-slate-700">
-                    {userRow.stats ? userRow.stats.reliability_score.toFixed(0) : '—'}
+                  <td className="px-6 py-4 text-sm text-ink-700 font-mono tabular-nums">
+                    {userRow.stats ? userRow.stats.reliability_score.toFixed(0) : '--'}
                   </td>
-                  <td className="px-6 py-4 text-sm text-slate-700">
-                    {userRow.stats ? `${userRow.stats.dispute_rate.toFixed(1)}%` : '—'}
+                  <td className="px-6 py-4 text-sm text-ink-700 font-mono tabular-nums">
+                    {userRow.stats ? `${userRow.stats.dispute_rate.toFixed(1)}%` : '--'}
                   </td>
-                  <td className="px-6 py-4 text-sm text-slate-700">
-                    {userRow.stats ? `USDC ${userRow.stats.total_earned.toFixed(2)}` : '—'}
+                  <td className="px-6 py-4 text-sm text-ink-700 font-mono tabular-nums">
+                    {userRow.stats ? `USDC ${userRow.stats.total_earned.toFixed(2)}` : '--'}
                   </td>
                   <td className="px-6 py-4 text-right">
                     <div className="flex justify-end gap-2">
                       <button
                         onClick={() => updateStatus(userRow.id, 'active')}
                         disabled={updatingId === userRow.id}
-                        className="text-xs px-3 py-1 rounded-md border border-slate-200 hover:bg-slate-100"
+                        className="text-xs px-3 py-1 rounded-sm border border-ink-200 hover:bg-paper-warm"
                       >
                         Activate
                       </button>
                       <button
                         onClick={() => updateStatus(userRow.id, 'suspended')}
                         disabled={updatingId === userRow.id}
-                        className="text-xs px-3 py-1 rounded-md border border-amber-200 text-amber-700 hover:bg-amber-50"
+                        className="text-xs px-3 py-1 rounded-sm border border-signal-amber/30 text-signal-amber hover:bg-signal-amber/5"
                       >
                         Suspend
                       </button>
                       <button
                         onClick={() => updateStatus(userRow.id, 'banned')}
                         disabled={updatingId === userRow.id}
-                        className="text-xs px-3 py-1 rounded-md border border-rose-200 text-rose-700 hover:bg-rose-50"
+                        className="text-xs px-3 py-1 rounded-sm border border-signal-red/30 text-signal-red hover:bg-signal-red/5"
                       >
                         Ban
                       </button>

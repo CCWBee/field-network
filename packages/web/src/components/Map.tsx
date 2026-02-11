@@ -123,7 +123,7 @@ export default function Map({
   }), []);
 
   return (
-    <div className={`w-full rounded-lg overflow-hidden border border-surface-200 ${className}`} style={{ height }}>
+    <div className={`w-full rounded-sm overflow-hidden border border-ink-200 ${className}`} style={{ height }}>
       <MapContainer center={mapCenter} zoom={zoom} scrollWheelZoom className="h-full w-full">
         <TileLayer attribution={tile.attribution} url={tile.url} />
         <FitBounds points={points} center={mapCenter} fitOnLoad={fitBoundsOnLoad} />

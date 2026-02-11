@@ -72,14 +72,14 @@ type RequesterStats = {
 };
 
 const statusColors: Record<string, string> = {
-  draft: 'bg-slate-100 text-slate-800',
-  posted: 'bg-blue-100 text-blue-800',
-  claimed: 'bg-yellow-100 text-yellow-800',
-  submitted: 'bg-purple-100 text-purple-800',
-  accepted: 'bg-green-100 text-green-800',
-  disputed: 'bg-red-100 text-red-800',
-  cancelled: 'bg-slate-100 text-slate-500',
-  expired: 'bg-slate-100 text-slate-500',
+  draft: 'text-ink-500 border border-ink-200',
+  posted: 'text-signal-blue border border-signal-blue/30',
+  claimed: 'text-signal-amber border border-signal-amber/30',
+  submitted: 'text-purple-700 border border-purple-300',
+  accepted: 'text-signal-green border border-signal-green/30',
+  disputed: 'text-signal-red border border-signal-red/30',
+  cancelled: 'text-ink-300 border border-ink-200',
+  expired: 'text-ink-300 border border-ink-200',
 };
 
 const mapStatusColors: Record<string, string> = {
@@ -188,13 +188,13 @@ export default function RequesterDashboard() {
     <div>
       <div className="flex flex-wrap items-center justify-between gap-6 mb-8">
         <div>
-          <p className="text-sm uppercase tracking-[0.4em] text-slate-400">Requester Console</p>
-          <h1 className="text-3xl font-semibold text-slate-800">Field Network Command</h1>
-          <p className="text-slate-500 mt-2">Monitor live bounties, fulfillment, and resale-ready data.</p>
+          <p className="text-xs uppercase tracking-wider text-ink-500">Requester Console</p>
+          <h1 className="text-2xl font-bold text-ink-900 tracking-tight">Field Network Command</h1>
+          <p className="text-ink-500 mt-2">Monitor live bounties, fulfillment, and resale-ready data.</p>
         </div>
         <Link
           href="/dashboard/requester/new"
-          className="bg-field-500 text-white px-4 py-2 rounded-md hover:bg-field-600"
+          className="bg-field-500 text-white px-4 py-2 rounded-sm hover:bg-field-600"
         >
           Create New Task
         </Link>
@@ -266,13 +266,13 @@ export default function RequesterDashboard() {
       </div>
 
       {/* Tab Navigation */}
-      <div className="flex gap-2 mb-6 border-b border-surface-200">
+      <div className="flex gap-2 mb-6 border-b border-ink-200">
         <button
           onClick={() => setActiveTab('overview')}
           className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
             activeTab === 'overview'
-              ? 'border-field-500 text-field-600'
-              : 'border-transparent text-slate-500 hover:text-slate-700'
+              ? 'border-field-500 text-field-500'
+              : 'border-transparent text-ink-500 hover:text-ink-700'
           }`}
         >
           Overview
@@ -281,8 +281,8 @@ export default function RequesterDashboard() {
           onClick={() => setActiveTab('tasks')}
           className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
             activeTab === 'tasks'
-              ? 'border-field-500 text-field-600'
-              : 'border-transparent text-slate-500 hover:text-slate-700'
+              ? 'border-field-500 text-field-500'
+              : 'border-transparent text-ink-500 hover:text-ink-700'
           }`}
         >
           Mission Log
@@ -291,8 +291,8 @@ export default function RequesterDashboard() {
           onClick={() => setActiveTab('analytics')}
           className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
             activeTab === 'analytics'
-              ? 'border-field-500 text-field-600'
-              : 'border-transparent text-slate-500 hover:text-slate-700'
+              ? 'border-field-500 text-field-500'
+              : 'border-transparent text-ink-500 hover:text-ink-700'
           }`}
         >
           Spending & Analytics
@@ -304,36 +304,36 @@ export default function RequesterDashboard() {
         <>
           <div className="grid gap-6 lg:grid-cols-2 mb-10">
             {/* Bounty Spend */}
-            <div className="glass rounded-lg border border-surface-200 p-6">
-              <h2 className="text-lg font-medium text-slate-800 mb-4">Bounty Spend</h2>
+            <div className="bg-paper rounded-sm border border-ink-200 p-6">
+              <h2 className="text-lg font-medium text-ink-900 mb-4">Bounty Spend</h2>
               <div className="grid gap-4">
                 <div className="flex items-center justify-between">
-                  <div className="text-sm text-slate-500">Active Bounties</div>
-                  <div className="text-lg font-semibold text-slate-800">
+                  <div className="text-sm text-ink-500">Active Bounties</div>
+                  <div className="text-lg font-semibold font-mono tabular-nums text-ink-900">
                     {payoutStats.activeBountiesApprox}
                   </div>
                 </div>
                 <div className="flex items-center justify-between">
-                  <div className="text-sm text-slate-500">Paid Out</div>
-                  <div className="text-lg font-semibold text-green-600">
+                  <div className="text-sm text-ink-500">Paid Out</div>
+                  <div className="text-lg font-semibold font-mono tabular-nums text-signal-green">
                     {payoutStats.paidOutApprox}
                   </div>
                 </div>
                 <div className="flex items-center justify-between">
-                  <div className="text-sm text-slate-500">Total Budgeted</div>
-                  <div className="text-lg font-semibold text-slate-800">
+                  <div className="text-sm text-ink-500">Total Budgeted</div>
+                  <div className="text-lg font-semibold font-mono tabular-nums text-ink-900">
                     {payoutStats.totalBountiesApprox}
                   </div>
                 </div>
               </div>
-              <div className="mt-6 rounded-lg border border-surface-200 bg-white px-4 py-3 text-sm text-slate-500">
+              <div className="mt-6 rounded-sm border border-ink-200 bg-paper px-4 py-3 text-sm text-ink-500">
                 Reliability score: {user?.stats?.reliabilityScore?.toFixed(0) || 0}% - Repeat workers: {stats.repeatWorkers}
               </div>
             </div>
 
             {/* Pending Reviews */}
-            <div className="glass rounded-lg border border-surface-200 p-6">
-              <h2 className="text-lg font-medium text-slate-800 mb-4">Pending Reviews</h2>
+            <div className="bg-paper rounded-sm border border-ink-200 p-6">
+              <h2 className="text-lg font-medium text-ink-900 mb-4">Pending Reviews</h2>
               {statsLoading ? (
                 <div className="flex justify-center py-8">
                   <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-field-500"></div>
@@ -344,29 +344,29 @@ export default function RequesterDashboard() {
                     <Link
                       key={review.submission_id}
                       href={`/dashboard/requester/tasks/${review.task_id}`}
-                      className="block rounded-lg border border-surface-200 bg-white px-4 py-3 hover:border-field-300 transition-colors"
+                      className="block rounded-sm border border-ink-200 bg-paper px-4 py-3 hover:border-field-500/30 transition-colors"
                     >
                       <div className="flex items-center justify-between">
                         <div>
-                          <div className="text-sm font-medium text-slate-800">{review.task_title}</div>
-                          <div className="text-xs text-slate-500 mt-1">
+                          <div className="text-sm font-medium text-ink-900">{review.task_title}</div>
+                          <div className="text-xs text-ink-500 mt-1">
                             by {review.worker.username || 'Anonymous'} - {review.submitted_at ? new Date(review.submitted_at).toLocaleDateString() : 'Pending'}
                           </div>
                         </div>
-                        <div className="text-sm font-semibold text-green-600">
+                        <div className="text-sm font-semibold font-mono tabular-nums text-signal-green">
                           {review.bounty.currency} {review.bounty.amount.toFixed(2)}
                         </div>
                       </div>
                     </Link>
                   ))}
                   {requesterStats.pending_reviews.length > 5 && (
-                    <p className="text-sm text-slate-400 text-center mt-2">
+                    <p className="text-sm text-ink-300 text-center mt-2">
                       +{requesterStats.pending_reviews.length - 5} more submissions
                     </p>
                   )}
                 </div>
               ) : (
-                <div className="rounded-lg border border-dashed border-surface-300 p-4 text-sm text-slate-500 text-center">
+                <div className="rounded-sm border border-dashed border-ink-200 p-4 text-sm text-ink-500 text-center">
                   No pending submissions to review
                 </div>
               )}
@@ -376,8 +376,8 @@ export default function RequesterDashboard() {
           {/* Task Status Breakdown & Map */}
           <div className="grid gap-6 lg:grid-cols-[1fr_2fr] mb-10">
             {/* Status Breakdown */}
-            <div className="glass rounded-lg border border-surface-200 p-6">
-              <h2 className="text-lg font-medium text-slate-800 mb-4">Task Status Breakdown</h2>
+            <div className="bg-paper rounded-sm border border-ink-200 p-6">
+              <h2 className="text-lg font-medium text-ink-900 mb-4">Task Status Breakdown</h2>
               {statsLoading ? (
                 <div className="flex justify-center py-8">
                   <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-field-500"></div>
@@ -390,28 +390,28 @@ export default function RequesterDashboard() {
                       <div key={status} className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
                           <div
-                            className="w-3 h-3 rounded-full"
+                            className="w-3 h-3 rounded-sm"
                             style={{ backgroundColor: mapStatusColors[status] }}
                           />
-                          <span className="text-sm text-slate-600 capitalize">{status}</span>
+                          <span className="text-sm text-ink-700 capitalize">{status}</span>
                         </div>
-                        <span className="text-sm font-semibold text-slate-800">{count}</span>
+                        <span className="text-sm font-semibold font-mono tabular-nums text-ink-900">{count}</span>
                       </div>
                     ))}
                 </div>
               ) : (
-                <p className="text-sm text-slate-500">No tasks yet</p>
+                <p className="text-sm text-ink-500">No tasks yet</p>
               )}
 
               {/* Template Usage */}
               {requesterStats?.template_usage && requesterStats.template_usage.length > 0 && (
-                <div className="mt-6 pt-6 border-t border-surface-200">
-                  <h3 className="text-sm font-medium text-slate-800 mb-3">Template Usage</h3>
+                <div className="mt-6 pt-6 border-t border-ink-100">
+                  <h3 className="text-sm font-medium text-ink-900 mb-3">Template Usage</h3>
                   <div className="space-y-2">
                     {requesterStats.template_usage.slice(0, 4).map((template) => (
                       <div key={template.template} className="flex items-center justify-between text-sm">
-                        <span className="text-slate-600">{template.template.replace(/_v\d+$/, '')}</span>
-                        <span className="font-medium text-slate-800">{template.count}</span>
+                        <span className="text-ink-700">{template.template.replace(/_v\d+$/, '')}</span>
+                        <span className="font-medium font-mono tabular-nums text-ink-900">{template.count}</span>
                       </div>
                     ))}
                   </div>
@@ -420,10 +420,10 @@ export default function RequesterDashboard() {
             </div>
 
             {/* Tasks Map */}
-            <div className="glass rounded-lg border border-surface-200 overflow-hidden">
-              <div className="p-4 border-b border-surface-200">
-                <h2 className="text-lg font-medium text-slate-800">Task Locations</h2>
-                <p className="text-sm text-slate-500 mt-1">All your task locations by status</p>
+            <div className="bg-paper rounded-sm border border-ink-200 overflow-hidden">
+              <div className="p-4 border-b border-ink-200">
+                <h2 className="text-lg font-medium text-ink-900">Task Locations</h2>
+                <p className="text-sm text-ink-500 mt-1">All your task locations by status</p>
               </div>
               {statsLoading ? (
                 <div className="flex items-center justify-center h-[350px]">
@@ -434,32 +434,32 @@ export default function RequesterDashboard() {
                   <Map
                     points={mapPoints}
                     height="350px"
-                    onPointClick={(point) => setSelectedTaskId(point.id)}
+                    onPointClick={(point: any) => setSelectedTaskId(point.id)}
                     selectedId={selectedTaskId}
                     fitBoundsOnLoad={true}
                     tileLayer="carto-light"
                   />
                   {selectedMapTask && (
-                    <div className="p-4 border-t border-surface-200 bg-slate-50">
+                    <div className="p-4 border-t border-ink-200 bg-ink-50">
                       <div className="flex items-center justify-between">
                         <div>
-                          <div className="font-medium text-slate-800">{selectedMapTask.title}</div>
-                          <div className="text-sm text-slate-500">
+                          <div className="font-medium text-ink-900">{selectedMapTask.title}</div>
+                          <div className="text-sm text-ink-500">
                             {selectedMapTask.template} - {selectedMapTask.lat.toFixed(4)}, {selectedMapTask.lon.toFixed(4)}
                           </div>
                         </div>
                         <div className="text-right">
-                          <div className="text-lg font-semibold text-slate-800">
+                          <div className="text-lg font-semibold font-mono tabular-nums text-ink-900">
                             {selectedMapTask.bounty.currency} {selectedMapTask.bounty.amount.toFixed(2)}
                           </div>
-                          <span className={`text-xs px-2 py-0.5 rounded-full ${statusColors[selectedMapTask.status]}`}>
+                          <span className={`text-xs px-2 py-0.5 rounded-sm ${statusColors[selectedMapTask.status]}`}>
                             {selectedMapTask.status}
                           </span>
                         </div>
                       </div>
                       <Link
                         href={`/dashboard/requester/tasks/${selectedMapTask.id}`}
-                        className="mt-3 block text-center text-sm text-field-600 hover:text-field-500"
+                        className="mt-3 block text-center text-sm text-field-500 hover:text-field-600"
                       >
                         View Task Details
                       </Link>
@@ -467,9 +467,9 @@ export default function RequesterDashboard() {
                   )}
                 </>
               ) : (
-                <div className="flex items-center justify-center h-[350px] text-slate-500">
+                <div className="flex items-center justify-center h-[350px] text-ink-500">
                   <div className="text-center">
-                    <svg className="w-12 h-12 mx-auto mb-3 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-12 h-12 mx-auto mb-3 text-ink-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
                     </svg>
                     <p>No tasks with locations to display</p>
@@ -480,39 +480,39 @@ export default function RequesterDashboard() {
           </div>
 
           {/* Resale Inventory */}
-          <div className="glass rounded-lg border border-surface-200 p-6">
-            <h2 className="text-lg font-medium text-slate-800 mb-4">Nearby Data Inventory</h2>
-            <div className="space-y-4 text-sm text-slate-600">
+          <div className="bg-paper rounded-sm border border-ink-200 p-6">
+            <h2 className="text-lg font-medium text-ink-900 mb-4">Nearby Data Inventory</h2>
+            <div className="space-y-4 text-sm text-ink-700">
               <div className="flex items-center justify-between">
                 <span>Live bounties around you</span>
-                <span className="font-semibold text-slate-800">{stats.active}</span>
+                <span className="font-semibold font-mono tabular-nums text-ink-900">{stats.active}</span>
               </div>
               <div className="flex items-center justify-between">
                 <span>Fulfilled this month</span>
-                <span className="font-semibold text-slate-800">{stats.completed}</span>
+                <span className="font-semibold font-mono tabular-nums text-ink-900">{stats.completed}</span>
               </div>
               <div className="flex items-center justify-between">
                 <span>Pending review</span>
-                <span className="font-semibold text-slate-800">{stats.pending_review}</span>
+                <span className="font-semibold font-mono tabular-nums text-ink-900">{stats.pending_review}</span>
               </div>
             </div>
             <div className="mt-6 space-y-3">
               {inventory.length === 0 ? (
-                <div className="rounded-lg border border-dashed border-surface-300 p-4 text-sm text-slate-500">
+                <div className="rounded-sm border border-dashed border-ink-200 p-4 text-sm text-ink-500">
                   Curated resale inventory will appear here once tasks pass the exclusivity window.
                 </div>
               ) : (
                 inventory.slice(0, 3).map((item) => (
-                  <div key={item.task_id} className="rounded-lg border border-surface-200 bg-white px-4 py-3">
+                  <div key={item.task_id} className="rounded-sm border border-ink-200 bg-paper px-4 py-3">
                     <div className="flex items-center justify-between">
-                      <div className="text-sm font-medium text-slate-800">{item.title}</div>
-                      <span className={`text-xs px-2 py-1 rounded-full ${
-                        item.status === 'resale_ready' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'
+                      <div className="text-sm font-medium text-ink-900">{item.title}</div>
+                      <span className={`text-xs px-2 py-1 rounded-sm border ${
+                        item.status === 'resale_ready' ? 'text-signal-green border-signal-green/30' : 'text-ink-500 border-ink-200'
                       }`}>
                         {item.status === 'resale_ready' ? 'Resale Ready' : 'Exclusive'}
                       </span>
                     </div>
-                    <div className="text-xs text-slate-500 mt-1">
+                    <div className="text-xs text-ink-500 mt-1">
                       Available {new Date(item.resale_available_at).toLocaleDateString()} - Royalty {(item.royalty_rate * 100).toFixed(0)}%
                     </div>
                   </div>
@@ -531,60 +531,60 @@ export default function RequesterDashboard() {
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-field-500"></div>
             </div>
           ) : tasks.length === 0 ? (
-            <div className="glass rounded-lg p-12 text-center border border-surface-200">
-              <p className="text-slate-500 mb-4">You haven't created any tasks yet.</p>
+            <div className="bg-paper rounded-sm p-12 text-center border border-ink-200">
+              <p className="text-ink-500 mb-4">You haven't created any tasks yet.</p>
               <Link
                 href="/dashboard/requester/new"
-                className="text-field-600 hover:text-field-500"
+                className="text-field-500 hover:text-field-600"
               >
                 Create your first task
               </Link>
             </div>
           ) : (
-            <div className="glass rounded-lg overflow-hidden border border-surface-200">
+            <div className="bg-paper rounded-sm overflow-hidden border border-ink-200">
               <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-surface-200">
-                  <thead className="bg-slate-50">
+                <table className="min-w-full divide-y divide-ink-200">
+                  <thead className="bg-ink-50">
                     <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                      <th className="px-6 py-3 text-left text-xs font-medium text-ink-500 uppercase tracking-wider">
                         Task
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                      <th className="px-6 py-3 text-left text-xs font-medium text-ink-500 uppercase tracking-wider">
                         Status
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                      <th className="px-6 py-3 text-left text-xs font-medium text-ink-500 uppercase tracking-wider">
                         Bounty
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                      <th className="px-6 py-3 text-left text-xs font-medium text-ink-500 uppercase tracking-wider">
                         Deadline
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                      <th className="px-6 py-3 text-left text-xs font-medium text-ink-500 uppercase tracking-wider">
                         Actions
                       </th>
                     </tr>
                   </thead>
-                  <tbody className="bg-white divide-y divide-surface-200">
+                  <tbody className="bg-paper divide-y divide-ink-100">
                     {tasks.map((task) => (
-                      <tr key={task.id} className="hover:bg-slate-50">
+                      <tr key={task.id} className="hover:bg-ink-50">
                         <td className="px-6 py-4">
-                          <div className="text-sm font-medium text-slate-800">{task.title}</div>
-                          <div className="text-sm text-slate-500">{task.template}</div>
+                          <div className="text-sm font-medium text-ink-900">{task.title}</div>
+                          <div className="text-sm text-ink-500">{task.template}</div>
                         </td>
                         <td className="px-6 py-4">
-                          <span className={`px-2 py-1 text-xs rounded-full ${statusColors[task.status]}`}>
+                          <span className={`px-2 py-1 text-xs rounded-sm ${statusColors[task.status]}`}>
                             {task.status}
                           </span>
                         </td>
-                        <td className="px-6 py-4 text-sm text-slate-800">
+                        <td className="px-6 py-4 text-sm font-mono tabular-nums text-ink-900">
                           {task.bounty.currency} {task.bounty.amount.toFixed(2)}
                         </td>
-                        <td className="px-6 py-4 text-sm text-slate-500">
+                        <td className="px-6 py-4 text-sm text-ink-500">
                           {new Date(task.time_window.end_iso).toLocaleDateString()}
                         </td>
                         <td className="px-6 py-4 text-sm">
                           <Link
                             href={`/dashboard/requester/tasks/${task.id}`}
-                            className="text-field-600 hover:text-field-500"
+                            className="text-field-500 hover:text-field-600"
                           >
                             View
                           </Link>
@@ -621,62 +621,62 @@ export default function RequesterDashboard() {
 
               <div className="grid gap-6 lg:grid-cols-2">
                 {/* Task Analytics */}
-                <div className="glass rounded-lg border border-surface-200 p-6">
-                  <h2 className="text-lg font-medium text-slate-800 mb-4">Task Analytics</h2>
+                <div className="bg-paper rounded-sm border border-ink-200 p-6">
+                  <h2 className="text-lg font-medium text-ink-900 mb-4">Task Analytics</h2>
                   <div className="space-y-4">
                     <div className="flex items-center justify-between">
-                      <div className="text-sm text-slate-500">Total Tasks Posted</div>
-                      <div className="text-lg font-semibold text-slate-800">{requesterStats.summary.tasks_posted}</div>
+                      <div className="text-sm text-ink-500">Total Tasks Posted</div>
+                      <div className="text-lg font-semibold font-mono tabular-nums text-ink-900">{requesterStats.summary.tasks_posted}</div>
                     </div>
                     <div className="flex items-center justify-between">
-                      <div className="text-sm text-slate-500">Tasks Completed</div>
-                      <div className="text-lg font-semibold text-green-600">{requesterStats.summary.tasks_completed}</div>
+                      <div className="text-sm text-ink-500">Tasks Completed</div>
+                      <div className="text-lg font-semibold font-mono tabular-nums text-signal-green">{requesterStats.summary.tasks_completed}</div>
                     </div>
                     <div className="flex items-center justify-between">
-                      <div className="text-sm text-slate-500">Fulfillment Rate</div>
-                      <div className="text-lg font-semibold text-slate-800">{requesterStats.summary.fulfillment_rate.toFixed(1)}%</div>
+                      <div className="text-sm text-ink-500">Fulfillment Rate</div>
+                      <div className="text-lg font-semibold font-mono tabular-nums text-ink-900">{requesterStats.summary.fulfillment_rate.toFixed(1)}%</div>
                     </div>
                     <div className="flex items-center justify-between">
-                      <div className="text-sm text-slate-500">Avg Response Time</div>
-                      <div className="text-lg font-semibold text-slate-800">
+                      <div className="text-sm text-ink-500">Avg Response Time</div>
+                      <div className="text-lg font-semibold font-mono tabular-nums text-ink-900">
                         {requesterStats.summary.avg_response_hours
                           ? `${requesterStats.summary.avg_response_hours.toFixed(1)}h`
                           : 'N/A'}
                       </div>
                     </div>
                     <div className="flex items-center justify-between">
-                      <div className="text-sm text-slate-500">Repeat Workers</div>
-                      <div className="text-lg font-semibold text-slate-800">{requesterStats.summary.repeat_workers}</div>
+                      <div className="text-sm text-ink-500">Repeat Workers</div>
+                      <div className="text-lg font-semibold font-mono tabular-nums text-ink-900">{requesterStats.summary.repeat_workers}</div>
                     </div>
                   </div>
                 </div>
 
                 {/* Spending Summary */}
-                <div className="glass rounded-lg border border-surface-200 p-6">
-                  <h2 className="text-lg font-medium text-slate-800 mb-4">Spending Summary</h2>
+                <div className="bg-paper rounded-sm border border-ink-200 p-6">
+                  <h2 className="text-lg font-medium text-ink-900 mb-4">Spending Summary</h2>
                   <div className="space-y-4">
                     <div className="flex items-center justify-between">
-                      <div className="text-sm text-slate-500">Total Bounties Paid</div>
-                      <div className="text-lg font-semibold text-green-600">
+                      <div className="text-sm text-ink-500">Total Bounties Paid</div>
+                      <div className="text-lg font-semibold font-mono tabular-nums text-signal-green">
                         USDC {requesterStats.summary.total_bounties_paid.toFixed(2)}
                       </div>
                     </div>
                     <div className="flex items-center justify-between">
-                      <div className="text-sm text-slate-500">Active Bounties</div>
-                      <div className="text-lg font-semibold text-slate-800">{payoutStats.activeBountiesApprox}</div>
+                      <div className="text-sm text-ink-500">Active Bounties</div>
+                      <div className="text-lg font-semibold font-mono tabular-nums text-ink-900">{payoutStats.activeBountiesApprox}</div>
                     </div>
                     <div className="flex items-center justify-between">
-                      <div className="text-sm text-slate-500">Total Budget</div>
-                      <div className="text-lg font-semibold text-slate-800">{payoutStats.totalBountiesApprox}</div>
+                      <div className="text-sm text-ink-500">Total Budget</div>
+                      <div className="text-lg font-semibold font-mono tabular-nums text-ink-900">{payoutStats.totalBountiesApprox}</div>
                     </div>
                   </div>
 
                   {/* Monthly average */}
                   {requesterStats.spending_chart.length > 0 && (
-                    <div className="mt-6 pt-6 border-t border-surface-200">
+                    <div className="mt-6 pt-6 border-t border-ink-100">
                       <div className="flex items-center justify-between">
-                        <div className="text-sm text-slate-500">Monthly Average</div>
-                        <div className="text-lg font-semibold text-slate-800">
+                        <div className="text-sm text-ink-500">Monthly Average</div>
+                        <div className="text-lg font-semibold font-mono tabular-nums text-ink-900">
                           USDC {(requesterStats.spending_chart.reduce((sum, m) => sum + m.amount, 0) / requesterStats.spending_chart.length).toFixed(2)}
                         </div>
                       </div>
@@ -686,8 +686,8 @@ export default function RequesterDashboard() {
               </div>
             </>
           ) : (
-            <div className="glass rounded-lg p-12 text-center border border-surface-200">
-              <p className="text-slate-500">Unable to load analytics. Please try again later.</p>
+            <div className="bg-paper rounded-sm p-12 text-center border border-ink-200">
+              <p className="text-ink-500">Unable to load analytics. Please try again later.</p>
             </div>
           )}
         </div>

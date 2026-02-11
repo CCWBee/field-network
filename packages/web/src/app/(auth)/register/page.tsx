@@ -75,18 +75,18 @@ function RegisterContent() {
 
   return (
     <>
-      <h2 className="text-center text-2xl font-bold text-slate-800 mb-6">
+      <h2 className="text-center text-2xl font-bold text-ink-900 mb-6">
         Create your account
       </h2>
 
       {error && (
-        <div className="mb-4 p-3 bg-red-500/20 border border-red-500/50 rounded-lg">
-          <p className="text-sm text-red-600">{error}</p>
+        <div className="mb-4 p-3 bg-paper border border-ink-200 rounded-sm">
+          <p className="text-sm text-signal-red">{error}</p>
         </div>
       )}
 
       {/* Unified account message */}
-      <p className="text-sm text-slate-500 text-center mb-6">
+      <p className="text-sm text-ink-500 text-center mb-6">
         One account to post tasks and collect bounties
       </p>
 
@@ -94,7 +94,7 @@ function RegisterContent() {
       <div className="space-y-3">
         {isConnected ? (
           <div className="space-y-3">
-            <div className="p-3 bg-field-500/20 border border-field-500/50 rounded-lg">
+            <div className="p-3 bg-paper border border-ink-200 rounded-sm">
               <p className="text-sm text-field-600">
                 Connected: {address?.slice(0, 6)}...{address?.slice(-4)}
               </p>
@@ -102,13 +102,13 @@ function RegisterContent() {
             <button
               onClick={handleWalletSignUp}
               disabled={isAuthenticating}
-              className="w-full flex justify-center py-3 px-4 rounded-lg text-sm font-medium text-slate-800 bg-field-500 hover:bg-field-400 disabled:opacity-50 transition-colors glow-sm"
+              className="w-full flex justify-center py-3 px-4 rounded-sm text-sm font-medium text-white bg-field-500 hover:bg-field-600 disabled:opacity-50 transition-colors"
             >
               {isAuthenticating ? 'Creating account...' : 'Sign up with Wallet'}
             </button>
             <button
               onClick={() => disconnect()}
-              className="w-full flex justify-center py-2 px-4 text-sm text-slate-500 hover:text-slate-600 transition-colors"
+              className="w-full flex justify-center py-2 px-4 text-sm text-ink-500 hover:text-ink-700 transition-colors"
             >
               Disconnect Wallet
             </button>
@@ -119,7 +119,7 @@ function RegisterContent() {
               <button
                 onClick={() => handleWalletConnect(metamaskConnector)}
                 disabled={isConnecting}
-                className="w-full flex items-center justify-center py-3 px-4 glass-light rounded-lg text-sm font-medium text-slate-800 hover:bg-field-50 disabled:opacity-50 transition-colors"
+                className="w-full flex items-center justify-center py-3 px-4 border border-ink-200 rounded-sm bg-paper hover:bg-ink-50 text-sm font-medium text-ink-900 disabled:opacity-50 transition-colors"
               >
                 <svg className="w-5 h-5 mr-2" viewBox="0 0 40 40" fill="none">
                   <path d="M36.4 4L22.2 14.6l2.6-6.2L36.4 4z" fill="#E17726" />
@@ -135,7 +135,7 @@ function RegisterContent() {
               <button
                 onClick={() => handleWalletConnect(walletConnectConnector)}
                 disabled={isConnecting}
-                className="w-full flex items-center justify-center py-3 px-4 glass-light rounded-lg text-sm font-medium text-slate-800 hover:bg-field-50 disabled:opacity-50 transition-colors"
+                className="w-full flex items-center justify-center py-3 px-4 border border-ink-200 rounded-sm bg-paper hover:bg-ink-50 text-sm font-medium text-ink-900 disabled:opacity-50 transition-colors"
               >
                 <svg className="w-5 h-5 mr-2" viewBox="0 0 40 40" fill="none">
                   <path d="M10 14.6c5.5-5.4 14.5-5.4 20 0l.7.6c.3.3.3.7 0 1l-2.3 2.2c-.1.2-.4.2-.5 0l-.9-.9c-3.9-3.8-10.1-3.8-14 0l-1 .9c-.1.2-.4.2-.5 0l-2.3-2.2c-.3-.3-.3-.7 0-1l.8-.6zm24.7 4.6l2 2c.3.3.3.7 0 1l-9.2 9c-.3.3-.7.3-1 0l-6.5-6.4c-.1-.1-.2-.1-.3 0l-6.5 6.4c-.3.3-.7.3-1 0l-9.2-9c-.3-.3-.3-.7 0-1l2-2c.3-.3.7-.3 1 0l6.5 6.4c.1.1.2.1.3 0l6.5-6.4c.3-.3.7-.3 1 0l6.5 6.4c.1.1.2.1.3 0l6.5-6.4c.3-.3.7-.3 1 0z" fill="#3B99FC" />
@@ -150,12 +150,12 @@ function RegisterContent() {
       {/* Divider */}
       <div className="relative my-6">
         <div className="absolute inset-0 flex items-center">
-          <div className="w-full border-t border-surface-200" />
+          <div className="w-full border-t border-ink-100" />
         </div>
         <div className="relative flex justify-center text-sm">
           <button
             onClick={() => setShowEmailForm(!showEmailForm)}
-            className="px-3 py-1 bg-surface-50 text-slate-500 hover:text-slate-600 rounded transition-colors"
+            className="px-3 py-1 bg-paper text-ink-500 hover:text-ink-700 rounded-sm transition-colors"
           >
             {showEmailForm ? 'Hide email signup' : 'Or sign up with email'}
           </button>
@@ -166,7 +166,7 @@ function RegisterContent() {
       {showEmailForm && (
         <form onSubmit={handleEmailSubmit} className="space-y-4">
           <div>
-            <label htmlFor="email" className="block text-sm font-medium text-slate-600">
+            <label htmlFor="email" className="block text-xs uppercase tracking-wider text-ink-500">
               Email address
             </label>
             <input
@@ -175,12 +175,12 @@ function RegisterContent() {
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="mt-1 block w-full px-3 py-2 bg-surface-100 border border-surface-200 rounded-lg text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-field-500 focus:border-transparent"
+              className="mt-1 block w-full px-3 py-2 bg-paper border border-ink-200 rounded-sm text-ink-900 placeholder-ink-300 focus:outline-none focus:ring-2 focus:ring-field-500 focus:border-transparent"
             />
           </div>
 
           <div>
-            <label htmlFor="password" className="block text-sm font-medium text-slate-600">
+            <label htmlFor="password" className="block text-xs uppercase tracking-wider text-ink-500">
               Password
             </label>
             <input
@@ -190,12 +190,12 @@ function RegisterContent() {
               minLength={8}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="mt-1 block w-full px-3 py-2 bg-surface-100 border border-surface-200 rounded-lg text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-field-500 focus:border-transparent"
+              className="mt-1 block w-full px-3 py-2 bg-paper border border-ink-200 rounded-sm text-ink-900 placeholder-ink-300 focus:outline-none focus:ring-2 focus:ring-field-500 focus:border-transparent"
             />
           </div>
 
           <div>
-            <label htmlFor="confirmPassword" className="block text-sm font-medium text-slate-600">
+            <label htmlFor="confirmPassword" className="block text-xs uppercase tracking-wider text-ink-500">
               Confirm Password
             </label>
             <input
@@ -204,23 +204,23 @@ function RegisterContent() {
               required
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
-              className="mt-1 block w-full px-3 py-2 bg-surface-100 border border-surface-200 rounded-lg text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-field-500 focus:border-transparent"
+              className="mt-1 block w-full px-3 py-2 bg-paper border border-ink-200 rounded-sm text-ink-900 placeholder-ink-300 focus:outline-none focus:ring-2 focus:ring-field-500 focus:border-transparent"
             />
           </div>
 
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full flex justify-center py-2 px-4 rounded-lg text-sm font-medium text-slate-800 bg-field-500 hover:bg-field-400 disabled:opacity-50 transition-colors"
+            className="w-full flex justify-center py-2 px-4 rounded-sm text-sm font-medium text-white bg-field-500 hover:bg-field-600 disabled:opacity-50 transition-colors"
           >
             {isEmailLoading ? 'Creating account...' : 'Create account with Email'}
           </button>
         </form>
       )}
 
-      <p className="mt-6 text-center text-sm text-slate-500">
+      <p className="mt-6 text-center text-sm text-ink-500">
         Already have an account?{' '}
-        <Link href="/login" className="text-field-600 hover:text-field-600 transition-colors">
+        <Link href="/login" className="text-field-500 hover:text-field-600 transition-colors">
           Sign in
         </Link>
       </p>

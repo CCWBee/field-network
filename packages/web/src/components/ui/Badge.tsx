@@ -15,19 +15,19 @@ interface BadgeProps extends HTMLAttributes<HTMLSpanElement> {
 }
 
 const variantStyles: Record<BadgeVariant, string> = {
-  default: 'bg-slate-100 text-slate-700 border-slate-200',
-  success: 'bg-green-100 text-green-700 border-green-200',
-  warning: 'bg-yellow-100 text-yellow-700 border-yellow-200',
-  error: 'bg-red-100 text-red-700 border-red-200',
-  info: 'bg-blue-100 text-blue-700 border-blue-200',
+  default: 'text-ink-500 border-ink-200',
+  success: 'text-signal-green border-signal-green/30',
+  warning: 'text-signal-amber border-signal-amber/30',
+  error: 'text-signal-red border-signal-red/30',
+  info: 'text-signal-blue border-signal-blue/30',
 };
 
 const dotColors: Record<BadgeVariant, string> = {
-  default: 'bg-slate-400',
-  success: 'bg-green-500',
-  warning: 'bg-yellow-500',
-  error: 'bg-red-500',
-  info: 'bg-blue-500',
+  default: 'bg-ink-300',
+  success: 'bg-signal-green',
+  warning: 'bg-signal-amber',
+  error: 'bg-signal-red',
+  info: 'bg-signal-blue',
 };
 
 const sizeStyles: Record<BadgeSize, string> = {
@@ -49,7 +49,7 @@ function Badge({
   return (
     <span
       className={`
-        inline-flex items-center gap-1.5 font-medium rounded-full border
+        inline-flex items-center gap-1.5 font-medium rounded-sm border uppercase tracking-wider
         ${variantStyles[variant]}
         ${sizeStyles[size]}
         ${className}
@@ -64,7 +64,7 @@ function Badge({
         <button
           type="button"
           onClick={onRemove}
-          className="ml-0.5 -mr-1 p-0.5 rounded-full hover:bg-black/10 transition-colors"
+          className="ml-0.5 -mr-1 p-0.5 rounded-sm hover:bg-black/10 transition-colors"
           aria-label="Remove"
         >
           <svg

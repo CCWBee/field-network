@@ -76,7 +76,7 @@ export default function PublicProfileCard({
         <img
           src={avatarUrl}
           alt={displayName}
-          className={`${classes.avatar} rounded-full object-cover border border-surface-200`}
+          className={`${classes.avatar} rounded-full object-cover border border-ink-200`}
         />
       ) : (
         <div className={`${classes.avatar} rounded-full bg-field-100 flex items-center justify-center text-field-600 font-semibold`}>
@@ -87,7 +87,7 @@ export default function PublicProfileCard({
       {/* Info */}
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
-          <span className={`font-medium text-slate-800 truncate ${classes.name}`}>
+          <span className={`font-medium text-ink-900 truncate ${classes.name}`}>
             {displayName}
           </span>
           {user.ens_name && user.username && (
@@ -96,14 +96,14 @@ export default function PublicProfileCard({
         </div>
 
         {user.location && (
-          <p className={`text-slate-500 ${classes.stats}`}>{user.location}</p>
+          <p className={`text-ink-500 ${classes.stats}`}>{user.location}</p>
         )}
 
         {/* Stats Row */}
         {showStats && user.stats && (
-          <div className={`flex items-center gap-3 mt-1 ${classes.stats} text-slate-500`}>
+          <div className={`flex items-center gap-3 mt-1 ${classes.stats} text-ink-500`}>
             <span className="flex items-center gap-1">
-              <span className={reliabilityScore >= 90 ? 'text-green-600' : reliabilityScore >= 70 ? 'text-yellow-600' : 'text-red-600'}>
+              <span className={`font-mono tabular-nums ${reliabilityScore >= 90 ? 'text-signal-green' : reliabilityScore >= 70 ? 'text-signal-amber' : 'text-signal-red'}`}>
                 {reliabilityScore.toFixed(0)}%
               </span>
               <span>reliable</span>
@@ -123,8 +123,8 @@ export default function PublicProfileCard({
                   key={star}
                   className={`w-3 h-3 ${
                     star <= (user.rating?.average ?? 0)
-                      ? 'text-yellow-400 fill-current'
-                      : 'text-slate-300'
+                      ? 'text-signal-amber fill-current'
+                      : 'text-ink-300'
                   }`}
                   viewBox="0 0 20 20"
                   fill="currentColor"
@@ -133,7 +133,7 @@ export default function PublicProfileCard({
                 </svg>
               ))}
             </div>
-            <span className="text-slate-500">
+            <span className="font-mono tabular-nums text-ink-500">
               {user.rating.average?.toFixed(1)} ({user.rating.count})
             </span>
           </div>
@@ -146,10 +146,10 @@ export default function PublicProfileCard({
           {user.badges.slice(0, 3).map((badge, i) => (
             <div
               key={i}
-              className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold border-2 border-white ${
+              className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold border-2 border-paper ${
                 badge.tier === 'platinum' ? 'bg-purple-100 text-purple-600' :
                 badge.tier === 'gold' ? 'bg-yellow-100 text-yellow-600' :
-                badge.tier === 'silver' ? 'bg-slate-100 text-slate-600' :
+                badge.tier === 'silver' ? 'bg-ink-100 text-ink-700' :
                 'bg-orange-100 text-orange-600'
               }`}
               title={badge.title}
@@ -158,7 +158,7 @@ export default function PublicProfileCard({
             </div>
           ))}
           {user.badges.length > 3 && (
-            <div className="w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center text-xs text-slate-500 border-2 border-white">
+            <div className="w-6 h-6 rounded-full bg-ink-100 flex items-center justify-center text-xs text-ink-500 border-2 border-paper">
               +{user.badges.length - 3}
             </div>
           )}
@@ -171,7 +171,7 @@ export default function PublicProfileCard({
     return (
       <Link
         href={`/users/${user.username}`}
-        className="block rounded-lg bg-white border border-surface-200 hover:border-field-300 hover:shadow-sm transition-all"
+        className="block rounded-sm bg-paper border border-ink-200 hover:border-field-300 transition-colors"
       >
         <CardContent />
       </Link>
@@ -179,7 +179,7 @@ export default function PublicProfileCard({
   }
 
   return (
-    <div className="rounded-lg bg-white border border-surface-200">
+    <div className="rounded-sm bg-paper border border-ink-200">
       <CardContent />
     </div>
   );

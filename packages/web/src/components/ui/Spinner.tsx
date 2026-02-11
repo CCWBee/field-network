@@ -20,7 +20,7 @@ const sizeStyles: Record<SpinnerSize, string> = {
 const colorStyles = {
   primary: 'border-field-500',
   white: 'border-white',
-  slate: 'border-slate-600',
+  slate: 'border-ink-700',
 };
 
 function Spinner({
@@ -44,7 +44,7 @@ function Spinner({
           ${colorStyles[color]}
         `}
       />
-      {label && <span className="text-sm text-slate-600">{label}</span>}
+      {label && <span className="text-sm text-ink-700">{label}</span>}
       <span className="sr-only">{label || 'Loading...'}</span>
     </div>
   );

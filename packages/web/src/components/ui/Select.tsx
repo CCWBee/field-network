@@ -36,7 +36,7 @@ function Select({
       {label && (
         <label
           htmlFor={selectId}
-          className="block text-sm font-medium text-slate-700 mb-1.5"
+          className="block text-xs font-medium uppercase tracking-wider text-ink-500 mb-1.5"
         >
           {label}
         </label>
@@ -46,12 +46,12 @@ function Select({
           id={selectId}
           disabled={disabled}
           className={`
-            block w-full rounded-lg border bg-white
-            text-slate-800 appearance-none
+            block w-full rounded-sm border bg-paper
+            text-ink-900 appearance-none
             transition-colors duration-150
-            focus:outline-none focus:ring-2 focus:ring-field-500 focus:border-transparent
-            disabled:bg-surface-50 disabled:text-slate-500 disabled:cursor-not-allowed
-            ${error ? 'border-red-300 focus:ring-red-500' : 'border-surface-300'}
+            focus:outline-none focus:ring-1 focus:ring-field-500 focus:border-field-500
+            disabled:bg-ink-50 disabled:text-ink-300 disabled:cursor-not-allowed
+            ${error ? 'border-signal-red focus:ring-signal-red' : 'border-ink-200'}
             pl-3 pr-10 py-2 text-sm
             ${className}
           `}
@@ -70,19 +70,19 @@ function Select({
             </option>
           ))}
         </select>
-        <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-400">
+        <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-ink-500">
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
           </svg>
         </div>
       </div>
       {error && (
-        <p id={`${selectId}-error`} className="mt-1.5 text-sm text-red-600">
+        <p id={`${selectId}-error`} className="mt-1.5 text-sm text-signal-red">
           {error}
         </p>
       )}
       {hint && !error && (
-        <p id={`${selectId}-hint`} className="mt-1.5 text-sm text-slate-500">
+        <p id={`${selectId}-hint`} className="mt-1.5 text-sm text-ink-500">
           {hint}
         </p>
       )}

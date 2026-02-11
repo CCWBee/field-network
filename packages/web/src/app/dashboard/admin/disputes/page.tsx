@@ -144,14 +144,14 @@ export default function AdminDisputesPage() {
 
   const getStatusBadge = (status: string) => {
     const styles: Record<string, string> = {
-      opened: 'bg-yellow-100 text-yellow-800 border-yellow-200',
-      evidence_pending: 'bg-orange-100 text-orange-800 border-orange-200',
-      under_review: 'bg-blue-100 text-blue-800 border-blue-200',
-      resolved: 'bg-green-100 text-green-800 border-green-200',
+      opened: 'bg-signal-amber/10 text-signal-amber border-signal-amber/20',
+      evidence_pending: 'bg-signal-amber/10 text-signal-amber border-signal-amber/20',
+      under_review: 'bg-signal-blue/10 text-signal-blue border-signal-blue/20',
+      resolved: 'bg-signal-green/10 text-signal-green border-signal-green/20',
     };
 
     return (
-      <span className={`px-2 py-1 text-xs font-medium rounded-full border ${styles[status] || 'bg-gray-100 text-gray-800 border-gray-200'}`}>
+      <span className={`px-2 py-1 text-xs font-medium rounded-sm border ${styles[status] || 'bg-ink-50 text-ink-700 border-ink-200'}`}>
         {status.replace(/_/g, ' ')}
       </span>
     );
@@ -186,10 +186,10 @@ export default function AdminDisputesPage() {
     <div>
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-slate-800">Dispute Resolution</h1>
-          <p className="text-slate-500 mt-1">Review and resolve disputes between requesters and workers</p>
+          <h1 className="text-xl font-bold text-ink-900 tracking-tight">Dispute Resolution</h1>
+          <p className="text-ink-500 mt-1">Review and resolve disputes between requesters and workers</p>
         </div>
-        <div className="text-sm text-slate-500">
+        <div className="text-sm text-ink-500 font-mono tabular-nums">
           {total} dispute{total !== 1 ? 's' : ''} total
         </div>
       </div>
@@ -201,14 +201,14 @@ export default function AdminDisputesPage() {
       )}
 
       {/* Filters */}
-      <div className="glass rounded-lg border border-surface-200 p-4 mb-6">
+      <div className="bg-paper rounded-sm border border-ink-200 p-4 mb-6">
         <div className="flex flex-wrap gap-4">
           <div>
-            <label className="block text-xs font-medium text-slate-500 mb-1">Status</label>
+            <label className="block text-xs uppercase tracking-wider font-medium text-ink-500 mb-1">Status</label>
             <select
               value={statusFilter}
               onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
-              className="px-3 py-2 rounded-lg border border-surface-300 bg-white text-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-field-500"
+              className="px-3 py-2 rounded-sm border border-ink-200 bg-white text-ink-900 text-sm focus:outline-none focus:ring-2 focus:ring-field-500"
             >
               <option value="all">All Statuses</option>
               <option value="opened">Opened</option>
@@ -219,11 +219,11 @@ export default function AdminDisputesPage() {
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-slate-500 mb-1">Sort By</label>
+            <label className="block text-xs uppercase tracking-wider font-medium text-ink-500 mb-1">Sort By</label>
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value)}
-              className="px-3 py-2 rounded-lg border border-surface-300 bg-white text-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-field-500"
+              className="px-3 py-2 rounded-sm border border-ink-200 bg-white text-ink-900 text-sm focus:outline-none focus:ring-2 focus:ring-field-500"
             >
               <option value="opened_at">Opened Date</option>
               <option value="resolved_at">Resolved Date</option>
@@ -232,11 +232,11 @@ export default function AdminDisputesPage() {
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-slate-500 mb-1">Order</label>
+            <label className="block text-xs uppercase tracking-wider font-medium text-ink-500 mb-1">Order</label>
             <select
               value={sortOrder}
               onChange={(e) => setSortOrder(e.target.value)}
-              className="px-3 py-2 rounded-lg border border-surface-300 bg-white text-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-field-500"
+              className="px-3 py-2 rounded-sm border border-ink-200 bg-white text-ink-900 text-sm focus:outline-none focus:ring-2 focus:ring-field-500"
             >
               <option value="desc">Newest First</option>
               <option value="asc">Oldest First</option>
@@ -246,7 +246,7 @@ export default function AdminDisputesPage() {
           <div className="flex items-end">
             <button
               onClick={() => { setStatusFilter('all'); setSortBy('opened_at'); setSortOrder('desc'); setPage(1); }}
-              className="px-3 py-2 text-sm text-slate-600 hover:text-slate-800"
+              className="px-3 py-2 text-sm text-ink-500 hover:text-ink-900"
             >
               Reset Filters
             </button>
@@ -257,70 +257,70 @@ export default function AdminDisputesPage() {
       {/* Disputes List */}
       <div className="space-y-4">
         {disputes.length === 0 ? (
-          <Card variant="glass" className="border border-surface-200">
-            <CardBody>
+          <div className="bg-paper rounded-sm border border-ink-200">
+            <div className="p-6">
               <EmptyDisputeList />
               {statusFilter !== 'all' && (
-                <p className="text-center text-sm text-slate-500 -mt-4">
+                <p className="text-center text-sm text-ink-500 -mt-4">
                   No disputes with status "{statusFilter.replace(/_/g, ' ')}"
                 </p>
               )}
-            </CardBody>
-          </Card>
+            </div>
+          </div>
         ) : (
           disputes.map((dispute) => (
             <Link
               key={dispute.id}
               href={`/dashboard/admin/disputes/${dispute.id}`}
-              className="block glass rounded-lg border border-surface-200 hover:border-field-300 transition-colors"
+              className="block bg-paper rounded-sm border border-ink-200 hover:border-field-300 transition-colors"
             >
               <div className="p-4">
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-3 mb-2">
                       {getStatusBadge(dispute.status)}
-                      <span className="text-xs text-slate-400">
+                      <span className="text-xs text-ink-300">
                         Opened {formatDate(dispute.opened_at)}
                       </span>
                     </div>
 
-                    <h3 className="font-medium text-slate-800 truncate mb-1">
+                    <h3 className="font-medium text-ink-900 truncate mb-1">
                       {dispute.submission.task.title}
                     </h3>
 
-                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-slate-500">
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-ink-500">
                       <span>
-                        <span className="text-slate-400">Worker:</span>{' '}
+                        <span className="text-ink-300">Worker:</span>{' '}
                         {dispute.submission.worker.username || dispute.submission.worker.email}
                       </span>
                       <span>
-                        <span className="text-slate-400">Requester:</span>{' '}
+                        <span className="text-ink-300">Requester:</span>{' '}
                         {dispute.submission.requester?.username || dispute.submission.requester?.email || 'Unknown'}
                       </span>
                       <span>
-                        <span className="text-slate-400">Artefacts:</span>{' '}
-                        {dispute.submission.artefact_count}
+                        <span className="text-ink-300">Artefacts:</span>{' '}
+                        <span className="font-mono tabular-nums">{dispute.submission.artefact_count}</span>
                       </span>
                     </div>
                   </div>
 
                   <div className="text-right flex-shrink-0">
-                    <div className="text-lg font-semibold text-slate-800">
+                    <div className="text-lg font-semibold font-mono tabular-nums text-ink-900">
                       {formatCurrency(dispute.submission.task.bounty_amount, dispute.submission.task.currency)}
                     </div>
-                    <div className="text-xs text-slate-400">at stake</div>
+                    <div className="text-xs text-ink-300">at stake</div>
                   </div>
                 </div>
 
                 {dispute.status === 'resolved' && (
-                  <div className="mt-3 pt-3 border-t border-surface-200">
+                  <div className="mt-3 pt-3 border-t border-ink-100">
                     <div className="flex items-center gap-2 text-sm">
-                      <span className="text-slate-500">Resolution:</span>
-                      <span className="font-medium text-slate-700">
+                      <span className="text-ink-500">Resolution:</span>
+                      <span className="font-medium text-ink-700">
                         {dispute.resolution_type?.replace(/_/g, ' ')}
                       </span>
                       {dispute.split_percentage !== null && (
-                        <span className="text-slate-500">
+                        <span className="text-ink-500 font-mono tabular-nums">
                           ({dispute.split_percentage}% to worker)
                         </span>
                       )}
@@ -336,7 +336,7 @@ export default function AdminDisputesPage() {
       {/* Pagination */}
       {totalPages > 1 && (
         <div className="mt-6 flex items-center justify-between">
-          <div className="text-sm text-slate-500">
+          <div className="text-sm text-ink-500 font-mono tabular-nums">
             Showing {((page - 1) * limit) + 1} to {Math.min(page * limit, total)} of {total}
           </div>
 
@@ -344,7 +344,7 @@ export default function AdminDisputesPage() {
             <button
               onClick={() => setPage(Math.max(1, page - 1))}
               disabled={page === 1}
-              className="px-3 py-2 rounded-lg border border-surface-300 bg-white text-slate-600 text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-surface-50"
+              className="px-3 py-2 rounded-sm border border-ink-200 bg-white text-ink-700 text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-paper-warm"
             >
               Previous
             </button>
@@ -366,10 +366,10 @@ export default function AdminDisputesPage() {
                   <button
                     key={pageNum}
                     onClick={() => setPage(pageNum)}
-                    className={`w-10 h-10 rounded-lg text-sm font-medium ${
+                    className={`w-10 h-10 rounded-sm text-sm font-medium ${
                       page === pageNum
                         ? 'bg-field-500 text-white'
-                        : 'bg-white border border-surface-300 text-slate-600 hover:bg-surface-50'
+                        : 'bg-white border border-ink-200 text-ink-700 hover:bg-paper-warm'
                     }`}
                   >
                     {pageNum}
@@ -381,7 +381,7 @@ export default function AdminDisputesPage() {
             <button
               onClick={() => setPage(Math.min(totalPages, page + 1))}
               disabled={page === totalPages}
-              className="px-3 py-2 rounded-lg border border-surface-300 bg-white text-slate-600 text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-surface-50"
+              className="px-3 py-2 rounded-sm border border-ink-200 bg-white text-ink-700 text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-paper-warm"
             >
               Next
             </button>

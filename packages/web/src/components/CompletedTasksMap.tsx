@@ -94,13 +94,13 @@ export default function CompletedTasksMap({
       color: templateColors[task.template] || templateColors.default,
       popup: (
         <div className="min-w-[200px]">
-          <div className="font-medium text-slate-800">{task.title}</div>
-          <div className="text-sm text-slate-500 mt-1">{task.template}</div>
-          <div className="text-sm font-semibold text-green-600 mt-1">
+          <div className="font-medium text-ink-900">{task.title}</div>
+          <div className="text-sm text-ink-500 mt-1">{task.template}</div>
+          <div className="text-sm font-mono tabular-nums font-semibold text-signal-green mt-1">
             {task.bounty.currency} {task.bounty.amount.toFixed(2)}
           </div>
           {task.completed_at && (
-            <div className="text-xs text-slate-400 mt-1">
+            <div className="text-xs text-ink-500 mt-1">
               Completed {new Date(task.completed_at).toLocaleDateString()}
             </div>
           )}
@@ -126,22 +126,22 @@ export default function CompletedTasksMap({
   const avgBounty = filteredTasks.length > 0 ? totalEarned / filteredTasks.length : 0;
 
   return (
-    <div className={`glass rounded-lg border border-surface-200 overflow-hidden ${className}`}>
+    <div className={`bg-paper rounded-sm border border-ink-200 overflow-hidden ${className}`}>
       {/* Header */}
-      <div className="p-4 border-b border-surface-200">
+      <div className="p-4 border-b border-ink-200">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <h3 className="text-lg font-medium text-slate-800">{title}</h3>
-            {subtitle && <p className="text-sm text-slate-500 mt-1">{subtitle}</p>}
+            <h3 className="text-lg font-medium text-ink-900">{title}</h3>
+            {subtitle && <p className="text-sm text-ink-500 mt-1">{subtitle}</p>}
           </div>
           <div className="flex items-center gap-4 text-sm">
             <div className="text-right">
-              <div className="text-xs uppercase tracking-wide text-slate-400">Tasks</div>
-              <div className="font-semibold text-slate-800">{filteredTasks.length}</div>
+              <div className="text-xs uppercase tracking-wider text-ink-500">Tasks</div>
+              <div className="font-mono tabular-nums font-semibold text-ink-900">{filteredTasks.length}</div>
             </div>
             <div className="text-right">
-              <div className="text-xs uppercase tracking-wide text-slate-400">Earned</div>
-              <div className="font-semibold text-green-600">
+              <div className="text-xs uppercase tracking-wider text-ink-500">Earned</div>
+              <div className="font-mono tabular-nums font-semibold text-signal-green">
                 USDC {totalEarned.toFixed(2)}
               </div>
             </div>
@@ -154,7 +154,7 @@ export default function CompletedTasksMap({
             <select
               value={templateFilter}
               onChange={(e) => setTemplateFilter(e.target.value)}
-              className="text-sm border border-surface-300 rounded-md px-2 py-1.5 bg-white text-slate-600"
+              className="text-sm border border-ink-200 rounded-sm px-2 py-1.5 bg-paper text-ink-700"
             >
               <option value="all">All Types</option>
               {templates.map((template) => (
@@ -167,7 +167,7 @@ export default function CompletedTasksMap({
             <select
               value={timeFilter}
               onChange={(e) => setTimeFilter(e.target.value)}
-              className="text-sm border border-surface-300 rounded-md px-2 py-1.5 bg-white text-slate-600"
+              className="text-sm border border-ink-200 rounded-sm px-2 py-1.5 bg-paper text-ink-700"
             >
               <option value="all">All Time</option>
               <option value="7d">Last 7 Days</option>
@@ -178,7 +178,7 @@ export default function CompletedTasksMap({
             {/* Legend */}
             <div className="flex items-center gap-2 ml-auto">
               {templates.slice(0, 3).map((template) => (
-                <div key={template} className="flex items-center gap-1 text-xs text-slate-500">
+                <div key={template} className="flex items-center gap-1 text-xs text-ink-500">
                   <div
                     className="w-2.5 h-2.5 rounded-full"
                     style={{ backgroundColor: templateColors[template] || templateColors.default }}
@@ -194,9 +194,9 @@ export default function CompletedTasksMap({
       {/* Map */}
       <div style={{ height }}>
         {filteredTasks.length === 0 ? (
-          <div className="flex items-center justify-center h-full text-slate-500">
+          <div className="flex items-center justify-center h-full text-ink-500">
             <div className="text-center">
-              <svg className="w-12 h-12 mx-auto mb-3 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-12 h-12 mx-auto mb-3 text-ink-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
               </svg>
               <p>No completed tasks to display</p>
@@ -217,20 +217,20 @@ export default function CompletedTasksMap({
 
       {/* Selected task detail */}
       {selectedTask && (
-        <div className="p-4 border-t border-surface-200 bg-slate-50">
+        <div className="p-4 border-t border-ink-200 bg-ink-50">
           <div className="flex items-start justify-between">
             <div>
-              <div className="font-medium text-slate-800">{selectedTask.title}</div>
-              <div className="text-sm text-slate-500 mt-1">
-                {selectedTask.template} - {selectedTask.lat.toFixed(4)}, {selectedTask.lon.toFixed(4)}
+              <div className="font-medium text-ink-900">{selectedTask.title}</div>
+              <div className="text-sm text-ink-500 mt-1">
+                {selectedTask.template} - <span className="font-mono tabular-nums">{selectedTask.lat.toFixed(4)}, {selectedTask.lon.toFixed(4)}</span>
               </div>
             </div>
             <div className="text-right">
-              <div className="text-lg font-semibold text-green-600">
+              <div className="text-lg font-mono tabular-nums font-semibold text-signal-green">
                 {selectedTask.bounty.currency} {selectedTask.bounty.amount.toFixed(2)}
               </div>
               {selectedTask.completed_at && (
-                <div className="text-xs text-slate-400">
+                <div className="text-xs text-ink-500">
                   {new Date(selectedTask.completed_at).toLocaleDateString()}
                 </div>
               )}

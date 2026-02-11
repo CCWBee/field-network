@@ -29,10 +29,10 @@ const tierColors = {
     progress: 'bg-amber-500',
   },
   silver: {
-    bg: 'bg-slate-100',
-    text: 'text-slate-600',
-    border: 'border-slate-300',
-    progress: 'bg-slate-500',
+    bg: 'bg-ink-50',
+    text: 'text-ink-700',
+    border: 'border-ink-300',
+    progress: 'bg-ink-500',
   },
   gold: {
     bg: 'bg-yellow-100',
@@ -82,12 +82,12 @@ export default function AchievementProgress({
 
   if (compact) {
     return (
-      <div className={`glass rounded-lg border border-surface-200 p-4 ${className}`}>
+      <div className={`bg-paper rounded-sm border border-ink-200 p-4 ${className}`}>
         <div className="flex items-center justify-between mb-3">
-          <span className="text-xs uppercase tracking-wide text-slate-400">{title}</span>
-          <span className="text-xs text-slate-500">{completedCount}/{totalCount}</span>
+          <span className="text-xs uppercase tracking-wider text-ink-500">{title}</span>
+          <span className="text-xs font-mono tabular-nums text-ink-500">{completedCount}/{totalCount}</span>
         </div>
-        <div className="h-2 rounded-full bg-slate-100 overflow-hidden mb-3">
+        <div className="h-2 rounded-sm bg-ink-100 overflow-hidden mb-3">
           <div
             className="h-full bg-field-500 transition-all duration-500"
             style={{ width: `${overallProgress}%` }}
@@ -101,16 +101,16 @@ export default function AchievementProgress({
 
             return (
               <div key={achievement.id} className="flex items-center gap-2">
-                <div className={`w-6 h-6 rounded-full ${colors.bg} flex items-center justify-center flex-shrink-0`}>
+                <div className={`w-6 h-6 border border-ink-200 rounded-sm flex items-center justify-center flex-shrink-0`}>
                   {achievement.unlocked ? (
                     <svg className={`w-3.5 h-3.5 ${colors.text}`} fill="currentColor" viewBox="0 0 20 20">
                       <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                     </svg>
                   ) : (
-                    <span className={`text-xs font-bold ${colors.text}`}>{Math.round(progress)}%</span>
+                    <span className={`text-xs font-mono tabular-nums font-bold ${colors.text}`}>{Math.round(progress)}%</span>
                   )}
                 </div>
-                <span className="text-sm text-slate-600 truncate flex-1">{achievement.name}</span>
+                <span className="text-sm text-ink-700 truncate flex-1">{achievement.name}</span>
               </div>
             );
           })}
@@ -120,22 +120,22 @@ export default function AchievementProgress({
   }
 
   return (
-    <div className={`glass rounded-lg border border-surface-200 ${className}`}>
+    <div className={`bg-paper rounded-sm border border-ink-200 ${className}`}>
       {/* Header */}
-      <div className="p-4 border-b border-surface-200">
+      <div className="p-4 border-b border-ink-200">
         <div className="flex items-center justify-between">
           <div>
-            <h3 className="text-lg font-medium text-slate-800">{title}</h3>
-            <p className="text-sm text-slate-500 mt-1">
+            <h3 className="text-lg font-medium text-ink-900">{title}</h3>
+            <p className="text-sm text-ink-500 mt-1">
               {completedCount} of {totalCount} completed
             </p>
           </div>
           <div className="text-right">
-            <div className="text-2xl font-bold text-field-600">{Math.round(overallProgress)}%</div>
-            <div className="text-xs text-slate-400">Overall</div>
+            <div className="text-2xl font-mono tabular-nums font-bold text-field-600">{Math.round(overallProgress)}%</div>
+            <div className="text-xs uppercase tracking-wider text-ink-500">Overall</div>
           </div>
         </div>
-        <div className="mt-3 h-2 rounded-full bg-slate-100 overflow-hidden">
+        <div className="mt-3 h-2 rounded-sm bg-ink-100 overflow-hidden">
           <div
             className="h-full bg-field-500 transition-all duration-500"
             style={{ width: `${overallProgress}%` }}
@@ -146,8 +146,8 @@ export default function AchievementProgress({
       {/* Achievement List */}
       <div className="p-4 space-y-4">
         {displayAchievements.length === 0 ? (
-          <div className="text-center py-6 text-slate-500">
-            <svg className="w-12 h-12 mx-auto mb-3 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div className="text-center py-6 text-ink-500">
+            <svg className="w-12 h-12 mx-auto mb-3 text-ink-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
             </svg>
             <p>All achievements completed!</p>
@@ -161,16 +161,16 @@ export default function AchievementProgress({
             return (
               <div
                 key={achievement.id}
-                className={`rounded-lg border p-4 ${
+                className={`rounded-sm border p-4 ${
                   achievement.unlocked
                     ? `${colors.bg} ${colors.border}`
-                    : 'bg-white border-surface-200'
+                    : 'bg-paper border-ink-200'
                 }`}
               >
                 <div className="flex items-start gap-3">
                   {/* Icon */}
-                  <div className={`w-10 h-10 rounded-full ${
-                    achievement.unlocked ? 'bg-white' : colors.bg
+                  <div className={`w-10 h-10 border border-ink-200 rounded-sm ${
+                    achievement.unlocked ? 'bg-paper' : colors.bg
                   } flex items-center justify-center flex-shrink-0`}>
                     {achievement.unlocked ? (
                       <svg className={`w-5 h-5 ${colors.text}`} fill="currentColor" viewBox="0 0 20 20">
@@ -188,16 +188,16 @@ export default function AchievementProgress({
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between gap-2">
                       <h4 className={`font-medium ${
-                        achievement.unlocked ? colors.text : 'text-slate-800'
+                        achievement.unlocked ? colors.text : 'text-ink-900'
                       }`}>
                         {achievement.name}
                       </h4>
-                      <span className={`text-xs px-2 py-0.5 rounded-full ${colors.bg} ${colors.text} capitalize`}>
+                      <span className={`text-xs px-2 py-0.5 rounded-sm border ${colors.border} ${colors.text} capitalize`}>
                         {tier}
                       </span>
                     </div>
                     <p className={`text-sm mt-1 ${
-                      achievement.unlocked ? colors.text : 'text-slate-500'
+                      achievement.unlocked ? colors.text : 'text-ink-500'
                     }`}>
                       {achievement.description}
                     </p>
@@ -206,12 +206,12 @@ export default function AchievementProgress({
                     {!achievement.unlocked && (
                       <div className="mt-3">
                         <div className="flex items-center justify-between text-xs mb-1">
-                          <span className="text-slate-500">Progress</span>
-                          <span className="font-medium text-slate-700">
+                          <span className="text-xs uppercase tracking-wider text-ink-500">Progress</span>
+                          <span className="font-mono tabular-nums font-medium text-ink-700">
                             {achievement.current} / {achievement.target} {achievement.unit}
                           </span>
                         </div>
-                        <div className="h-2 rounded-full bg-slate-100 overflow-hidden">
+                        <div className="h-2 rounded-sm bg-ink-100 overflow-hidden">
                           <div
                             className={`h-full ${colors.progress} transition-all duration-500`}
                             style={{ width: `${progress}%` }}
@@ -254,13 +254,13 @@ export function StatCard({
   className?: string;
 }) {
   return (
-    <div className={`glass rounded-lg border border-surface-200 p-4 ${className}`}>
+    <div className={`bg-paper rounded-sm border border-ink-200 p-4 ${className}`}>
       <div className="flex items-start justify-between">
-        <div className="text-xs uppercase tracking-wide text-slate-400">{label}</div>
-        {icon && <div className="text-slate-400">{icon}</div>}
+        <div className="text-xs uppercase tracking-wider text-ink-500">{label}</div>
+        {icon && <div className="text-ink-500">{icon}</div>}
       </div>
       <div className="mt-2 flex items-end gap-2">
-        <div className="text-2xl font-bold text-slate-800">{value}</div>
+        <div className="text-2xl font-mono tabular-nums font-bold text-ink-900">{value}</div>
         {trend && (
           <div className={`text-sm font-medium mb-0.5 ${
             trend.value >= 0 ? 'text-green-600' : 'text-red-600'
@@ -270,7 +270,7 @@ export function StatCard({
         )}
       </div>
       {subValue && (
-        <div className="text-sm text-slate-500 mt-1">{subValue}</div>
+        <div className="text-sm text-ink-500 mt-1">{subValue}</div>
       )}
     </div>
   );

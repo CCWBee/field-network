@@ -41,12 +41,12 @@ interface VerificationData {
 }
 
 const statusColors: Record<string, string> = {
-  draft: 'bg-slate-100 text-slate-600',
-  uploading: 'bg-blue-100 text-blue-700',
-  finalised: 'bg-purple-100 text-purple-700',
-  accepted: 'bg-green-100 text-green-700',
-  rejected: 'bg-red-100 text-red-700',
-  disputed: 'bg-yellow-100 text-yellow-700',
+  draft: 'text-ink-500 border border-ink-200',
+  uploading: 'text-signal-blue border border-signal-blue/30',
+  finalised: 'text-purple-700 border border-purple-300',
+  accepted: 'text-signal-green border border-signal-green/30',
+  rejected: 'text-signal-red border border-signal-red/30',
+  disputed: 'text-signal-amber border border-signal-amber/30',
 };
 
 export default function WorkerHistoryPage() {
@@ -119,20 +119,20 @@ export default function WorkerHistoryPage() {
     <div>
       <div className="flex justify-between items-center mb-8">
         <div>
-          <h1 className="text-2xl font-bold text-slate-800">Submission History</h1>
-          <p className="text-slate-500 mt-1">View your past submissions and leave reviews</p>
+          <h1 className="text-2xl font-bold text-ink-900 tracking-tight">Submission History</h1>
+          <p className="text-ink-500 mt-1">View your past submissions and leave reviews</p>
         </div>
         <Link
           href="/dashboard/worker"
-          className="text-field-600 hover:text-field-500"
+          className="text-field-500 hover:text-field-600"
         >
           Browse Tasks
         </Link>
       </div>
 
       {error && (
-        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-md">
-          <p className="text-sm text-red-600">{error}</p>
+        <div className="mb-6 p-4 border border-signal-red/30 rounded-sm">
+          <p className="text-sm text-signal-red">{error}</p>
         </div>
       )}
 
@@ -141,11 +141,11 @@ export default function WorkerHistoryPage() {
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-field-500"></div>
         </div>
       ) : submissions.length === 0 ? (
-        <div className="glass rounded-lg p-12 text-center border border-surface-200">
-          <p className="text-slate-500 mb-4">No submission history yet.</p>
+        <div className="bg-paper rounded-sm p-12 text-center border border-ink-200">
+          <p className="text-ink-500 mb-4">No submission history yet.</p>
           <Link
             href="/dashboard/worker"
-            className="text-field-600 hover:text-field-500"
+            className="text-field-500 hover:text-field-600"
           >
             Browse available tasks
           </Link>
@@ -153,26 +153,26 @@ export default function WorkerHistoryPage() {
       ) : (
         <div className="space-y-4">
           {submissions.map((submission) => (
-            <div key={submission.submission_id} className="glass rounded-lg border border-surface-200 overflow-hidden">
+            <div key={submission.submission_id} className="bg-paper rounded-sm border border-ink-200 overflow-hidden">
               <div className="p-6">
                 <div className="flex justify-between items-start mb-4">
                   <div>
                     <Link
                       href={`/dashboard/worker/submit/${submission.task_id}`}
-                      className="text-lg font-medium text-slate-800 hover:text-field-600"
+                      className="text-lg font-medium text-ink-900 hover:text-field-500"
                     >
                       {submission.task_title}
                     </Link>
                     <div className="flex items-center gap-3 mt-2">
-                      <span className={`px-2 py-1 text-xs rounded-full ${statusColors[submission.status] || 'bg-slate-100 text-slate-600'}`}>
+                      <span className={`px-2 py-1 text-xs rounded-sm ${statusColors[submission.status] || 'text-ink-500 border border-ink-200'}`}>
                         {submission.status}
                       </span>
-                      <span className="text-sm text-slate-500">
+                      <span className="text-sm text-ink-500">
                         {new Date(submission.updated_at).toLocaleDateString()}
                       </span>
                     </div>
                   </div>
-                  <span className="text-lg font-bold text-green-600">
+                  <span className="text-lg font-bold font-mono tabular-nums text-signal-green">
                     {submission.bounty.currency} {submission.bounty.amount.toFixed(2)}
                   </span>
                 </div>
@@ -182,7 +182,7 @@ export default function WorkerHistoryPage() {
                   <div className="mb-4">
                     <button
                       onClick={() => toggleVerification(submission.submission_id)}
-                      className="flex items-center gap-2 text-sm text-slate-600 hover:text-slate-800"
+                      className="flex items-center gap-2 text-sm text-ink-700 hover:text-ink-900"
                     >
                       <svg
                         className={`w-4 h-4 transition-transform ${expandedSubmission === submission.submission_id ? 'rotate-90' : ''}`}
@@ -200,7 +200,7 @@ export default function WorkerHistoryPage() {
                         {loadingVerification === submission.submission_id ? (
                           <div className="flex items-center justify-center py-4">
                             <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-field-500"></div>
-                            <span className="ml-2 text-sm text-slate-500">Loading verification details...</span>
+                            <span className="ml-2 text-sm text-ink-500">Loading verification details...</span>
                           </div>
                         ) : verificationData[submission.submission_id] ? (
                           <VerificationBreakdown
@@ -208,7 +208,7 @@ export default function WorkerHistoryPage() {
                             score={verificationData[submission.submission_id].score}
                           />
                         ) : (
-                          <p className="text-sm text-slate-500 py-2">
+                          <p className="text-sm text-ink-500 py-2">
                             No verification data available for this submission.
                           </p>
                         )}
@@ -241,7 +241,7 @@ export default function WorkerHistoryPage() {
 
                 {/* Review Section for Accepted Submissions */}
                 {submission.status === 'accepted' && submission.requester && !reviewedRequesters.has(submission.requester.id) && (
-                  <div className="mt-4 pt-4 border-t border-surface-200">
+                  <div className="mt-4 pt-4 border-t border-ink-100">
                     {showReviewForm === submission.requester.id ? (
                       <ReviewSubmitForm
                         userId={submission.requester.id}
@@ -254,7 +254,7 @@ export default function WorkerHistoryPage() {
                     ) : (
                       <button
                         onClick={() => setShowReviewForm(submission.requester!.id)}
-                        className="w-full py-2 px-4 border border-field-300 text-field-600 rounded-lg hover:bg-field-50 transition-colors text-sm"
+                        className="w-full py-2 px-4 border border-ink-200 text-field-500 rounded-sm hover:bg-ink-50 transition-colors text-sm"
                       >
                         Leave a review for {submission.requester.username || 'this requester'}
                       </button>
@@ -262,7 +262,7 @@ export default function WorkerHistoryPage() {
                   </div>
                 )}
                 {submission.status === 'accepted' && submission.requester && reviewedRequesters.has(submission.requester.id) && (
-                  <div className="mt-4 pt-4 border-t border-surface-200 text-sm text-green-600 flex items-center gap-2">
+                  <div className="mt-4 pt-4 border-t border-ink-100 text-sm text-signal-green flex items-center gap-2">
                     <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                       <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                     </svg>

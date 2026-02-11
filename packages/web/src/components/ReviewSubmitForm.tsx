@@ -57,7 +57,7 @@ export default function ReviewSubmitForm({
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div>
-        <p className="text-sm text-slate-600 mb-3">
+        <p className="text-sm text-ink-700 mb-3">
           How was your experience working with {displayName} as a {roleLabel}?
         </p>
 
@@ -75,8 +75,8 @@ export default function ReviewSubmitForm({
               <svg
                 className={`w-8 h-8 transition-colors ${
                   star <= (hoverRating || rating)
-                    ? 'text-yellow-400 fill-current'
-                    : 'text-slate-300'
+                    ? 'text-signal-amber fill-current'
+                    : 'text-ink-300'
                 }`}
                 viewBox="0 0 20 20"
                 fill="currentColor"
@@ -85,7 +85,7 @@ export default function ReviewSubmitForm({
               </svg>
             </button>
           ))}
-          <span className="ml-2 text-sm text-slate-500">
+          <span className="ml-2 text-sm text-ink-500">
             {rating > 0 && (
               <>
                 {rating === 1 && 'Poor'}
@@ -101,7 +101,7 @@ export default function ReviewSubmitForm({
 
       {/* Comment */}
       <div>
-        <label htmlFor="comment" className="block text-sm font-medium text-slate-700 mb-1">
+        <label htmlFor="comment" className="block text-sm font-medium text-ink-700 mb-1">
           Comment (optional)
         </label>
         <textarea
@@ -111,13 +111,13 @@ export default function ReviewSubmitForm({
           rows={3}
           maxLength={1000}
           placeholder="Share your experience..."
-          className="w-full px-3 py-2 border border-surface-300 rounded-lg focus:ring-2 focus:ring-field-500 focus:border-field-500 resize-none"
+          className="w-full px-3 py-2 border border-ink-200 rounded-sm focus:ring-2 focus:ring-field-500 focus:border-field-500 resize-none"
         />
-        <p className="text-xs text-slate-400 mt-1">{comment.length}/1000 characters</p>
+        <p className="text-xs text-ink-500 mt-1"><span className="font-mono tabular-nums">{comment.length}</span>/1000 characters</p>
       </div>
 
       {error && (
-        <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-600">
+        <div className="p-3 bg-red-50 border border-red-200 rounded-sm text-sm text-red-600">
           {error}
         </div>
       )}
@@ -127,7 +127,7 @@ export default function ReviewSubmitForm({
           <button
             type="button"
             onClick={onCancel}
-            className="flex-1 px-4 py-2 border border-surface-300 text-slate-600 rounded-lg hover:bg-slate-50 transition-colors"
+            className="flex-1 px-4 py-2 border border-ink-200 text-ink-700 rounded-sm hover:bg-ink-50 transition-colors"
           >
             Cancel
           </button>
@@ -135,7 +135,7 @@ export default function ReviewSubmitForm({
         <button
           type="submit"
           disabled={isSubmitting || rating === 0}
-          className="flex-1 px-4 py-2 bg-field-500 text-white rounded-lg hover:bg-field-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          className="flex-1 px-4 py-2 bg-field-500 text-white rounded-sm hover:bg-field-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {isSubmitting ? 'Submitting...' : 'Submit Review'}
         </button>
