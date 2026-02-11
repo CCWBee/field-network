@@ -49,7 +49,7 @@ function Badge({
   return (
     <span
       className={`
-        inline-flex items-center gap-1.5 font-medium rounded-sm border uppercase tracking-wider
+        inline-flex items-center gap-1.5 font-normal rounded-sm border uppercase tracking-wider
         ${variantStyles[variant]}
         ${sizeStyles[size]}
         ${className}

@@ -52,10 +52,10 @@ function Input({
           className={`
             block w-full rounded-sm border bg-white
             text-ink-900 placeholder-ink-300
-            transition-colors duration-100
-            focus:outline-none focus:ring-1 focus:ring-field-500 focus:border-field-500
+            transition-all duration-100
+            focus:outline-none focus:ring-2 focus:ring-field-500 focus:border-field-500
             disabled:bg-ink-50 disabled:text-ink-500 disabled:cursor-not-allowed
-            ${error ? 'border-signal-red focus:ring-signal-red' : 'border-ink-200'}
+            ${error ? 'border-2 border-signal-red focus:ring-2 focus:ring-signal-red' : 'border-ink-200'}
             ${leftIcon ? 'pl-10' : 'pl-3'}
             ${rightIcon || isPassword ? 'pr-10' : 'pr-3'}
             py-2 text-sm

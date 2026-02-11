@@ -30,7 +30,7 @@ function Card({
   children,
   ...props
 }: CardProps) {
-  const baseClasses = `rounded-sm overflow-hidden ${variantStyles[variant]} ${paddingStyles[padding]} ${hoverable ? 'hover:border-field-500 transition-colors cursor-pointer' : ''} ${className}`;
+  const baseClasses = `rounded-sm overflow-hidden ${variantStyles[variant]} ${paddingStyles[padding]} ${hoverable ? 'hover:border-ink-300 transition-colors cursor-pointer' : ''} ${className}`;
 
   return (
     <div className={baseClasses} {...props}>

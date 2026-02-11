@@ -19,10 +19,10 @@ interface ButtonProps {
 }
 
 const variantStyles: Record<ButtonVariant, string> = {
-  primary: 'bg-field-500 text-white hover:bg-field-600 active:bg-field-700',
+  primary: 'bg-field-500 text-white border-2 border-field-600 hover:bg-field-600 active:bg-field-700',
   secondary: 'bg-transparent text-ink-700 border border-ink-200 hover:bg-ink-50 active:bg-ink-100',
   ghost: 'bg-transparent text-ink-500 hover:bg-ink-50 active:bg-ink-100',
-  danger: 'bg-signal-red text-white hover:bg-red-700 active:bg-red-800',
+  danger: 'bg-signal-red text-white border-2 border-red-700 hover:bg-red-700 active:bg-red-800',
 };
 
 const sizeStyles: Record<ButtonSize, string> = {

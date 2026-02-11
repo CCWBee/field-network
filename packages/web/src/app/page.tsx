@@ -4,6 +4,8 @@ import { useState } from 'react';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import { AnimatePresence, motion } from 'framer-motion';
+import { BenchmarkMarker } from '@/components/ui/BenchmarkMarker';
+import { ContourDivider } from '@/components/ui/ContourDivider';
 
 const HeightMapBackground = dynamic(() => import('@/components/HeightMapBackground'), {
   ssr: false,
@@ -124,12 +126,12 @@ export default function HomePage() {
               <span className="w-2 h-2 bg-teal-400 rounded-full mr-2 animate-pulse"></span>
               Decentralized Observation Network
             </div>
-            <h1 className="text-5xl md:text-7xl font-bold mb-6 text-white">
+            <h1 className="text-5xl md:text-7xl lg:text-8xl font-extrabold mb-6 text-white tracking-tight leading-[0.92]">
               Real-world data
               <br />
-              <span className="text-field-400">on demand</span>
+              <span className="text-field-400 tracking-wide">on demand</span>
             </h1>
-            <p className="text-xl md:text-2xl text-teal-100/50 max-w-3xl mx-auto mb-10">
+            <p className="text-lg md:text-xl text-teal-100/40 max-w-2xl mx-auto mb-10 tracking-wide">
               Harvest real-world data with Field Network
             </p>
             <div className="flex flex-col sm:flex-row justify-center gap-4">
@@ -169,7 +171,7 @@ export default function HomePage() {
       {/* How It Works Section */}
       <div className="py-24 bg-paper-warm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <h2 className="text-3xl font-bold text-center text-ink-900 mb-4">
+          <h2 className="text-3xl md:text-4xl font-extrabold text-center text-ink-900 mb-4 tracking-tight">
             You ask. Someone goes. You get proof.
           </h2>
           <p className="text-ink-500 text-center mb-16 max-w-2xl mx-auto">
@@ -197,7 +199,10 @@ export default function HomePage() {
               },
             ].map((item) => (
               <div key={item.step} className="bg-paper p-8 h-full">
-                <div className="text-xs font-mono text-field-500 mb-6 uppercase tracking-wider">Step {item.step}</div>
+                <div className="flex items-center gap-2 mb-6">
+                  <BenchmarkMarker number={item.step} size="md" />
+                  <span className="text-xs font-mono text-field-500 uppercase tracking-wider">Step {item.step}</span>
+                </div>
                 <h3 className="text-xl font-semibold text-ink-900 mb-3">{item.title}</h3>
                 <p className="text-ink-500 text-sm mb-4">{item.desc}</p>
                 <div className="text-xs font-mono text-ink-300 border-t border-ink-100 pt-3">{item.detail}</div>
@@ -207,6 +212,9 @@ export default function HomePage() {
         </div>
       </div>
 
+      {/* Contour divider: How It Works → AI Agents */}
+      <ContourDivider variant="gentle" color="ink-200" className="bg-paper-warm" />
+
       {/* AI Agents Section — the headline feature */}
       <div className="py-24 bg-ink-900 relative overflow-hidden">
         {/* Subtle grid */}
@@ -214,6 +222,32 @@ export default function HomePage() {
           backgroundImage: 'linear-gradient(rgba(255,255,255,0.5) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.5) 1px, transparent 1px)',
           backgroundSize: '48px 48px'
         }}></div>
+
+        {/* Data texture — scattered verification fragments */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none select-none" aria-hidden="true">
+          <div className="font-mono text-[6px] leading-[3] text-white/[0.025] whitespace-pre tracking-widest">
+            {Array.from({ length: 12 }, (_, row) => (
+              <div key={row} className="flex flex-wrap gap-x-12 gap-y-1 justify-around px-8">
+                {[
+                  ['51.51\u00b0N', 'c8a2...4f1d', '0.97', '53.48\u00b0N', 'f3b7...9e2c'],
+                  ['0.14\u00b0W', '2e9b...a7f3', '0.94', '2.24\u00b0W', '7b1c...e2a9'],
+                  ['52.49\u00b0N', 'd0f3...4c81', '0.99', '1.89\u00b0W', 'a4e2...b3d7'],
+                  ['55.95\u00b0N', '9f3a...d1c4', '0.96', '51.45\u00b0N', 'c8d1...7f2e'],
+                  ['3.19\u00b0W', 'f7d2...3e8b', '0.98', '50.72\u00b0N', '1e4b...9a5c'],
+                  ['54.98\u00b0N', '3d8e...c6f1', '0.93', '1.55\u00b0W', 'd2f7...8b4a'],
+                  ['51.75\u00b0N', 'b5c3...2d9e', '0.97', '56.49\u00b0N', '7c1d...f4a8'],
+                  ['4.20\u00b0W', 'e8a2...5c3f', '0.95', '53.41\u00b0N', '4f9c...1b7d'],
+                  ['52.63\u00b0N', 'd3b8...a2e6', '0.91', '1.30\u00b0W', 'a1f5...6d8c'],
+                  ['50.91\u00b0N', '8c4d...e7b2', '0.96', '57.15\u00b0N', 'f6e1...c9a3'],
+                  ['2.09\u00b0W', 'b7d9...4f1a', '0.94', '53.96\u00b0N', '2c7a...8e5d'],
+                  ['51.48\u00b0N', 'e4f2...b6c8', '0.98', '55.86\u00b0N', '9d1b...3a7f'],
+                ][row].map((fragment, i) => (
+                  <span key={i}>{fragment}</span>
+                ))}
+              </div>
+            ))}
+          </div>
+        </div>
 
         <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid lg:grid-cols-2 gap-16 items-center">
@@ -291,7 +325,7 @@ export default function HomePage() {
       {/* Use Cases Section */}
       <div className="py-24 bg-paper">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <h2 className="text-3xl font-bold text-center text-ink-900 mb-4">
+          <h2 className="text-3xl md:text-4xl font-extrabold text-center text-ink-900 mb-4 tracking-tight">
             Questions you can&apos;t Google
           </h2>
           <p className="text-ink-500 text-center mb-16 max-w-2xl mx-auto">
@@ -316,12 +350,15 @@ export default function HomePage() {
         </div>
       </div>
 
+      {/* Contour divider: Use Cases → Tech */}
+      <ContourDivider variant="ridge" color="ink-200" className="bg-paper" />
+
       {/* Tech Section */}
       <div className="py-24 bg-paper-warm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid md:grid-cols-2 gap-16 items-center">
             <div>
-              <h2 className="text-3xl font-bold text-ink-900 mb-6">
+              <h2 className="text-3xl md:text-4xl font-extrabold text-ink-900 mb-6 tracking-tight">
                 Built for trust
               </h2>
               <div className="space-y-6">
@@ -379,10 +416,45 @@ export default function HomePage() {
         </div>
       </div>
 
+      {/* Contour divider: Tech → CTA */}
+      <ContourDivider variant="valley" color="field-500" opacity={0.3} className="bg-paper-warm" />
+
       {/* CTA Section */}
-      <div className="py-24 bg-ink-900">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <h2 className="text-4xl font-bold text-white mb-4">Start collecting ground truth</h2>
+      <div className="py-24 bg-ink-900 relative overflow-hidden">
+        {/* Data texture — the raw material of truth */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none select-none" aria-hidden="true">
+          <div className="font-mono text-[7px] leading-[2.4] text-white/[0.04] whitespace-pre tracking-wider">
+            {Array.from({ length: 18 }, (_, row) => (
+              <div key={row} className="flex flex-wrap gap-x-8 gap-y-1 justify-center px-4">
+                {[
+                  ['51.5074\u00b0N  0.1278\u00b0W', 'a7f3...2e9b', '0.97', '52.4862\u00b0N  1.8904\u00b0W', '4c81...f0d3', '2026-02-11T14:32:00Z'],
+                  ['53.4808\u00b0N  2.2426\u00b0W', 'e2a9...7b1c', '0.94', '55.9533\u00b0N  3.1883\u00b0W', 'b3d7...a4e2', '0.99'],
+                  ['51.4545\u00b0N  2.5879\u00b0W', '7f2e...c8d1', '2026-02-11T09:17:00Z', '54.9783\u00b0N  1.6178\u00b0W', 'd1c4...9f3a', '0.97'],
+                  ['52.2053\u00b0N  0.1218\u00b0E', '3e8b...f7d2', '0.96', '50.7184\u00b0N  1.8735\u00b0W', '9a5c...1e4b', '2026-02-11T11:45:00Z'],
+                  ['53.8008\u00b0N  1.5491\u00b0W', 'c6f1...3d8e', '0.98', '51.7520\u00b0N  1.2577\u00b0W', '8b4a...d2f7', '0.93'],
+                  ['56.4907\u00b0N  4.2026\u00b0W', '2d9e...b5c3', '2026-02-11T16:08:00Z', '50.3755\u00b0N  4.1427\u00b0W', 'f4a8...7c1d', '0.99'],
+                  ['51.5074\u00b0N  0.1278\u00b0W', '5c3f...e8a2', '0.95', '53.4084\u00b0N  2.9916\u00b0W', '1b7d...4f9c', '2026-02-11T13:22:00Z'],
+                  ['52.6309\u00b0N  1.2974\u00b0W', 'a2e6...d3b8', '0.91', '54.5973\u00b0N  5.9301\u00b0W', '6d8c...a1f5', '0.97'],
+                  ['50.9097\u00b0N  1.4044\u00b0W', 'e7b2...8c4d', '2026-02-11T07:55:00Z', '57.1497\u00b0N  2.0943\u00b0W', 'c9a3...f6e1', '0.96'],
+                  ['51.4816\u00b0N  3.1791\u00b0W', '4f1a...b7d9', '0.94', '53.9591\u00b0N  1.0815\u00b0W', '8e5d...2c7a', '2026-02-11T18:41:00Z'],
+                  ['52.9548\u00b0N  1.1581\u00b0W', 'b6c8...e4f2', '0.98', '55.8642\u00b0N  4.2518\u00b0W', '3a7f...9d1b', '0.92'],
+                  ['50.3755\u00b0N  4.1427\u00b0W', 'd2f4...a8c6', '2026-02-11T10:03:00Z', '51.8860\u00b0N  0.4150\u00b0W', '7c1e...b3d5', '0.97'],
+                  ['54.3781\u00b0N  0.4049\u00b0W', 'f8d3...1a7e', '0.99', '52.4068\u00b0N  1.5197\u00b0W', '5b9a...c2f8', '2026-02-11T15:29:00Z'],
+                  ['53.2327\u00b0N  0.5389\u00b0W', 'a1c7...e6d4', '0.93', '51.0543\u00b0N  1.1526\u00b0W', '9f2b...4a8c', '0.96'],
+                  ['56.1165\u00b0N  3.9369\u00b0W', '2e8d...f1b7', '2026-02-11T12:14:00Z', '50.7260\u00b0N  3.5275\u00b0W', 'c4f9...7d3a', '0.98'],
+                  ['51.5074\u00b0N  0.1278\u00b0W', '6a3e...b9c2', '0.95', '52.9548\u00b0N  1.1581\u00b0W', 'd7b1...e5f4', '2026-02-11T08:37:00Z'],
+                  ['55.0084\u00b0N  7.3195\u00b0W', '1f4c...a3d8', '0.97', '53.4808\u00b0N  2.2426\u00b0W', '8c6e...2b7f', '0.94'],
+                  ['50.8225\u00b0N  0.1372\u00b0W', 'e3a9...d8c1', '2026-02-11T17:56:00Z', '54.9783\u00b0N  1.6178\u00b0W', 'b5f2...9a4e', '0.99'],
+                ][row].map((fragment, i) => (
+                  <span key={i}>{fragment}</span>
+                ))}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <h2 className="text-4xl md:text-5xl font-extrabold text-white mb-4 tracking-tight leading-[0.95]">Start collecting ground truth</h2>
           <p className="text-ink-300 mb-10 max-w-2xl mx-auto">
             Post your first task in minutes. Workers on the ground, proof in your inbox.
           </p>

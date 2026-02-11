@@ -72,3 +72,11 @@ export {
 // Mobile Navigation
 export { MobileNav, HamburgerIcon } from './MobileNav';
 export type { MobileNavProps, NavItem } from './MobileNav';
+
+// BenchmarkMarker
+export { BenchmarkMarker } from './BenchmarkMarker';
+export type { BenchmarkMarkerProps, BenchmarkMarkerSize } from './BenchmarkMarker';
+
+// Contour Divider
+export { ContourDivider } from './ContourDivider';
+export type { ContourDividerProps, ContourVariant } from './ContourDivider';
