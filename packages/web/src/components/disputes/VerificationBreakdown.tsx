@@ -43,17 +43,17 @@ export function VerificationBreakdown({
     return (
       <div className={`text-sm ${className}`}>
         <div className="flex items-center gap-2 mb-2">
-          <span className="text-slate-500">Verification:</span>
-          <span className={`font-semibold ${getScoreColor(score)}`}>{score}%</span>
+          <span className="text-ink-500">Verification:</span>
+          <span className={`font-mono tabular-nums font-semibold ${getScoreColor(score)}`}>{score}%</span>
         </div>
         <div className="flex flex-wrap gap-1">
           {checks.map((check, i) => (
             <span
               key={i}
-              className={`px-2 py-0.5 text-xs rounded ${
+              className={`px-2 py-0.5 text-xs rounded-sm border ${
                 check.passed
-                  ? 'bg-green-100 text-green-700'
-                  : 'bg-red-100 text-red-700'
+                  ? 'text-signal-green border-signal-green/30'
+                  : 'text-signal-red border-signal-red/30'
               }`}
               title={check.message}
             >
@@ -66,18 +66,18 @@ export function VerificationBreakdown({
   }
 
   return (
-    <div className={`glass rounded-lg border border-surface-200 p-4 ${className}`}>
+    <div className={`bg-paper rounded-sm border border-ink-200 p-4 ${className}`}>
       <div className="flex items-center justify-between mb-3">
-        <h3 className="text-sm font-semibold text-slate-700">Verification Breakdown</h3>
+        <h3 className="text-sm font-semibold text-ink-700">Verification Breakdown</h3>
         <div className="flex items-center gap-2">
-          <span className="text-sm text-slate-500">Score:</span>
-          <span className={`text-lg font-bold ${getScoreColor(score)}`}>{score}%</span>
+          <span className="text-sm text-ink-500">Score:</span>
+          <span className={`text-lg font-mono tabular-nums font-bold ${getScoreColor(score)}`}>{score}%</span>
         </div>
       </div>
 
-      <div className="w-full bg-slate-200 rounded-full h-2 mb-4">
+      <div className="w-full bg-ink-200 rounded-sm h-2 mb-4">
         <div
-          className={`h-2 rounded-full ${getProgressColor(score)}`}
+          className={`h-2 rounded-sm ${getProgressColor(score)}`}
           style={{ width: `${score}%` }}
         ></div>
       </div>
@@ -104,7 +104,7 @@ export function VerificationBreakdown({
                   {formatCheckName(check.check)}
                 </span>
               </div>
-              <p className="text-xs text-slate-500 mt-0.5">{check.message}</p>
+              <p className="text-xs text-ink-500 mt-0.5">{check.message}</p>
             </div>
           </div>
         ))}

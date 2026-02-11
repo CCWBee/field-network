@@ -99,7 +99,7 @@ function MobileNav({ items, logo, footer }: MobileNavProps) {
       {/* Hamburger button */}
       <button
         onClick={() => setIsOpen(true)}
-        className="lg:hidden p-2 rounded-md text-slate-600 hover:text-slate-800 hover:bg-surface-100 transition-colors"
+        className="lg:hidden p-2 rounded-sm text-ink-700 hover:text-ink-900 hover:bg-ink-50 transition-colors"
         aria-label="Open menu"
         aria-expanded={isOpen}
       >
@@ -124,7 +124,7 @@ function MobileNav({ items, logo, footer }: MobileNavProps) {
               exit="closed"
               variants={backdropVariants}
               transition={{ duration: 0.2 }}
-              className="fixed inset-0 z-40 bg-slate-900/50 backdrop-blur-sm lg:hidden"
+              className="fixed inset-0 z-40 bg-ink-900/60 lg:hidden"
               onClick={() => setIsOpen(false)}
             />
 
@@ -134,16 +134,16 @@ function MobileNav({ items, logo, footer }: MobileNavProps) {
               animate="open"
               exit="closed"
               variants={drawerVariants}
-              className="fixed inset-y-0 left-0 z-50 w-72 bg-white shadow-xl lg:hidden flex flex-col"
+              className="fixed inset-y-0 left-0 z-50 w-72 bg-paper shadow-lg border-r border-ink-200 lg:hidden flex flex-col"
             >
               {/* Header */}
-              <div className="flex items-center justify-between p-4 border-b border-surface-200">
+              <div className="flex items-center justify-between p-4 border-b border-ink-200">
                 {(logo as any) || (
-                  <span className="text-xl font-bold text-gradient">Field Network</span>
+                  <span className="text-xl font-bold text-ink-900">Field Network</span>
                 )}
                 <button
                   onClick={() => setIsOpen(false)}
-                  className="p-2 rounded-md text-slate-400 hover:text-slate-600 hover:bg-surface-100 transition-colors"
+                  className="p-2 rounded-sm text-ink-500 hover:text-ink-700 hover:bg-ink-50 transition-colors"
                   aria-label="Close menu"
                 >
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -173,17 +173,17 @@ function MobileNav({ items, logo, footer }: MobileNavProps) {
                         <Link
                           href={item.href}
                           className={`
-                            flex items-center gap-3 px-3 py-2.5 rounded-lg
+                            flex items-center gap-3 px-3 py-2.5 rounded-sm
                             transition-colors duration-150
                             ${
                               isActive
                                 ? 'bg-field-50 text-field-700 font-medium'
-                                : 'text-slate-600 hover:bg-surface-50 hover:text-slate-800'
+                                : 'text-ink-700 hover:bg-ink-50 hover:text-ink-900'
                             }
                           `}
                         >
                           {item.icon && (
-                            <span className={isActive ? 'text-field-500' : 'text-slate-400'}>
+                            <span className={isActive ? 'text-field-500' : 'text-ink-500'}>
                               {item.icon as any}
                             </span>
                           )}
@@ -197,7 +197,7 @@ function MobileNav({ items, logo, footer }: MobileNavProps) {
 
               {/* Footer */}
               {footer && (
-                <div className="p-4 border-t border-surface-200">
+                <div className="p-4 border-t border-ink-200">
                   {footer as any}
                 </div>
               )}

@@ -246,7 +246,7 @@ export default function TaskBrowseMap({
 
   return (
     <div
-      className={`w-full rounded-lg overflow-hidden border border-surface-200 ${className}`}
+      className={`w-full rounded-sm overflow-hidden border border-ink-200 ${className}`}
       style={{ height }}
     >
       <MapContainer center={mapCenter} zoom={10} scrollWheelZoom className="h-full w-full">
@@ -263,8 +263,8 @@ export default function TaskBrowseMap({
           <Marker position={userLocation} icon={userIcon}>
             <Popup>
               <div className="text-sm">
-                <div className="font-medium text-slate-800">Your Location</div>
-                <div className="text-slate-500">
+                <div className="font-medium text-ink-900">Your Location</div>
+                <div className="font-mono tabular-nums text-ink-500">
                   {userLocation[0].toFixed(4)}, {userLocation[1].toFixed(4)}
                 </div>
               </div>
@@ -297,10 +297,10 @@ export default function TaskBrowseMap({
             >
               <Popup>
                 <div className="min-w-[200px]">
-                  <div className="font-semibold text-slate-800 mb-2">
+                  <div className="font-semibold text-ink-900 mb-2">
                     {cluster.tasks.length} Tasks in this area
                   </div>
-                  <div className="text-sm text-slate-600 mb-2">
+                  <div className="text-sm font-mono tabular-nums text-ink-700 mb-2">
                     Total bounties: USDC {cluster.totalBounty.toFixed(2)}
                   </div>
                   <div className="max-h-[150px] overflow-y-auto space-y-1">
@@ -308,16 +308,16 @@ export default function TaskBrowseMap({
                       <button
                         key={task.id}
                         onClick={() => handleViewDetails(task.id)}
-                        className="w-full text-left text-xs p-1.5 hover:bg-slate-50 rounded border border-surface-100"
+                        className="w-full text-left text-xs p-1.5 hover:bg-ink-50 rounded-sm border border-ink-100"
                       >
                         <div className="font-medium truncate">{task.title}</div>
-                        <div className="text-green-600">
+                        <div className="font-mono tabular-nums text-signal-green">
                           {task.bounty.currency} {task.bounty.amount.toFixed(2)}
                         </div>
                       </button>
                     ))}
                     {cluster.tasks.length > 5 && (
-                      <div className="text-xs text-slate-500 text-center py-1">
+                      <div className="text-xs text-ink-500 text-center py-1">
                         +{cluster.tasks.length - 5} more
                       </div>
                     )}

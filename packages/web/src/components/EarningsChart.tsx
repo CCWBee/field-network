@@ -50,8 +50,8 @@ const CustomTooltip = ({
 }) => {
   if (active && payload && payload.length) {
     return (
-      <div className="glass rounded-lg p-3 border border-surface-200 shadow-lg">
-        <p className="text-sm font-medium text-slate-800">{label}</p>
+      <div className="bg-paper rounded-sm p-3 border border-ink-200 shadow-lg">
+        <p className="text-sm font-medium text-ink-900">{label}</p>
         <p className="text-lg font-bold text-field-600">
           {formatCurrency(payload[0].value, currency)}
         </p>
@@ -81,21 +81,21 @@ export default function EarningsChart({
   const trendPercent = previous > 0 ? ((recent - previous) / previous) * 100 : 0;
 
   return (
-    <div className={`glass rounded-lg border border-surface-200 p-6 ${className}`}>
+    <div className={`bg-paper rounded-sm border border-ink-200 p-6 ${className}`}>
       <div className="flex flex-wrap items-start justify-between gap-4 mb-6">
         <div>
-          <h3 className="text-lg font-medium text-slate-800">{title}</h3>
-          {subtitle && <p className="text-sm text-slate-500 mt-1">{subtitle}</p>}
+          <h3 className="text-lg font-medium text-ink-900">{title}</h3>
+          {subtitle && <p className="text-sm text-ink-500 mt-1">{subtitle}</p>}
         </div>
         <div className="flex items-center gap-4 text-sm">
           <div className="text-right">
-            <div className="text-xs uppercase tracking-wide text-slate-400">Total</div>
-            <div className="font-semibold text-slate-800">{formatCurrency(totalEarnings, currency)}</div>
+            <div className="text-xs uppercase tracking-wider text-ink-500">Total</div>
+            <div className="font-mono tabular-nums font-semibold text-ink-900">{formatCurrency(totalEarnings, currency)}</div>
           </div>
           {trendPercent !== 0 && (
             <div className="text-right">
-              <div className="text-xs uppercase tracking-wide text-slate-400">Trend</div>
-              <div className={`font-semibold ${trendPercent >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+              <div className="text-xs uppercase tracking-wider text-ink-500">Trend</div>
+              <div className={`font-mono tabular-nums font-semibold ${trendPercent >= 0 ? 'text-signal-green' : 'text-signal-red'}`}>
                 {trendPercent >= 0 ? '+' : ''}{trendPercent.toFixed(1)}%
               </div>
             </div>
@@ -127,7 +127,7 @@ export default function EarningsChart({
               axisLine={false}
               tickLine={false}
               tick={{ fill: '#64748b', fontSize: 12 }}
-              tickFormatter={(value) => formatCurrency(value, '')}
+              tickFormatter={(value: any) => formatCurrency(value, '')}
               width={50}
             />
             <Tooltip content={<CustomTooltip currency={currency} />} />
@@ -157,7 +157,7 @@ export default function EarningsChart({
               axisLine={false}
               tickLine={false}
               tick={{ fill: '#64748b', fontSize: 12 }}
-              tickFormatter={(value) => formatCurrency(value, '')}
+              tickFormatter={(value: any) => formatCurrency(value, '')}
               width={50}
             />
             <Tooltip content={<CustomTooltip currency={currency} />} />
@@ -171,22 +171,22 @@ export default function EarningsChart({
         )}
       </ResponsiveContainer>
 
-      <div className="mt-6 grid grid-cols-3 gap-4 border-t border-surface-200 pt-4">
+      <div className="mt-6 grid grid-cols-3 gap-4 border-t border-ink-200 pt-4">
         <div className="text-center">
-          <div className="text-xs uppercase tracking-wide text-slate-400">Avg/Month</div>
-          <div className="text-sm font-semibold text-slate-800 mt-1">
+          <div className="text-xs uppercase tracking-wider text-ink-500">Avg/Month</div>
+          <div className="text-sm font-mono tabular-nums font-semibold text-ink-900 mt-1">
             {formatCurrency(avgEarning, currency)}
           </div>
         </div>
         <div className="text-center">
-          <div className="text-xs uppercase tracking-wide text-slate-400">Peak</div>
-          <div className="text-sm font-semibold text-slate-800 mt-1">
+          <div className="text-xs uppercase tracking-wider text-ink-500">Peak</div>
+          <div className="text-sm font-mono tabular-nums font-semibold text-ink-900 mt-1">
             {formatCurrency(maxEarning, currency)}
           </div>
         </div>
         <div className="text-center">
-          <div className="text-xs uppercase tracking-wide text-slate-400">Months</div>
-          <div className="text-sm font-semibold text-slate-800 mt-1">{data.length}</div>
+          <div className="text-xs uppercase tracking-wider text-ink-500">Months</div>
+          <div className="text-sm font-mono tabular-nums font-semibold text-ink-900 mt-1">{data.length}</div>
         </div>
       </div>
     </div>
@@ -211,16 +211,16 @@ export function EarningsStatCard({
   const trendPercent = previous > 0 ? ((recent - previous) / previous) * 100 : 0;
 
   return (
-    <div className={`glass rounded-lg border border-surface-200 p-4 ${className}`}>
+    <div className={`bg-paper rounded-sm border border-ink-200 p-4 ${className}`}>
       <div className="flex items-center justify-between mb-3">
-        <span className="text-xs uppercase tracking-wide text-slate-400">{title}</span>
+        <span className="text-xs uppercase tracking-wider text-ink-500">{title}</span>
         {trendPercent !== 0 && (
-          <span className={`text-xs font-medium ${trendPercent >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+          <span className={`text-xs font-mono tabular-nums font-medium ${trendPercent >= 0 ? 'text-signal-green' : 'text-signal-red'}`}>
             {trendPercent >= 0 ? '+' : ''}{trendPercent.toFixed(0)}%
           </span>
         )}
       </div>
-      <div className="text-2xl font-bold text-slate-800 mb-3">
+      <div className="text-2xl font-mono tabular-nums font-bold text-ink-900 mb-3">
         {formatCurrency(total, currency)}
       </div>
       <ResponsiveContainer width="100%" height={50}>

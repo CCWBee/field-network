@@ -52,18 +52,18 @@ export default function WorkerClaimsPage() {
   return (
     <div>
       <div className="flex justify-between items-center mb-8">
-        <h1 className="text-2xl font-bold text-slate-800">My Claims</h1>
+        <h1 className="text-2xl font-bold text-ink-900 tracking-tight">My Claims</h1>
         <Link
           href="/dashboard/worker"
-          className="text-field-600 hover:text-field-500"
+          className="text-field-500 hover:text-field-600"
         >
           &larr; Browse Tasks
         </Link>
       </div>
 
       {error && (
-        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-md">
-          <p className="text-sm text-red-600">{error}</p>
+        <div className="mb-6 p-4 border border-signal-red/30 rounded-sm">
+          <p className="text-sm text-signal-red">{error}</p>
         </div>
       )}
 
@@ -72,11 +72,11 @@ export default function WorkerClaimsPage() {
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-field-500"></div>
         </div>
       ) : claims.length === 0 ? (
-        <div className="glass rounded-lg p-12 text-center border border-surface-200">
-          <p className="text-slate-500 mb-4">You don't have any active claims.</p>
+        <div className="bg-paper rounded-sm p-12 text-center border border-ink-200">
+          <p className="text-ink-500 mb-4">You don't have any active claims.</p>
           <Link
             href="/dashboard/worker"
-            className="text-field-600 hover:text-field-500"
+            className="text-field-500 hover:text-field-600"
           >
             Browse available tasks
           </Link>
@@ -84,13 +84,13 @@ export default function WorkerClaimsPage() {
       ) : (
         <div className="space-y-6">
           {claims.map((claim) => (
-            <div key={claim.id} className="glass rounded-lg p-6 border border-surface-200">
+            <div key={claim.id} className="bg-paper rounded-sm p-6 border border-ink-200">
               <div className="flex justify-between items-start">
                 <div className="flex-1">
-                  <h3 className="text-lg font-medium text-slate-800">{claim.task.title}</h3>
-                  <div className="mt-2 space-y-1 text-sm text-slate-500">
+                  <h3 className="text-lg font-medium text-ink-900">{claim.task.title}</h3>
+                  <div className="mt-2 space-y-1 text-sm text-ink-500">
                     <p>
-                      <span className="font-medium text-green-600">
+                      <span className="font-medium text-signal-green">
                         {claim.task.currency} {claim.task.bountyAmount?.toFixed(2)}
                       </span>
                     </p>
@@ -104,10 +104,10 @@ export default function WorkerClaimsPage() {
                   </div>
                 </div>
                 <div className="text-right">
-                  <div className={`text-sm font-medium ${claim.time_remaining_ms > 0 ? 'text-yellow-600' : 'text-red-600'}`}>
+                  <div className={`text-sm font-medium ${claim.time_remaining_ms > 0 ? 'text-signal-amber' : 'text-signal-red'}`}>
                     {formatTimeRemaining(claim.time_remaining_ms)}
                   </div>
-                  <div className="text-xs text-slate-400 mt-1">
+                  <div className="text-xs text-ink-300 mt-1">
                     Claimed: {new Date(claim.claimed_at).toLocaleString()}
                   </div>
                 </div>
@@ -117,13 +117,13 @@ export default function WorkerClaimsPage() {
                 <button
                   onClick={() => handleUnclaim(claim.task_id)}
                   disabled={actionLoading === claim.task_id}
-                  className="px-4 py-2 border border-surface-300 text-slate-700 rounded-md hover:bg-slate-50 disabled:opacity-50"
+                  className="px-4 py-2 border border-ink-200 text-ink-700 rounded-sm hover:bg-ink-50 disabled:opacity-50"
                 >
                   Release Claim
                 </button>
                 <Link
                   href={`/dashboard/worker/submit/${claim.task_id}`}
-                  className="px-4 py-2 bg-field-500 text-white rounded-md hover:bg-field-600"
+                  className="px-4 py-2 bg-field-500 text-white rounded-sm hover:bg-field-600"
                 >
                   Submit Photos
                 </Link>

@@ -118,7 +118,7 @@ export function ReputationMeterCircle({
             fill="none"
             stroke="currentColor"
             strokeWidth={config.stroke}
-            className="text-slate-200"
+            className="text-ink-200"
           />
           {/* Progress circle */}
           <circle

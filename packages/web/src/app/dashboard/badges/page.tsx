@@ -56,26 +56,26 @@ export default function BadgesPage() {
     <div className="max-w-5xl mx-auto">
       <div className="flex flex-wrap items-center justify-between gap-4 mb-8">
         <div>
-          <Link href="/dashboard" className="text-sm text-slate-500 hover:text-slate-700 mb-2 inline-block">
+          <Link href="/dashboard" className="text-sm text-ink-500 hover:text-ink-700 mb-2 inline-block">
             &larr; Back to Dashboard
           </Link>
-          <h1 className="text-3xl font-semibold text-slate-800">Badge Vault</h1>
-          <p className="text-slate-500 mt-2">Every badge is a real signal of field performance.</p>
+          <h1 className="text-2xl font-bold text-ink-900 tracking-tight">Badge Vault</h1>
+          <p className="text-ink-500 mt-2">Every badge is a real signal of field performance.</p>
         </div>
       </div>
 
       {error && (
-        <div className="mb-6 p-4 bg-rose-50 border border-rose-200 rounded-md">
-          <p className="text-sm text-rose-600">{error}</p>
+        <div className="mb-6 p-4 border border-signal-red/30 rounded-sm">
+          <p className="text-sm text-signal-red">{error}</p>
         </div>
       )}
 
       {isLoading ? (
-        <div className="glass rounded-lg border border-surface-200 p-6 text-sm text-slate-500">
+        <div className="bg-paper rounded-sm border border-ink-200 p-6 text-sm text-ink-500">
           Loading badge vault...
         </div>
       ) : definitions.length === 0 ? (
-        <div className="glass rounded-lg border border-surface-200 p-6 text-sm text-slate-500">
+        <div className="bg-paper rounded-sm border border-ink-200 p-6 text-sm text-ink-500">
           No badges available yet. Check back after your next mission.
         </div>
       ) : (
@@ -85,16 +85,16 @@ export default function BadgesPage() {
             return (
               <div
                 key={badge.type}
-                className={`glass rounded-lg border p-6 transition ${
+                className={`bg-paper rounded-sm border p-6 transition ${
                   owned
-                    ? 'border-field-200 bg-white shadow-md'
-                    : 'border-surface-200 bg-white/80 shadow-sm opacity-80'
+                    ? 'border-field-500/20'
+                    : 'border-ink-200 opacity-80'
                 }`}
               >
                 <div className="flex items-center justify-between gap-4">
                   <div className="flex items-center gap-3">
                     {badge.icon_url ? (
-                      <div className="h-10 w-10 rounded-full bg-slate-100 border border-surface-200 overflow-hidden">
+                      <div className="h-10 w-10 rounded-sm bg-ink-50 border border-ink-200 overflow-hidden">
                         <img
                           src={badge.icon_url}
                           alt={badge.name}
@@ -102,27 +102,27 @@ export default function BadgesPage() {
                         />
                       </div>
                     ) : (
-                      <div className="h-10 w-10 rounded-full bg-slate-100 border border-surface-200 flex items-center justify-center text-sm font-semibold text-slate-500">
+                      <div className="h-10 w-10 rounded-sm bg-ink-50 border border-ink-200 flex items-center justify-center text-sm font-semibold text-ink-500">
                         {badge.name.slice(0, 1).toUpperCase()}
                       </div>
                     )}
                     <div>
-                      <h2 className="text-lg font-semibold text-slate-800">{badge.name}</h2>
-                      <p className="text-sm text-slate-500 mt-1">How to earn: {badge.description}</p>
+                      <h2 className="text-lg font-semibold text-ink-900">{badge.name}</h2>
+                      <p className="text-sm text-ink-500 mt-1">How to earn: {badge.description}</p>
                     </div>
                   </div>
-                  <div className="text-xs uppercase tracking-wide text-slate-400">
+                  <div className="text-xs uppercase tracking-wider text-ink-300">
                     {badge.category}
                   </div>
                 </div>
                 <div className="mt-4 flex items-center justify-between">
-                  <span className={`px-3 py-1 rounded-full text-xs ${
-                    owned ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'
+                  <span className={`px-3 py-1 rounded-sm text-xs border ${
+                    owned ? 'text-signal-green border-signal-green/30' : 'text-ink-500 border-ink-200'
                   }`}>
                     {owned ? `Earned ${new Date(owned.earned_at).toLocaleDateString()}` : 'Locked'}
                   </span>
                   {owned && (
-                    <span className="text-xs text-slate-400">Tier {owned.tier}</span>
+                    <span className="text-xs text-ink-300">Tier {owned.tier}</span>
                   )}
                 </div>
               </div>

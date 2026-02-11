@@ -78,9 +78,9 @@ export function OnboardingModal({ suggestedUsername, onComplete }: OnboardingMod
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl shadow-xl max-w-md w-full overflow-hidden">
+      <div className="bg-paper rounded-sm shadow-xl max-w-md w-full overflow-hidden">
         {/* Header */}
-        <div className="bg-gradient-to-r from-field-500 to-field-600 p-6 text-white">
+        <div className="bg-field-500 p-6 text-white">
           <h2 className="text-xl font-bold">Welcome to Field Network</h2>
           <p className="text-field-100 mt-1">Let's set up your profile</p>
         </div>
@@ -89,12 +89,12 @@ export function OnboardingModal({ suggestedUsername, onComplete }: OnboardingMod
         <div className="p-6 space-y-6">
           {/* Progress */}
           <div className="flex space-x-2">
-            <div className={`flex-1 h-1 rounded-full ${step >= 1 ? 'bg-field-500' : 'bg-slate-200'}`} />
-            <div className={`flex-1 h-1 rounded-full ${step >= 2 ? 'bg-field-500' : 'bg-slate-200'}`} />
+            <div className={`flex-1 h-1 rounded-sm ${step >= 1 ? 'bg-field-500' : 'bg-ink-200'}`} />
+            <div className={`flex-1 h-1 rounded-sm ${step >= 2 ? 'bg-field-500' : 'bg-ink-200'}`} />
           </div>
 
           {error && (
-            <div className="p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm">
+            <div className="p-3 bg-red-50 border border-red-200 text-red-700 rounded-sm text-sm">
               {error}
             </div>
           )}
@@ -102,7 +102,7 @@ export function OnboardingModal({ suggestedUsername, onComplete }: OnboardingMod
           {step === 1 && (
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
+                <label className="block text-sm font-medium text-ink-700 mb-2">
                   Choose your username
                 </label>
                 <div className="relative">
@@ -111,7 +111,7 @@ export function OnboardingModal({ suggestedUsername, onComplete }: OnboardingMod
                     value={username}
                     onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))}
                     placeholder="username"
-                    className="w-full px-4 py-3 border border-surface-300 rounded-lg focus:ring-2 focus:ring-field-500 focus:border-transparent"
+                    className="w-full px-4 py-3 border border-ink-200 rounded-sm focus:ring-2 focus:ring-field-500 focus:border-transparent"
                     autoFocus
                   />
                   <div className="absolute right-3 top-1/2 -translate-y-1/2">
@@ -130,13 +130,13 @@ export function OnboardingModal({ suggestedUsername, onComplete }: OnboardingMod
                     )}
                   </div>
                 </div>
-                <p className="text-xs text-slate-500 mt-1">
+                <p className="text-xs text-ink-500 mt-1">
                   Letters, numbers, and underscores only. This is how others will identify you.
                 </p>
               </div>
 
               {user?.ensName && (
-                <div className="p-3 bg-field-50 rounded-lg">
+                <div className="p-3 bg-field-50 rounded-sm">
                   <p className="text-sm text-field-700">
                     <span className="font-medium">ENS detected:</span> {user.ensName}
                   </p>
@@ -152,7 +152,7 @@ export function OnboardingModal({ suggestedUsername, onComplete }: OnboardingMod
               <button
                 onClick={() => setStep(2)}
                 disabled={!username || username.length < 3 || isAvailable === false}
-                className="w-full py-3 bg-field-500 text-white rounded-lg font-medium hover:bg-field-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full py-3 bg-field-500 text-white rounded-sm font-medium hover:bg-field-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Continue
               </button>
@@ -162,24 +162,24 @@ export function OnboardingModal({ suggestedUsername, onComplete }: OnboardingMod
           {step === 2 && (
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
-                  Email address <span className="text-slate-400 font-normal">(optional)</span>
+                <label className="block text-sm font-medium text-ink-700 mb-2">
+                  Email address <span className="text-ink-300 font-normal">(optional)</span>
                 </label>
                 <input
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="you@example.com"
-                  className="w-full px-4 py-3 border border-surface-300 rounded-lg focus:ring-2 focus:ring-field-500 focus:border-transparent"
+                  className="w-full px-4 py-3 border border-ink-200 rounded-sm focus:ring-2 focus:ring-field-500 focus:border-transparent"
                 />
-                <p className="text-xs text-slate-500 mt-1">
+                <p className="text-xs text-ink-500 mt-1">
                   For notifications and account recovery. We'll never spam you.
                 </p>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
-                  Short bio <span className="text-slate-400 font-normal">(optional)</span>
+                <label className="block text-sm font-medium text-ink-700 mb-2">
+                  Short bio <span className="text-ink-300 font-normal">(optional)</span>
                 </label>
                 <textarea
                   value={bio}
@@ -187,21 +187,21 @@ export function OnboardingModal({ suggestedUsername, onComplete }: OnboardingMod
                   placeholder="Tell others a bit about yourself..."
                   rows={3}
                   maxLength={200}
-                  className="w-full px-4 py-3 border border-surface-300 rounded-lg focus:ring-2 focus:ring-field-500 focus:border-transparent resize-none"
+                  className="w-full px-4 py-3 border border-ink-200 rounded-sm focus:ring-2 focus:ring-field-500 focus:border-transparent resize-none"
                 />
               </div>
 
               <div className="flex space-x-3">
                 <button
                   onClick={() => setStep(1)}
-                  className="flex-1 py-3 border border-surface-300 text-slate-600 rounded-lg font-medium hover:bg-slate-50 transition-colors"
+                  className="flex-1 py-3 border border-ink-200 text-ink-700 rounded-sm font-medium hover:bg-ink-50 transition-colors"
                 >
                   Back
                 </button>
                 <button
                   onClick={handleSubmit}
                   disabled={isSaving}
-                  className="flex-1 py-3 bg-field-500 text-white rounded-lg font-medium hover:bg-field-600 transition-colors disabled:opacity-50"
+                  className="flex-1 py-3 bg-field-500 text-white rounded-sm font-medium hover:bg-field-600 transition-colors disabled:opacity-50"
                 >
                   {isSaving ? 'Setting up...' : 'Complete Setup'}
                 </button>
@@ -212,7 +212,7 @@ export function OnboardingModal({ suggestedUsername, onComplete }: OnboardingMod
 
         {/* Footer */}
         <div className="px-6 pb-6">
-          <p className="text-xs text-center text-slate-500">
+          <p className="text-xs text-center text-ink-500">
             By continuing, you agree to our Terms of Service and Privacy Policy.
           </p>
         </div>

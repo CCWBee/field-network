@@ -174,7 +174,7 @@ docker-compose up  # Start API, web, and PostgreSQL
 ```
 
 ### Production Deployment
-1. Deploy contracts: `npm run deploy:base --workspace=@ground-truth/contracts`
+1. Deploy contracts: `npm run deploy:base --workspace=@field-network/contracts`
 2. Set `ESCROW_PROVIDER=onchain` and configure contract address
 3. Push via CI/CD (GitHub Actions deploys to Railway/Vercel on main)
 

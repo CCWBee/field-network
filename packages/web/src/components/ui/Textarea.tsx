@@ -27,7 +27,7 @@ function Textarea({
       {label && (
         <label
           htmlFor={textareaId}
-          className="block text-sm font-medium text-slate-700 mb-1.5"
+          className="block text-xs font-medium uppercase tracking-wider text-ink-500 mb-1.5"
         >
           {label}
         </label>
@@ -37,12 +37,12 @@ function Textarea({
         disabled={disabled}
         rows={rows}
         className={`
-          block w-full rounded-lg border bg-white
-          text-slate-800 placeholder-slate-400
+          block w-full rounded-sm border bg-paper
+          text-ink-900 placeholder-ink-300
           transition-colors duration-150 resize-y
-          focus:outline-none focus:ring-2 focus:ring-field-500 focus:border-transparent
-          disabled:bg-surface-50 disabled:text-slate-500 disabled:cursor-not-allowed
-          ${error ? 'border-red-300 focus:ring-red-500' : 'border-surface-300'}
+          focus:outline-none focus:ring-1 focus:ring-field-500 focus:border-field-500
+          disabled:bg-ink-50 disabled:text-ink-300 disabled:cursor-not-allowed
+          ${error ? 'border-signal-red focus:ring-signal-red' : 'border-ink-200'}
           px-3 py-2 text-sm
           ${className}
         `}
@@ -51,12 +51,12 @@ function Textarea({
         {...(props as any)}
       />
       {error && (
-        <p id={`${textareaId}-error`} className="mt-1.5 text-sm text-red-600">
+        <p id={`${textareaId}-error`} className="mt-1.5 text-sm text-signal-red">
           {error}
         </p>
       )}
       {hint && !error && (
-        <p id={`${textareaId}-hint`} className="mt-1.5 text-sm text-slate-500">
+        <p id={`${textareaId}-hint`} className="mt-1.5 text-sm text-ink-500">
           {hint}
         </p>
       )}

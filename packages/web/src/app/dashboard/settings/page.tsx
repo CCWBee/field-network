@@ -120,33 +120,33 @@ export default function SettingsPage() {
   if (isLoading) {
     return (
       <div className="flex justify-center py-12">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-field-500"></div>
       </div>
     );
   }
 
   return (
     <div className="max-w-4xl mx-auto">
-      <h1 className="text-2xl font-bold text-slate-800 mb-8">Settings</h1>
+      <h1 className="text-2xl font-bold text-ink-900 tracking-tight mb-8">Settings</h1>
 
       {error && (
-        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-md">
-          <p className="text-sm text-red-600">{error}</p>
+        <div className="mb-6 p-4 border border-signal-red/30 rounded-sm">
+          <p className="text-sm text-signal-red">{error}</p>
         </div>
       )}
 
       {/* New Token Secret Display */}
       {newTokenResult && (
-        <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-md">
-          <h3 className="font-medium text-green-800 mb-2">Token Created: {newTokenResult.name}</h3>
-          <p className="text-sm text-green-700 mb-2">Save these credentials - the secret cannot be shown again!</p>
-          <div className="bg-white p-3 rounded border font-mono text-sm">
-            <div><span className="text-slate-500">API Key:</span> {newTokenResult.api_key}</div>
-            <div><span className="text-slate-500">Secret:</span> {newTokenResult.secret}</div>
+        <div className="mb-6 p-4 border border-signal-green/30 rounded-sm">
+          <h3 className="font-medium text-signal-green mb-2">Token Created: {newTokenResult.name}</h3>
+          <p className="text-sm text-signal-green mb-2">Save these credentials - the secret cannot be shown again!</p>
+          <div className="bg-paper p-3 rounded-sm border border-ink-200 font-mono text-sm">
+            <div><span className="text-ink-500">API Key:</span> {newTokenResult.api_key}</div>
+            <div><span className="text-ink-500">Secret:</span> {newTokenResult.secret}</div>
           </div>
           <button
             onClick={() => setNewTokenResult(null)}
-            className="mt-3 text-sm text-green-600 hover:text-green-700"
+            className="mt-3 text-sm text-signal-green hover:underline"
           >
             Dismiss
           </button>
@@ -154,35 +154,35 @@ export default function SettingsPage() {
       )}
 
       {/* Wallet Section */}
-      <div className="glass rounded-lg p-6 mb-6 border border-surface-200">
-        <h2 className="text-lg font-medium text-slate-800 mb-4">Connected Wallets</h2>
+      <div className="bg-paper rounded-sm p-6 mb-6 border border-ink-200">
+        <h2 className="text-lg font-medium text-ink-900 mb-4">Connected Wallets</h2>
 
         {user?.wallets && user.wallets.length > 0 ? (
           <div className="space-y-3">
             {user.wallets.map((wallet) => (
-              <div key={wallet.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
+              <div key={wallet.id} className="flex items-center justify-between p-3 bg-ink-50 rounded-sm">
                 <div>
-                  <code className="text-sm text-slate-800">{wallet.address}</code>
-                  <div className="text-xs text-slate-500 mt-1">
+                  <code className="text-sm text-ink-900">{wallet.address}</code>
+                  <div className="text-xs text-ink-500 mt-1">
                     {wallet.chain} (Chain ID: {wallet.chainId})
-                    {wallet.isPrimary && <span className="ml-2 text-field-600 font-medium">Primary</span>}
+                    {wallet.isPrimary && <span className="ml-2 text-field-500 font-medium">Primary</span>}
                   </div>
                 </div>
               </div>
             ))}
           </div>
         ) : (
-          <p className="text-slate-500">No wallets connected</p>
+          <p className="text-ink-500">No wallets connected</p>
         )}
       </div>
 
       {/* API Tokens Section */}
-      <div className="glass rounded-lg p-6 border border-surface-200">
+      <div className="bg-paper rounded-sm p-6 border border-ink-200">
         <div className="flex justify-between items-center mb-4">
-          <h2 className="text-lg font-medium text-slate-800">API Tokens</h2>
+          <h2 className="text-lg font-medium text-ink-900">API Tokens</h2>
           <button
             onClick={() => setShowNewToken(!showNewToken)}
-            className="px-4 py-2 bg-field-500 text-white text-sm rounded-md hover:bg-field-600"
+            className="px-4 py-2 bg-field-500 text-white text-sm rounded-sm hover:bg-field-600"
           >
             {showNewToken ? 'Cancel' : 'Create Token'}
           </button>
@@ -190,31 +190,31 @@ export default function SettingsPage() {
 
         {/* Create Token Form */}
         {showNewToken && (
-          <div className="mb-6 p-4 bg-slate-50 rounded-lg">
+          <div className="mb-6 p-4 bg-ink-50 rounded-sm">
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-slate-700">Token Name</label>
+                <label className="block text-xs uppercase tracking-wider text-ink-500">Token Name</label>
                 <input
                   type="text"
                   value={newTokenName}
                   onChange={(e) => setNewTokenName(e.target.value)}
                   placeholder="My CLI Tool"
-                  className="mt-1 block w-full px-3 py-2 border border-surface-300 rounded-md shadow-sm text-slate-800"
+                  className="mt-1 block w-full px-3 py-2 border border-ink-200 rounded-sm text-ink-900"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">Scopes</label>
+                <label className="block text-xs uppercase tracking-wider text-ink-500 mb-2">Scopes</label>
                 <div className="flex flex-wrap gap-2">
                   {availableScopes.map((scope) => (
                     <button
                       key={scope}
                       type="button"
                       onClick={() => toggleScope(scope)}
-                      className={`px-3 py-1 text-sm rounded-full border ${
+                      className={`px-3 py-1 text-sm rounded-sm border ${
                         selectedScopes.includes(scope)
-                          ? 'bg-field-100 border-field-300 text-field-700'
-                          : 'bg-white border-surface-300 text-slate-600 hover:border-slate-400'
+                          ? 'bg-field-50 border-field-500/20 text-field-600'
+                          : 'bg-paper border-ink-200 text-ink-700 hover:border-ink-300'
                       }`}
                     >
                       {scope}
@@ -225,21 +225,21 @@ export default function SettingsPage() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-slate-700">Spend Cap (USDC)</label>
+                  <label className="block text-xs uppercase tracking-wider text-ink-500">Spend Cap (USDC)</label>
                   <input
                     type="number"
                     value={spendCap}
                     onChange={(e) => setSpendCap(e.target.value)}
                     placeholder="Optional"
-                    className="mt-1 block w-full px-3 py-2 border border-surface-300 rounded-md shadow-sm text-slate-800"
+                    className="mt-1 block w-full px-3 py-2 border border-ink-200 rounded-sm text-ink-900"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700">Expires In (days)</label>
+                  <label className="block text-xs uppercase tracking-wider text-ink-500">Expires In (days)</label>
                   <select
                     value={expiryDays}
                     onChange={(e) => setExpiryDays(e.target.value)}
-                    className="mt-1 block w-full px-3 py-2 border border-surface-300 rounded-md shadow-sm text-slate-800"
+                    className="mt-1 block w-full px-3 py-2 border border-ink-200 rounded-sm text-ink-900"
                   >
                     <option value="7">7 days</option>
                     <option value="30">30 days</option>
@@ -252,7 +252,7 @@ export default function SettingsPage() {
               <button
                 onClick={handleCreateToken}
                 disabled={isCreating}
-                className="w-full py-2 bg-field-500 text-white rounded-md hover:bg-field-600 disabled:opacity-50"
+                className="w-full py-2 bg-field-500 text-white rounded-sm hover:bg-field-600 disabled:opacity-50"
               >
                 {isCreating ? 'Creating...' : 'Create Token'}
               </button>
@@ -264,29 +264,29 @@ export default function SettingsPage() {
         {apiTokens.length > 0 ? (
           <div className="space-y-3">
             {apiTokens.map((t) => (
-              <div key={t.id} className="p-4 border border-surface-200 rounded-lg">
+              <div key={t.id} className="p-4 border border-ink-200 rounded-sm">
                 <div className="flex justify-between items-start">
                   <div>
-                    <h4 className="font-medium text-slate-800">{t.name}</h4>
-                    <code className="text-xs text-slate-500">{t.api_key}</code>
+                    <h4 className="font-medium text-ink-900">{t.name}</h4>
+                    <code className="text-xs text-ink-500">{t.api_key}</code>
                   </div>
                   <button
                     onClick={() => handleRevokeToken(t.id)}
-                    className="text-sm text-red-600 hover:text-red-700"
+                    className="text-sm text-signal-red hover:underline"
                   >
                     Revoke
                   </button>
                 </div>
                 <div className="mt-2 flex flex-wrap gap-1">
                   {t.scopes.map((scope) => (
-                    <span key={scope} className="px-2 py-0.5 bg-slate-100 text-slate-600 text-xs rounded">
+                    <span key={scope} className="px-2 py-0.5 bg-ink-50 text-ink-700 text-xs rounded-sm border border-ink-200">
                       {scope}
                     </span>
                   ))}
                 </div>
-                <div className="mt-2 text-xs text-slate-500">
+                <div className="mt-2 text-xs text-ink-500">
                   {t.spend_cap_amount && (
-                    <span className="mr-4">
+                    <span className="mr-4 font-mono tabular-nums">
                       Spend: ${t.spend_used.toFixed(2)} / ${t.spend_cap_amount.toFixed(2)}
                     </span>
                   )}
@@ -303,7 +303,7 @@ export default function SettingsPage() {
             ))}
           </div>
         ) : (
-          <p className="text-slate-500">No API tokens created yet</p>
+          <p className="text-ink-500">No API tokens created yet</p>
         )}
       </div>
     </div>

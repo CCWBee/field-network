@@ -19,10 +19,10 @@ const Skeleton = ({
   ...props
 }: SkeletonProps) => {
   const variantStyles = {
-    text: 'rounded',
+    text: 'rounded-sm',
     circular: 'rounded-full',
     rectangular: '',
-    rounded: 'rounded-lg',
+    rounded: 'rounded-sm',
   };
 
   const animationStyles = {
@@ -37,7 +37,7 @@ const Skeleton = ({
   return (
     <div
       className={`
-        bg-surface-200
+        bg-ink-100
         ${variantStyles[variant]}
         ${animationStyles[animation]}
         ${className}
@@ -68,7 +68,7 @@ const SkeletonText = ({ lines = 3, className = '' }: { lines?: number; className
 );
 
 const SkeletonCard = ({ className = '' }: { className?: string }) => (
-  <div className={`bg-white rounded-lg border border-surface-200 p-4 ${className}`}>
+  <div className={`bg-paper rounded-sm border border-ink-200 p-4 ${className}`}>
     <div className="flex items-start gap-4">
       <Skeleton variant="circular" width={48} height={48} />
       <div className="flex-1 space-y-2">
@@ -86,13 +86,13 @@ const SkeletonCard = ({ className = '' }: { className?: string }) => (
 
 const SkeletonTable = ({ rows = 5, columns = 4, className = '' }: { rows?: number; columns?: number; className?: string }) => (
   <div className={`overflow-hidden ${className}`}>
-    <div className="flex gap-4 p-4 border-b border-surface-200 bg-surface-50">
+    <div className="flex gap-4 p-4 border-b border-ink-200 bg-ink-50">
       {Array.from({ length: columns }).map((_, i) => (
         <Skeleton key={i} variant="text" height={16} className="flex-1" />
       ))}
     </div>
     {Array.from({ length: rows }).map((_, rowIndex) => (
-      <div key={rowIndex} className="flex gap-4 p-4 border-b border-surface-200">
+      <div key={rowIndex} className="flex gap-4 p-4 border-b border-ink-200">
         {Array.from({ length: columns }).map((_, colIndex) => (
           <Skeleton key={colIndex} variant="text" height={14} className="flex-1" />
         ))}

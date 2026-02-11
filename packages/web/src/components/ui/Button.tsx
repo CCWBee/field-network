@@ -1,7 +1,6 @@
 'use client';
 
 import { ButtonHTMLAttributes, ReactNode } from 'react';
-import { motion } from 'framer-motion';
 
 type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger';
 type ButtonSize = 'sm' | 'md' | 'lg';
@@ -20,16 +19,16 @@ interface ButtonProps {
 }
 
 const variantStyles: Record<ButtonVariant, string> = {
-  primary: 'bg-field-500 text-white hover:bg-field-600 active:bg-field-700 shadow-sm hover:shadow-md',
-  secondary: 'bg-white text-slate-700 border border-surface-300 hover:bg-surface-50 active:bg-surface-100',
-  ghost: 'bg-transparent text-slate-600 hover:bg-surface-100 active:bg-surface-200',
-  danger: 'bg-red-500 text-white hover:bg-red-600 active:bg-red-700 shadow-sm hover:shadow-md',
+  primary: 'bg-field-500 text-white hover:bg-field-600 active:bg-field-700',
+  secondary: 'bg-transparent text-ink-700 border border-ink-200 hover:bg-ink-50 active:bg-ink-100',
+  ghost: 'bg-transparent text-ink-500 hover:bg-ink-50 active:bg-ink-100',
+  danger: 'bg-signal-red text-white hover:bg-red-700 active:bg-red-800',
 };
 
 const sizeStyles: Record<ButtonSize, string> = {
-  sm: 'px-3 py-1.5 text-sm rounded-md gap-1.5',
-  md: 'px-4 py-2 text-sm rounded-lg gap-2',
-  lg: 'px-6 py-3 text-base rounded-lg gap-2.5',
+  sm: 'px-3 py-1.5 text-sm rounded-sm gap-1.5',
+  md: 'px-4 py-2 text-sm rounded-sm gap-2',
+  lg: 'px-6 py-3 text-base rounded-sm gap-2.5',
 };
 
 function Button({
@@ -47,13 +46,11 @@ function Button({
   const isDisabled = disabled || isLoading;
 
   return (
-    <motion.button
-      whileTap={{ scale: isDisabled ? 1 : 0.98 }}
-      transition={{ duration: 0.1 }}
+    <button
       className={`
         inline-flex items-center justify-center font-medium
-        transition-colors duration-150
-        focus:outline-none focus-visible:ring-2 focus-visible:ring-field-500 focus-visible:ring-offset-2
+        transition-colors duration-100
+        focus:outline-none focus-visible:ring-1 focus-visible:ring-field-500 focus-visible:ring-offset-2
         disabled:opacity-50 disabled:cursor-not-allowed
         ${variantStyles[variant]}
         ${sizeStyles[size]}
@@ -94,7 +91,7 @@ function Button({
           {rightIcon && <span className="flex-shrink-0">{rightIcon as any}</span>}
         </>
       )}
-    </motion.button>
+    </button>
   );
 }
 

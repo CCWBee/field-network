@@ -170,7 +170,7 @@ export default function TaskDetailMap({
 
   return (
     <div
-      className={`w-full rounded-lg overflow-hidden border border-surface-200 ${className}`}
+      className={`w-full rounded-sm overflow-hidden border border-ink-200 ${className}`}
       style={{ height }}
     >
       <MapContainer
@@ -190,12 +190,12 @@ export default function TaskDetailMap({
         <Marker position={[taskLocation.lat, taskLocation.lon]} icon={tealIcon}>
           <Popup>
             <div className="min-w-[150px]">
-              <div className="font-medium text-slate-800">Task Location</div>
-              <div className="text-sm text-slate-500 mt-1">
+              <div className="font-medium text-ink-900">Task Location</div>
+              <div className="text-sm font-mono tabular-nums text-ink-500 mt-1">
                 {taskLocation.lat.toFixed(6)}, {taskLocation.lon.toFixed(6)}
               </div>
-              <div className="text-sm text-slate-500">
-                Required radius: {taskLocation.radius_m}m
+              <div className="text-sm text-ink-500">
+                Required radius: <span className="font-mono tabular-nums">{taskLocation.radius_m}m</span>
               </div>
             </div>
           </Popup>

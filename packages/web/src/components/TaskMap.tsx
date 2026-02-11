@@ -67,7 +67,7 @@ export default function TaskMap({
   const mapCenter = center ?? DEFAULT_CENTER;
 
   return (
-    <div className="w-full rounded-lg overflow-hidden border border-surface-200" style={{ height }}>
+    <div className="w-full rounded-sm overflow-hidden border border-ink-200" style={{ height }}>
       <MapContainer center={mapCenter} zoom={3} scrollWheelZoom className="h-full w-full">
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'

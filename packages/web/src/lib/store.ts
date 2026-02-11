@@ -237,7 +237,7 @@ export const useAuthStore = create<AuthState>()(
       clearError: () => set({ error: null }),
     }),
     {
-      name: 'ground-truth-auth',
+      name: 'field-network-auth',
       partialize: (state) => ({ token: state.token, refreshToken: state.refreshToken }),
     }
   )

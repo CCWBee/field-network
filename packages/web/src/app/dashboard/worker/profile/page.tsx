@@ -130,60 +130,60 @@ export default function WorkerProfilePage() {
   return (
     <div className="max-w-3xl mx-auto">
       <div className="mb-8">
-        <Link href="/dashboard/worker" className="text-sm text-slate-500 hover:text-slate-700 mb-2 inline-block">
+        <Link href="/dashboard/worker" className="text-sm text-ink-500 hover:text-ink-700 mb-2 inline-block">
           &larr; Back to dashboard
         </Link>
-        <h1 className="text-2xl font-bold text-slate-900">Worker Profile</h1>
+        <h1 className="text-2xl font-bold text-ink-900 tracking-tight">Worker Profile</h1>
       </div>
 
       {error && (
-        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-md">
-          <p className="text-sm text-red-600">{error}</p>
+        <div className="mb-6 p-4 border border-signal-red/30 rounded-sm">
+          <p className="text-sm text-signal-red">{error}</p>
         </div>
       )}
 
       {success && (
-        <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-md">
-          <p className="text-sm text-green-600">{success}</p>
+        <div className="mb-6 p-4 border border-signal-green/30 rounded-sm">
+          <p className="text-sm text-signal-green">{success}</p>
         </div>
       )}
 
       {/* Stats */}
       {profile && (
         <div className="grid grid-cols-3 gap-4 mb-8">
-          <div className="glass rounded-lg border border-surface-200 p-4 text-center">
-            <div className="text-3xl font-bold text-field-600">{profile.rating.toFixed(1)}</div>
-            <div className="text-sm text-slate-500">Rating</div>
+          <div className="bg-paper rounded-sm border border-ink-200 p-4 text-center">
+            <div className="text-3xl font-bold font-mono tabular-nums text-field-600">{profile.rating.toFixed(1)}</div>
+            <div className="text-xs uppercase tracking-wider text-ink-500">Rating</div>
           </div>
-          <div className="glass rounded-lg border border-surface-200 p-4 text-center">
-            <div className="text-3xl font-bold text-green-600">{profile.completedCount}</div>
-            <div className="text-sm text-slate-500">Completed</div>
+          <div className="bg-paper rounded-sm border border-ink-200 p-4 text-center">
+            <div className="text-3xl font-bold font-mono tabular-nums text-signal-green">{profile.completedCount}</div>
+            <div className="text-xs uppercase tracking-wider text-ink-500">Completed</div>
           </div>
-          <div className="glass rounded-lg border border-surface-200 p-4 text-center">
-            <div className={`text-3xl font-bold ${profile.strikes > 0 ? 'text-red-600' : 'text-slate-400'}`}>
+          <div className="bg-paper rounded-sm border border-ink-200 p-4 text-center">
+            <div className={`text-3xl font-bold font-mono tabular-nums ${profile.strikes > 0 ? 'text-signal-red' : 'text-ink-300'}`}>
               {profile.strikes}
             </div>
-            <div className="text-sm text-slate-500">Strikes</div>
+            <div className="text-xs uppercase tracking-wider text-ink-500">Strikes</div>
           </div>
         </div>
       )}
 
       {/* Profile Form */}
-      <div className="glass rounded-lg border border-surface-200 p-6 space-y-6">
+      <div className="bg-paper rounded-sm border border-ink-200 p-6 space-y-6">
         {/* Display Name */}
         <div>
-          <label className="block text-sm font-medium text-slate-700 mb-1">Display Name</label>
+          <label className="block text-xs uppercase tracking-wider text-ink-500 mb-1">Display Name</label>
           <input
             type="text"
             value={displayName}
             onChange={(e) => setDisplayName(e.target.value)}
-            className="w-full px-3 py-2 border border-surface-300 rounded-md"
+            className="w-full px-3 py-2 border border-ink-200 rounded-sm"
           />
         </div>
 
         {/* Work Radius */}
         <div>
-          <label className="block text-sm font-medium text-slate-700 mb-1">
+          <label className="block text-xs uppercase tracking-wider text-ink-500 mb-1">
             Work Radius: {radiusKm} km
           </label>
           <input
@@ -194,7 +194,7 @@ export default function WorkerProfilePage() {
             onChange={(e) => setRadiusKm(e.target.value)}
             className="w-full"
           />
-          <div className="flex justify-between text-xs text-slate-400">
+          <div className="flex justify-between text-xs text-ink-300">
             <span>5 km</span>
             <span>200 km</span>
           </div>
@@ -202,17 +202,17 @@ export default function WorkerProfilePage() {
 
         {/* Skills */}
         <div>
-          <label className="block text-sm font-medium text-slate-700 mb-2">Skills</label>
+          <label className="block text-xs uppercase tracking-wider text-ink-500 mb-2">Skills</label>
           <div className="flex flex-wrap gap-2">
             {availableSkills.map((skill) => (
               <button
                 key={skill}
                 type="button"
                 onClick={() => toggleSkill(skill)}
-                className={`px-3 py-1 text-sm rounded-full border ${
+                className={`px-3 py-1 text-sm rounded-sm border ${
                   skills.includes(skill)
-                    ? 'bg-field-100 border-field-300 text-field-700'
-                    : 'bg-white border-surface-300 text-slate-600 hover:border-slate-400'
+                    ? 'bg-field-50 border-field-500/20 text-field-600'
+                    : 'bg-paper border-ink-200 text-ink-700 hover:border-ink-300'
                 }`}
               >
                 {skill}
@@ -223,17 +223,17 @@ export default function WorkerProfilePage() {
 
         {/* Equipment/Kit */}
         <div>
-          <label className="block text-sm font-medium text-slate-700 mb-2">Equipment</label>
+          <label className="block text-xs uppercase tracking-wider text-ink-500 mb-2">Equipment</label>
           <div className="flex flex-wrap gap-2">
             {availableKit.map((item) => (
               <button
                 key={item}
                 type="button"
                 onClick={() => toggleKit(item)}
-                className={`px-3 py-1 text-sm rounded-full border ${
+                className={`px-3 py-1 text-sm rounded-sm border ${
                   kit.includes(item)
-                    ? 'bg-green-100 border-green-300 text-green-700'
-                    : 'bg-white border-surface-300 text-slate-600 hover:border-slate-400'
+                    ? 'text-signal-green border-signal-green/30'
+                    : 'bg-paper border-ink-200 text-ink-700 hover:border-ink-300'
                 }`}
               >
                 {item}
@@ -243,11 +243,11 @@ export default function WorkerProfilePage() {
         </div>
 
         {/* Save Button */}
-        <div className="pt-4 border-t">
+        <div className="pt-4 border-t border-ink-100">
           <button
             onClick={handleSave}
             disabled={isSaving}
-            className="w-full py-2 bg-field-500 text-white rounded-md hover:bg-field-600 disabled:opacity-50"
+            className="w-full py-2 bg-field-500 text-white rounded-sm hover:bg-field-600 disabled:opacity-50"
           >
             {isSaving ? 'Saving...' : 'Save Profile'}
           </button>

@@ -3,7 +3,7 @@
 import { ReactNode } from 'react';
 import { motion, Variants } from 'framer-motion';
 
-// Page transition wrapper
+// Page transition wrapper — route transition, kept as motion
 interface PageTransitionProps {
   children: ReactNode;
   className?: string;
@@ -30,7 +30,7 @@ function PageTransition({ children, className = '' }: PageTransitionProps) {
   );
 }
 
-// Fade in wrapper
+// Fade in wrapper — stripped to plain div
 interface FadeInProps {
   children: ReactNode;
   delay?: number;
@@ -38,20 +38,15 @@ interface FadeInProps {
   className?: string;
 }
 
-function FadeIn({ children, delay = 0, duration = 0.3, className = '' }: FadeInProps) {
+function FadeIn({ children, className = '' }: FadeInProps) {
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ delay, duration }}
-      className={className}
-    >
+    <div className={className}>
       {children as any}
-    </motion.div>
+    </div>
   );
 }
 
-// Slide up wrapper
+// Slide up wrapper — stripped to plain div
 interface SlideUpProps {
   children: ReactNode;
   delay?: number;
@@ -59,20 +54,15 @@ interface SlideUpProps {
   className?: string;
 }
 
-function SlideUp({ children, delay = 0, duration = 0.3, className = '' }: SlideUpProps) {
+function SlideUp({ children, className = '' }: SlideUpProps) {
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 30 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay, duration, ease: 'easeOut' }}
-      className={className}
-    >
+    <div className={className}>
       {children as any}
-    </motion.div>
+    </div>
   );
 }
 
-// Scale in wrapper
+// Scale in wrapper — stripped to plain div
 interface ScaleInProps {
   children: ReactNode;
   delay?: number;
@@ -80,20 +70,15 @@ interface ScaleInProps {
   className?: string;
 }
 
-function ScaleIn({ children, delay = 0, duration = 0.2, className = '' }: ScaleInProps) {
+function ScaleIn({ children, className = '' }: ScaleInProps) {
   return (
-    <motion.div
-      initial={{ opacity: 0, scale: 0.9 }}
-      animate={{ opacity: 1, scale: 1 }}
-      transition={{ delay, duration, ease: 'easeOut' }}
-      className={className}
-    >
+    <div className={className}>
       {children as any}
-    </motion.div>
+    </div>
   );
 }
 
-// Staggered list container
+// Staggered list container — stripped to plain div
 interface StaggeredListProps {
   children: ReactNode;
   staggerDelay?: number;
@@ -110,28 +95,15 @@ const staggerContainerVariants: Variants = {
   },
 };
 
-function StaggeredList({ children, staggerDelay = 0.1, className = '' }: StaggeredListProps) {
+function StaggeredList({ children, className = '' }: StaggeredListProps) {
   return (
-    <motion.div
-      initial="hidden"
-      animate="visible"
-      variants={{
-        hidden: { opacity: 0 },
-        visible: {
-          opacity: 1,
-          transition: {
-            staggerChildren: staggerDelay,
-          },
-        },
-      }}
-      className={className}
-    >
+    <div className={className}>
       {children as any}
-    </motion.div>
+    </div>
   );
 }
 
-// Staggered list item
+// Staggered list item — stripped to plain div
 interface StaggeredItemProps {
   children: ReactNode;
   className?: string;
@@ -151,33 +123,28 @@ const staggerItemVariants: Variants = {
 
 function StaggeredItem({ children, className = '' }: StaggeredItemProps) {
   return (
-    <motion.div variants={staggerItemVariants} className={className}>
+    <div className={className}>
       {children as any}
-    </motion.div>
+    </div>
   );
 }
 
-// Hover scale effect
+// Hover scale effect — stripped to plain div
 interface HoverScaleProps {
   children: ReactNode;
   scale?: number;
   className?: string;
 }
 
-function HoverScale({ children, scale = 1.02, className = '' }: HoverScaleProps) {
+function HoverScale({ children, className = '' }: HoverScaleProps) {
   return (
-    <motion.div
-      whileHover={{ scale }}
-      whileTap={{ scale: 0.98 }}
-      transition={{ duration: 0.15 }}
-      className={className}
-    >
+    <div className={className}>
       {children as any}
-    </motion.div>
+    </div>
   );
 }
 
-// Animated number counter
+// Animated number counter — simplified to plain span
 interface AnimatedCounterProps {
   value: number;
   duration?: number;
@@ -187,28 +154,17 @@ interface AnimatedCounterProps {
 
 function AnimatedCounter({
   value,
-  duration = 1,
   className = '',
   formatter = (v) => Math.round(v).toString(),
 }: AnimatedCounterProps) {
   return (
-    <motion.span
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      className={className}
-    >
-      <motion.span
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.3 }}
-      >
-        {formatter(value)}
-      </motion.span>
-    </motion.span>
+    <span className={className}>
+      {formatter(value)}
+    </span>
   );
 }
 
-// Pulse animation for attention
+// Pulse animation for attention — stripped to plain div
 interface PulseProps {
   children: ReactNode;
   className?: string;
@@ -216,19 +172,9 @@ interface PulseProps {
 
 function Pulse({ children, className = '' }: PulseProps) {
   return (
-    <motion.div
-      animate={{
-        scale: [1, 1.05, 1],
-      }}
-      transition={{
-        duration: 2,
-        repeat: Infinity,
-        ease: 'easeInOut',
-      }}
-      className={className}
-    >
+    <div className={className}>
       {children as any}
-    </motion.div>
+    </div>
   );
 }
 

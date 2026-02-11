@@ -78,7 +78,7 @@ export default function HeightMapBackground() {
       ctx.fillStyle = '#050607';
       ctx.fillRect(0, 0, w, h);
 
-      time += 0.008;
+      time += 0.012;
 
       // Update height map
       for (let y = 0; y < rows; y++) {
@@ -97,7 +97,7 @@ export default function HeightMapBackground() {
         const isMainContour = i % 5 === 0;
         ctx.lineWidth = isMainContour ? 0.8 : 0.4;
 
-        const baseAlpha = 0.15 + (i / numContours) * 0.15;
+        const baseAlpha = 0.22 + (i / numContours) * 0.18;
         ctx.strokeStyle = `rgba(20, 184, 166, ${baseAlpha * shimmer})`;
 
         const segments: { x: number; y: number; edge: string }[][] = [];
@@ -157,7 +157,7 @@ export default function HeightMapBackground() {
         for (let x = 0; x < w; x += tessSize) {
           const localPhase = Math.sin(time * 2.5 + x * 0.008 + y * 0.008) * 0.25 + 0.75;
           const localShimmer = Math.sin(time * 2.8 + x * 0.012 - y * 0.01) * 0.2 + 0.8;
-          const finalAlpha = 0.1 * tessPhase * localPhase * localShimmer;
+          const finalAlpha = 0.14 * tessPhase * localPhase * localShimmer;
 
           ctx.strokeStyle = `rgba(20, 184, 166, ${finalAlpha})`;
           ctx.lineWidth = 0.6;
@@ -198,7 +198,7 @@ export default function HeightMapBackground() {
       for (let x = 0; x < w; x += gridSize) {
         const wave = Math.sin(time * 0.7 + x * 0.003) * 0.25 + 0.75;
         const pulse = Math.sin(time * 0.4 + x * 0.002) * 0.15 + 0.85;
-        const finalAlpha = 0.4 * baseScintillation * wave * pulse;
+        const finalAlpha = 0.5 * baseScintillation * wave * pulse;
 
         ctx.strokeStyle = `rgba(20, 184, 166, ${finalAlpha})`;
         ctx.beginPath();
@@ -210,7 +210,7 @@ export default function HeightMapBackground() {
       for (let y = 0; y < h; y += gridSize) {
         const wave = Math.sin(time * 0.7 + y * 0.003) * 0.25 + 0.75;
         const pulse = Math.sin(time * 0.4 + y * 0.002) * 0.15 + 0.85;
-        const finalAlpha = 0.4 * baseScintillation * wave * pulse;
+        const finalAlpha = 0.5 * baseScintillation * wave * pulse;
 
         ctx.strokeStyle = `rgba(20, 184, 166, ${finalAlpha})`;
         ctx.beginPath();
