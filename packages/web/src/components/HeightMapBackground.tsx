@@ -221,6 +221,47 @@ export default function HeightMapBackground() {
 
       ctx.setLineDash([]);
 
+      // LAYER 4: Cartographic marginalia — coordinate labels at grid intersections
+      // Seeded pseudo-random: deterministic per position, stable across frames
+      const seedRand = (ix: number, iy: number) => {
+        let seed = ix * 7919 + iy * 104729 + 31;
+        seed = ((seed << 13) ^ seed);
+        return ((seed * (seed * seed * 15731 + 789221) + 1376312589) & 0x7fffffff) / 0x7fffffff;
+      };
+
+      ctx.font = '7px monospace';
+      ctx.textBaseline = 'top';
+
+      for (let gx = 0; gx < w; gx += gridSize) {
+        for (let gy = 0; gy < h; gy += gridSize) {
+          const ix = Math.round(gx / gridSize);
+          const iy = Math.round(gy / gridSize);
+
+          // Only label roughly every other intersection, with seeded randomness
+          const r = seedRand(ix, iy);
+          if (r > 0.55) continue;
+
+          // Opacity: 0.04–0.07 range with subtle time-based flicker
+          const flicker = Math.sin(time * 0.3 + ix * 1.7 + iy * 2.3) * 0.015;
+          const opacity = 0.04 + r * 0.03 + flicker;
+
+          // Generate plausible UK coordinates with slow drift
+          // Latitude: 50–58°N, Longitude: 0–6°W
+          const drift = Math.sin(time * 0.08 + ix * 0.5) * 0.3;
+          const lat = 50 + (seedRand(ix + 100, iy) * 8) + drift * 0.1;
+          const lon = seedRand(ix, iy + 100) * 6 + Math.cos(time * 0.06 + iy * 0.4) * 0.2;
+
+          const latStr = lat.toFixed(1) + '°N';
+          const lonStr = '-' + lon.toFixed(1) + '°W';
+
+          // Alternate between lat and lon labels based on position
+          const label = seedRand(ix * 3, iy * 3) > 0.5 ? latStr : lonStr;
+
+          ctx.fillStyle = `rgba(20, 184, 166, ${Math.max(0, Math.min(opacity, 0.07))})`;
+          ctx.fillText(label, gx + 4, gy + 2);
+        }
+      }
+
       animationRef.current = requestAnimationFrame(draw);
     };
 

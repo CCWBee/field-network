@@ -67,6 +67,11 @@ module.exports = {
         'gradient-mesh': 'radial-gradient(at 40% 20%, hsla(174,80%,85%,0.5) 0px, transparent 50%), radial-gradient(at 80% 0%, hsla(200,80%,90%,0.4) 0px, transparent 50%), radial-gradient(at 0% 50%, hsla(174,70%,88%,0.3) 0px, transparent 50%), radial-gradient(at 80% 50%, hsla(190,80%,90%,0.3) 0px, transparent 50%), radial-gradient(at 50% 100%, hsla(174,80%,85%,0.4) 0px, transparent 50%)',
         'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
       },
+      transitionTimingFunction: {
+        'field': 'cubic-bezier(0.2, 0, 0, 1)',      // General purpose — quick start, gentle land
+        'field-bounce': 'cubic-bezier(0.34, 1.56, 0.64, 1)', // Slight overshoot for interactive elements
+        'field-smooth': 'cubic-bezier(0.4, 0, 0.2, 1)',      // Material-style smooth
+      },
       animation: {
         'pulse-slow': 'pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite',
       },
