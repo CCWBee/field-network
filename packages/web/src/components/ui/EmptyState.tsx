@@ -1,7 +1,6 @@
 'use client';
 
 import { ReactNode } from 'react';
-import { motion } from 'framer-motion';
 
 interface EmptyStateProps {
   title: string;
@@ -14,7 +13,7 @@ interface EmptyStateProps {
 // Default empty state icons for common scenarios
 const defaultIcons = {
   tasks: (
-    <svg className="w-16 h-16 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <svg className="w-16 h-16 text-ink-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -24,7 +23,7 @@ const defaultIcons = {
     </svg>
   ),
   submissions: (
-    <svg className="w-16 h-16 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <svg className="w-16 h-16 text-ink-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -34,7 +33,7 @@ const defaultIcons = {
     </svg>
   ),
   disputes: (
-    <svg className="w-16 h-16 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <svg className="w-16 h-16 text-ink-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -44,7 +43,7 @@ const defaultIcons = {
     </svg>
   ),
   map: (
-    <svg className="w-16 h-16 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <svg className="w-16 h-16 text-ink-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -54,7 +53,7 @@ const defaultIcons = {
     </svg>
   ),
   search: (
-    <svg className="w-16 h-16 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <svg className="w-16 h-16 text-ink-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -64,7 +63,7 @@ const defaultIcons = {
     </svg>
   ),
   notifications: (
-    <svg className="w-16 h-16 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <svg className="w-16 h-16 text-ink-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -74,7 +73,7 @@ const defaultIcons = {
     </svg>
   ),
   data: (
-    <svg className="w-16 h-16 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <svg className="w-16 h-16 text-ink-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -93,10 +92,7 @@ function EmptyState({
   className = '',
 }: EmptyStateProps) {
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3 }}
+    <div
       className={`
         flex flex-col items-center justify-center text-center
         py-12 px-6
@@ -108,12 +104,12 @@ function EmptyState({
           {icon as any}
         </div>
       )}
-      <h3 className="text-lg font-medium text-slate-700 mb-2">{title}</h3>
+      <h3 className="text-lg font-medium text-ink-700 mb-2">{title}</h3>
       {description && (
-        <p className="text-sm text-slate-500 max-w-sm mb-6">{description}</p>
+        <p className="text-sm text-ink-500 max-w-sm mb-6">{description}</p>
       )}
       {action && <div>{action as any}</div>}
-    </motion.div>
+    </div>
   );
 }
 

@@ -83,7 +83,7 @@ function Modal({
             exit="hidden"
             variants={backdropVariants}
             transition={{ duration: 0.2 }}
-            className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm"
+            className="absolute inset-0 bg-ink-900/60"
             onClick={handleBackdropClick}
           />
 
@@ -96,26 +96,26 @@ function Modal({
             transition={{ duration: 0.2, ease: 'easeOut' }}
             className={`
               relative w-full ${sizeStyles[size]}
-              bg-white rounded-xl shadow-xl
+              bg-paper rounded-none shadow-lg border border-ink-200
               ${className}
             `}
-            onClick={(e) => e.stopPropagation()}
+            onClick={(e: React.MouseEvent) => e.stopPropagation()}
           >
             {/* Header */}
             {(title || showCloseButton) && (
-              <div className="flex items-start justify-between p-4 border-b border-surface-200">
+              <div className="flex items-start justify-between p-4 border-b border-ink-200">
                 <div>
                   {title && (
-                    <h2 className="text-lg font-semibold text-slate-800">{title}</h2>
+                    <h2 className="text-lg font-semibold text-ink-900">{title}</h2>
                   )}
                   {description && (
-                    <p className="text-sm text-slate-500 mt-1">{description}</p>
+                    <p className="text-sm text-ink-500 mt-1">{description}</p>
                   )}
                 </div>
                 {showCloseButton && (
                   <button
                     onClick={onClose}
-                    className="p-1 rounded-md text-slate-400 hover:text-slate-600 hover:bg-surface-100 transition-colors"
+                    className="p-1 rounded-sm text-ink-500 hover:text-ink-700 hover:bg-ink-50 transition-colors"
                     aria-label="Close modal"
                   >
                     <svg
@@ -155,7 +155,7 @@ interface ModalFooterProps extends HTMLAttributes<HTMLDivElement> {
 function ModalFooter({ className = '', children, ...props }: ModalFooterProps) {
   return (
     <div
-      className={`flex items-center justify-end gap-3 p-4 border-t border-surface-200 bg-surface-50 rounded-b-xl ${className}`}
+      className={`flex items-center justify-end gap-3 p-4 border-t border-ink-200 bg-ink-50 ${className}`}
       {...props}
     >
       {children as any}

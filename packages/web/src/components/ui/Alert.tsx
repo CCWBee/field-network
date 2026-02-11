@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, ReactNode } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
 
 type AlertVariant = 'info' | 'success' | 'warning' | 'error';
 
@@ -17,20 +16,20 @@ interface AlertProps {
 
 const variantStyles: Record<AlertVariant, { container: string; icon: string }> = {
   info: {
-    container: 'bg-blue-50 border-blue-200 text-blue-800',
-    icon: 'text-blue-500',
+    container: 'bg-paper border-signal-blue text-ink-900',
+    icon: 'text-signal-blue',
   },
   success: {
-    container: 'bg-green-50 border-green-200 text-green-800',
-    icon: 'text-green-500',
+    container: 'bg-paper border-signal-green text-ink-900',
+    icon: 'text-signal-green',
   },
   warning: {
-    container: 'bg-yellow-50 border-yellow-200 text-yellow-800',
-    icon: 'text-yellow-500',
+    container: 'bg-paper border-signal-amber text-ink-900',
+    icon: 'text-signal-amber',
   },
   error: {
-    container: 'bg-red-50 border-red-200 text-red-800',
-    icon: 'text-red-500',
+    container: 'bg-paper border-signal-red text-ink-900',
+    icon: 'text-signal-red',
   },
 };
 
@@ -96,57 +95,51 @@ function Alert({
   const styles = variantStyles[variant];
   const displayIcon = icon ?? defaultIcons[variant];
 
+  if (!isVisible) return null;
+
   return (
-    <AnimatePresence>
-      {isVisible && (
-        <motion.div
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -10 }}
-          transition={{ duration: 0.2 }}
-          className={`
-            flex items-start gap-3 p-4 rounded-lg border
-            ${styles.container}
-            ${className}
-          `}
-          role="alert"
-        >
-          {displayIcon && (
-            <span className={`flex-shrink-0 ${styles.icon}`}>
-              {displayIcon as any}
-            </span>
-          )}
-          <div className="flex-1 min-w-0">
-            {title && (
-              <h4 className="font-medium mb-1">{title}</h4>
-            )}
-            <div className="text-sm opacity-90">{children as any}</div>
-          </div>
-          {dismissible && (
-            <button
-              type="button"
-              onClick={handleDismiss}
-              className="flex-shrink-0 p-1 rounded-md hover:bg-black/10 transition-colors"
-              aria-label="Dismiss"
-            >
-              <svg
-                className="w-4 h-4"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M6 18L18 6M6 6l12 12"
-                />
-              </svg>
-            </button>
-          )}
-        </motion.div>
+    <div
+      className={`
+        flex items-start gap-3 p-4 rounded-sm border
+        ${styles.container}
+        ${className}
+      `}
+      role="alert"
+    >
+      {displayIcon && (
+        <span className={`flex-shrink-0 ${styles.icon}`}>
+          {displayIcon as any}
+        </span>
       )}
-    </AnimatePresence>
+      <div className="flex-1 min-w-0">
+        {title && (
+          <h4 className="font-medium text-ink-900 mb-1">{title}</h4>
+        )}
+        <div className="text-sm text-ink-700">{children as any}</div>
+      </div>
+      {dismissible && (
+        <button
+          type="button"
+          onClick={handleDismiss}
+          className="flex-shrink-0 p-1 rounded-sm hover:bg-ink-50 transition-colors"
+          aria-label="Dismiss"
+        >
+          <svg
+            className="w-4 h-4 text-ink-500"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M6 18L18 6M6 6l12 12"
+            />
+          </svg>
+        </button>
+      )}
+    </div>
   );
 }
 

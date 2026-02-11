@@ -116,15 +116,15 @@ export default function ReputationChart({ userId, className = '' }: Props) {
       claim_abandoned: 'text-red-600',
       badge_earned: 'text-yellow-600',
       streak_bonus: 'text-blue-600',
-      initial_setup: 'text-slate-600',
-      recalculation: 'text-slate-500',
+      initial_setup: 'text-ink-700',
+      recalculation: 'text-ink-500',
     };
-    return colors[reason] || 'text-slate-600';
+    return colors[reason] || 'text-ink-700';
   };
 
   if (isLoading) {
     return (
-      <div className={`glass rounded-xl p-6 border border-surface-200 ${className}`}>
+      <div className={`bg-paper rounded-sm p-6 border border-ink-200 ${className}`}>
         <div className="flex items-center justify-center h-48">
           <div className="animate-spin rounded-full h-8 w-8 border-2 border-field-500 border-t-transparent"></div>
         </div>
@@ -134,10 +134,10 @@ export default function ReputationChart({ userId, className = '' }: Props) {
 
   if (events.length === 0) {
     return (
-      <div className={`glass rounded-xl p-6 border border-surface-200 ${className}`}>
-        <h3 className="text-lg font-semibold text-slate-800 mb-4">Reputation History</h3>
-        <div className="flex flex-col items-center justify-center h-48 text-slate-500">
-          <svg className="w-12 h-12 mb-2 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <div className={`bg-paper rounded-sm p-6 border border-ink-200 ${className}`}>
+        <h3 className="text-lg font-semibold text-ink-900 mb-4">Reputation History</h3>
+        <div className="flex flex-col items-center justify-center h-48 text-ink-500">
+          <svg className="w-12 h-12 mb-2 text-ink-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
           </svg>
           <p className="text-sm">No reputation history yet</p>
@@ -148,19 +148,19 @@ export default function ReputationChart({ userId, className = '' }: Props) {
   }
 
   return (
-    <div className={`glass rounded-xl p-6 border border-surface-200 ${className}`}>
+    <div className={`bg-paper rounded-sm p-6 border border-ink-200 ${className}`}>
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg font-semibold text-slate-800">Reputation History</h3>
-        <div className="flex gap-1 bg-slate-100 rounded-lg p-1">
+        <h3 className="text-lg font-semibold text-ink-900">Reputation History</h3>
+        <div className="flex gap-1 bg-ink-100 rounded-sm p-1">
           {(['week', 'month', 'all'] as TimeRange[]).map((range) => (
             <button
               key={range}
               onClick={() => setTimeRange(range)}
-              className={`px-3 py-1 text-sm rounded-md transition-colors ${
+              className={`px-3 py-1 text-sm rounded-sm transition-colors ${
                 timeRange === range
-                  ? 'bg-white text-field-600 shadow-sm'
-                  : 'text-slate-600 hover:text-slate-800'
+                  ? 'bg-paper text-field-600 shadow-sm'
+                  : 'text-ink-700 hover:text-ink-900'
               }`}
             >
               {range === 'week' ? '7D' : range === 'month' ? '30D' : 'All'}
@@ -192,7 +192,7 @@ export default function ReputationChart({ userId, className = '' }: Props) {
                     y={y}
                     textAnchor="end"
                     dominantBaseline="middle"
-                    className="text-xs fill-slate-400"
+                    className="text-xs fill-ink-500"
                   >
                     {tick}
                   </text>
@@ -244,7 +244,7 @@ export default function ReputationChart({ userId, className = '' }: Props) {
               textAnchor="middle"
               dominantBaseline="middle"
               transform={`rotate(-90, 12, ${chartHeight / 2})`}
-              className="text-xs fill-slate-400"
+              className="text-xs fill-ink-500"
             >
               Score
             </text>
@@ -252,23 +252,23 @@ export default function ReputationChart({ userId, className = '' }: Props) {
 
           {/* Tooltip */}
           {hoveredEvent && (
-            <div className="absolute top-0 right-0 bg-white rounded-lg shadow-lg border border-surface-200 p-3 text-sm max-w-xs">
+            <div className="absolute top-0 right-0 bg-paper rounded-sm shadow-lg border border-ink-200 p-3 text-sm max-w-xs">
               <p className={`font-medium ${getReasonColor(hoveredEvent.reason)}`}>
                 {getReasonLabel(hoveredEvent.reason)}
               </p>
               <div className="flex items-center gap-2 mt-1">
-                <span className="text-slate-500">{hoveredEvent.previous_score.toFixed(0)}</span>
-                <span className="text-slate-400">-&gt;</span>
-                <span className="font-medium text-slate-800">{hoveredEvent.new_score.toFixed(0)}</span>
-                <span className={`text-xs px-1.5 py-0.5 rounded ${
-                  hoveredEvent.score_change > 0 ? 'bg-green-100 text-green-700' :
-                  hoveredEvent.score_change < 0 ? 'bg-red-100 text-red-700' :
-                  'bg-slate-100 text-slate-600'
+                <span className="font-mono tabular-nums text-ink-500">{hoveredEvent.previous_score.toFixed(0)}</span>
+                <span className="text-ink-300">-&gt;</span>
+                <span className="font-mono tabular-nums font-medium text-ink-900">{hoveredEvent.new_score.toFixed(0)}</span>
+                <span className={`text-xs font-mono tabular-nums px-1.5 py-0.5 rounded-sm border ${
+                  hoveredEvent.score_change > 0 ? 'text-signal-green border-signal-green/30' :
+                  hoveredEvent.score_change < 0 ? 'text-signal-red border-signal-red/30' :
+                  'text-ink-700 border-ink-200'
                 }`}>
                   {hoveredEvent.score_change > 0 ? '+' : ''}{hoveredEvent.score_change.toFixed(0)}
                 </span>
               </div>
-              <p className="text-xs text-slate-400 mt-1">
+              <p className="text-xs text-ink-500 mt-1">
                 {new Date(hoveredEvent.created_at).toLocaleDateString(undefined, {
                   month: 'short',
                   day: 'numeric',
@@ -281,14 +281,14 @@ export default function ReputationChart({ userId, className = '' }: Props) {
           )}
         </div>
       ) : (
-        <div className="flex items-center justify-center h-48 text-slate-500">
+        <div className="flex items-center justify-center h-48 text-ink-500">
           <p className="text-sm">No events in selected time range</p>
         </div>
       )}
 
       {/* Recent Events List */}
-      <div className="mt-4 border-t border-surface-200 pt-4">
-        <h4 className="text-sm font-medium text-slate-700 mb-2">Recent Events</h4>
+      <div className="mt-4 border-t border-ink-200 pt-4">
+        <h4 className="text-sm font-medium text-ink-700 mb-2">Recent Events</h4>
         <div className="space-y-2 max-h-48 overflow-y-auto">
           {filteredEvents.slice(0, 10).map((event) => (
             <div
@@ -297,26 +297,26 @@ export default function ReputationChart({ userId, className = '' }: Props) {
             >
               <div className="flex items-center gap-2">
                 <span className={`w-2 h-2 rounded-full ${
-                  event.score_change > 0 ? 'bg-green-500' :
-                  event.score_change < 0 ? 'bg-red-500' :
-                  'bg-slate-400'
+                  event.score_change > 0 ? 'bg-signal-green' :
+                  event.score_change < 0 ? 'bg-signal-red' :
+                  'bg-ink-300'
                 }`}></span>
                 <span className={getReasonColor(event.reason)}>
                   {getReasonLabel(event.reason)}
                 </span>
                 {event.badge_type && (
-                  <span className="text-xs text-slate-500">({event.badge_type})</span>
+                  <span className="text-xs text-ink-500">({event.badge_type})</span>
                 )}
               </div>
               <div className="flex items-center gap-2">
-                <span className={`font-medium ${
-                  event.score_change > 0 ? 'text-green-600' :
-                  event.score_change < 0 ? 'text-red-600' :
-                  'text-slate-500'
+                <span className={`font-mono tabular-nums font-medium ${
+                  event.score_change > 0 ? 'text-signal-green' :
+                  event.score_change < 0 ? 'text-signal-red' :
+                  'text-ink-500'
                 }`}>
                   {event.score_change > 0 ? '+' : ''}{event.score_change.toFixed(0)}
                 </span>
-                <span className="text-xs text-slate-400">
+                <span className="text-xs text-ink-500">
                   {new Date(event.created_at).toLocaleDateString(undefined, {
                     month: 'short',
                     day: 'numeric',

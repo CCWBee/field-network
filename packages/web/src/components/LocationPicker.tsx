@@ -148,10 +148,10 @@ function GeocodingSearch({
             onChange={(e) => handleInputChange(e.target.value)}
             onFocus={() => results.length > 0 && setShowResults(true)}
             placeholder="Search for a location..."
-            className="w-full px-3 py-2 pl-9 text-sm border border-surface-300 rounded-md shadow-sm focus:ring-field-500 focus:border-field-500"
+            className="w-full px-3 py-2 pl-9 text-sm border border-ink-200 rounded-sm focus:ring-field-500 focus:border-field-500"
           />
           <svg
-            className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400"
+            className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-ink-500"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -173,18 +173,18 @@ function GeocodingSearch({
 
       {/* Search results dropdown */}
       {showResults && results.length > 0 && (
-        <div className="absolute z-50 mt-1 w-full bg-white border border-surface-200 rounded-md shadow-lg max-h-60 overflow-auto">
+        <div className="absolute z-50 mt-1 w-full bg-paper border border-ink-200 rounded-sm shadow-lg max-h-60 overflow-auto">
           {results.map((result, index) => (
             <button
               key={index}
               type="button"
               onClick={() => handleSelectResult(result)}
-              className="w-full px-3 py-2 text-left text-sm hover:bg-slate-50 border-b border-surface-100 last:border-b-0"
+              className="w-full px-3 py-2 text-left text-sm hover:bg-ink-50 border-b border-ink-100 last:border-b-0"
             >
-              <div className="font-medium text-slate-800 truncate">
+              <div className="font-medium text-ink-900 truncate">
                 {result.display_name.split(',')[0]}
               </div>
-              <div className="text-xs text-slate-500 truncate">
+              <div className="text-xs text-ink-500 truncate">
                 {result.display_name}
               </div>
             </button>
@@ -279,7 +279,7 @@ export default function LocationPicker({
 
       {/* Map */}
       <div
-        className="w-full rounded-lg overflow-hidden border border-surface-200"
+        className="w-full rounded-sm overflow-hidden border border-ink-200"
         style={{ height }}
       >
         <MapContainer
@@ -320,7 +320,7 @@ export default function LocationPicker({
         {/* Coordinates display */}
         <div className="flex gap-3">
           <div>
-            <label className="block text-xs text-slate-500 mb-1">Latitude</label>
+            <label className="text-xs uppercase tracking-wider text-ink-500 block mb-1">Latitude</label>
             <input
               type="number"
               step="0.0001"
@@ -328,11 +328,11 @@ export default function LocationPicker({
               onChange={(e) =>
                 onChange({ lat: parseFloat(e.target.value) || 0, lon: value.lon })
               }
-              className="w-32 px-2 py-1.5 text-sm border border-surface-300 rounded-md"
+              className="w-32 px-2 py-1.5 text-sm font-mono tabular-nums border border-ink-200 rounded-sm"
             />
           </div>
           <div>
-            <label className="block text-xs text-slate-500 mb-1">Longitude</label>
+            <label className="text-xs uppercase tracking-wider text-ink-500 block mb-1">Longitude</label>
             <input
               type="number"
               step="0.0001"
@@ -340,7 +340,7 @@ export default function LocationPicker({
               onChange={(e) =>
                 onChange({ lat: value.lat, lon: parseFloat(e.target.value) || 0 })
               }
-              className="w-32 px-2 py-1.5 text-sm border border-surface-300 rounded-md"
+              className="w-32 px-2 py-1.5 text-sm font-mono tabular-nums border border-ink-200 rounded-sm"
             />
           </div>
         </div>
@@ -348,8 +348,8 @@ export default function LocationPicker({
         {/* Radius control */}
         {showRadiusControl && onRadiusChange && (
           <div className="flex-1 min-w-[200px]">
-            <label className="block text-xs text-slate-500 mb-1">
-              Radius: {localRadius}m
+            <label className="text-xs uppercase tracking-wider text-ink-500 block mb-1">
+              Radius: <span className="font-mono tabular-nums">{localRadius}m</span>
             </label>
             <input
               type="range"
@@ -381,7 +381,7 @@ export default function LocationPicker({
               );
             }
           }}
-          className="px-3 py-1.5 text-sm border border-surface-300 rounded-md text-slate-600 hover:bg-slate-50 flex items-center gap-1.5"
+          className="px-3 py-1.5 text-sm border border-ink-200 rounded-sm text-ink-700 hover:bg-ink-50 flex items-center gap-1.5"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path
@@ -402,7 +402,7 @@ export default function LocationPicker({
       </div>
 
       {/* Help text */}
-      <p className="text-xs text-slate-500">
+      <p className="text-xs text-ink-500">
         Click on the map to place the marker, or drag the marker to adjust. Use the search box to find a location by address.
       </p>
     </div>

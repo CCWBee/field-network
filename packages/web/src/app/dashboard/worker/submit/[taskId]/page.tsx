@@ -144,7 +144,7 @@ export default function SubmitTaskPage() {
   if (isLoading) {
     return (
       <div className="flex justify-center py-12">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-field-600"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-field-500"></div>
       </div>
     );
   }
@@ -152,8 +152,8 @@ export default function SubmitTaskPage() {
   if (!task) {
     return (
       <div className="text-center py-12">
-        <p className="text-slate-500">{error || 'Task not found'}</p>
-        <Link href="/dashboard/worker/claims" className="text-field-600 hover:text-field-500 mt-4 inline-block">
+        <p className="text-ink-500">{error || 'Task not found'}</p>
+        <Link href="/dashboard/worker/claims" className="text-field-500 hover:text-field-600 mt-4 inline-block">
           Back to claims
         </Link>
       </div>
@@ -165,22 +165,22 @@ export default function SubmitTaskPage() {
   return (
     <div className="max-w-3xl mx-auto">
       <div className="mb-8">
-        <Link href="/dashboard/worker/claims" className="text-sm text-slate-500 hover:text-slate-700 mb-2 inline-block">
+        <Link href="/dashboard/worker/claims" className="text-sm text-ink-500 hover:text-ink-700 mb-2 inline-block">
           &larr; Back to claims
         </Link>
-        <h1 className="text-2xl font-bold text-slate-900">Submit: {task.title}</h1>
+        <h1 className="text-2xl font-bold text-ink-900 tracking-tight">Submit: {task.title}</h1>
       </div>
 
       {error && (
-        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-md">
-          <p className="text-sm text-red-600">{error}</p>
+        <div className="mb-6 p-4 border border-signal-red/30 rounded-sm">
+          <p className="text-sm text-signal-red">{error}</p>
         </div>
       )}
 
       {/* Task Summary */}
-      <div className="bg-blue-50 rounded-lg p-4 mb-6">
-        <h2 className="font-medium text-blue-900 mb-2">Requirements</h2>
-        <ul className="text-sm text-blue-800 space-y-1">
+      <div className="bg-signal-blue/10 border border-signal-blue/30 rounded-sm p-4 mb-6">
+        <h2 className="font-medium text-ink-900 mb-2">Requirements</h2>
+        <ul className="text-sm text-ink-700 space-y-1">
           <li>Upload {requiredCount} photo(s)</li>
           <li>Minimum resolution: {task.requirements?.photos?.min_width_px}x{task.requirements?.photos?.min_height_px}</li>
           {task.requirements?.bearing?.required && (
@@ -191,14 +191,14 @@ export default function SubmitTaskPage() {
       </div>
 
       {/* Instructions */}
-      <div className="glass rounded-lg border border-surface-200 p-6 mb-6">
-        <h2 className="font-medium text-slate-900 mb-2">Instructions</h2>
-        <p className="text-slate-600 whitespace-pre-wrap">{task.instructions}</p>
+      <div className="bg-paper rounded-sm border border-ink-200 p-6 mb-6">
+        <h2 className="font-medium text-ink-900 mb-2">Instructions</h2>
+        <p className="text-ink-700 whitespace-pre-wrap">{task.instructions}</p>
       </div>
 
       {/* File Upload */}
-      <div className="glass rounded-lg border border-surface-200 p-6 mb-6">
-        <h2 className="font-medium text-slate-900 mb-4">Upload Photos</h2>
+      <div className="bg-paper rounded-sm border border-ink-200 p-6 mb-6">
+        <h2 className="font-medium text-ink-900 mb-4">Upload Photos</h2>
 
         <input
           ref={fileInputRef}
@@ -211,13 +211,13 @@ export default function SubmitTaskPage() {
 
         <div
           onClick={() => fileInputRef.current?.click()}
-          className="border-2 border-dashed border-surface-300 rounded-lg p-8 text-center cursor-pointer hover:border-field-400 transition-colors"
+          className="border-2 border-dashed border-ink-200 rounded-sm p-8 text-center cursor-pointer hover:border-field-400 transition-colors"
         >
-          <svg className="mx-auto h-12 w-12 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="mx-auto h-12 w-12 text-ink-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
           </svg>
-          <p className="mt-2 text-sm text-slate-600">Click to select photos</p>
-          <p className="text-xs text-slate-400 mt-1">JPEG or PNG, max 10MB each</p>
+          <p className="mt-2 text-sm text-ink-700">Click to select photos</p>
+          <p className="text-xs text-ink-300 mt-1">JPEG or PNG, max 10MB each</p>
         </div>
 
         {/* Uploaded Files Preview */}
@@ -228,15 +228,15 @@ export default function SubmitTaskPage() {
                 <img
                   src={file.preview}
                   alt={file.file.name}
-                  className="w-full h-32 object-cover rounded-lg"
+                  className="w-full h-32 object-cover rounded-sm"
                 />
-                <div className="absolute inset-0 bg-black bg-opacity-40 rounded-lg flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="absolute inset-0 bg-black bg-opacity-40 rounded-sm flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
                       removeFile(file.id);
                     }}
-                    className="p-2 bg-red-600 text-white rounded-full"
+                    className="p-2 bg-signal-red text-white rounded-sm"
                   >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -244,19 +244,19 @@ export default function SubmitTaskPage() {
                   </button>
                 </div>
                 {file.status === 'uploading' && (
-                  <div className="absolute inset-0 bg-white bg-opacity-75 rounded-lg flex items-center justify-center">
-                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-field-600"></div>
+                  <div className="absolute inset-0 bg-white bg-opacity-75 rounded-sm flex items-center justify-center">
+                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-field-500"></div>
                   </div>
                 )}
                 {file.status === 'uploaded' && (
-                  <div className="absolute top-2 right-2 bg-green-500 text-white rounded-full p-1">
+                  <div className="absolute top-2 right-2 bg-signal-green text-white rounded-sm p-1">
                     <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
                     </svg>
                   </div>
                 )}
                 {file.status === 'error' && (
-                  <div className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1">
+                  <div className="absolute top-2 right-2 bg-signal-red text-white rounded-sm p-1">
                     <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" />
                     </svg>
@@ -267,26 +267,26 @@ export default function SubmitTaskPage() {
           </div>
         )}
 
-        <p className="mt-4 text-sm text-slate-500">
+        <p className="mt-4 text-sm text-ink-500">
           {files.length} of {requiredCount} required photos uploaded
         </p>
       </div>
 
       {/* Capture Claims */}
       {task.requirements?.bearing?.required && (
-        <div className="glass rounded-lg border border-surface-200 p-6 mb-6">
-          <h2 className="font-medium text-slate-900 mb-4">Capture Details</h2>
+        <div className="bg-paper rounded-sm border border-ink-200 p-6 mb-6">
+          <h2 className="font-medium text-ink-900 mb-4">Capture Details</h2>
           <div>
-            <label className="block text-sm font-medium text-slate-700">Camera Bearing (degrees)</label>
+            <label className="block text-xs uppercase tracking-wider text-ink-500">Camera Bearing (degrees)</label>
             <input
               type="number"
               min="0"
               max="360"
               value={captureClaims.declared_bearing}
               onChange={(e) => setCaptureClaims(prev => ({ ...prev, declared_bearing: parseInt(e.target.value) }))}
-              className="mt-1 block w-full px-3 py-2 border border-surface-300 rounded-md shadow-sm"
+              className="mt-1 block w-full px-3 py-2 border border-ink-200 rounded-sm"
             />
-            <p className="mt-1 text-xs text-slate-500">
+            <p className="mt-1 text-xs text-ink-500">
               Target: {task.requirements.bearing.target_deg}&deg; (&plusmn;{task.requirements.bearing.tolerance_deg}&deg;)
             </p>
           </div>
@@ -295,9 +295,9 @@ export default function SubmitTaskPage() {
 
       {/* Safety Notes */}
       {task.policy?.safety_notes && (
-        <div className="bg-yellow-50 rounded-lg p-4 mb-6">
-          <h3 className="text-sm font-medium text-yellow-800 mb-2">Safety Reminder</h3>
-          <p className="text-sm text-yellow-700">{task.policy.safety_notes}</p>
+        <div className="bg-signal-amber/10 border border-signal-amber/30 rounded-sm p-4 mb-6">
+          <h3 className="text-sm font-medium text-ink-900 mb-2">Safety Reminder</h3>
+          <p className="text-sm text-ink-700">{task.policy.safety_notes}</p>
         </div>
       )}
 
@@ -305,14 +305,14 @@ export default function SubmitTaskPage() {
       <div className="flex justify-end space-x-3">
         <Link
           href="/dashboard/worker/claims"
-          className="px-4 py-2 border border-surface-300 text-slate-700 rounded-md hover:bg-slate-50"
+          className="px-4 py-2 border border-ink-200 text-ink-700 rounded-sm hover:bg-ink-50"
         >
           Cancel
         </Link>
         <button
           onClick={handleSubmit}
           disabled={isSubmitting || files.length < requiredCount}
-          className="px-6 py-2 bg-field-500 text-white rounded-md hover:bg-field-600 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="px-6 py-2 bg-field-500 text-white rounded-sm hover:bg-field-600 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {isSubmitting ? 'Submitting...' : 'Submit for Review'}
         </button>

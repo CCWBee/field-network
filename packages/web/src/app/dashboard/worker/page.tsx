@@ -318,20 +318,20 @@ export default function WorkerDashboard() {
     <div>
       <div className="flex flex-wrap items-center justify-between gap-6 mb-8">
         <div>
-          <p className="text-sm uppercase tracking-[0.4em] text-slate-400">Field Operator</p>
-          <h1 className="text-3xl font-semibold text-slate-800">Collector Mission Board</h1>
-          <p className="text-slate-500 mt-2">Track bounties, performance, and live opportunities.</p>
+          <p className="text-xs uppercase tracking-wider text-ink-500">Field Operator</p>
+          <h1 className="text-2xl font-bold text-ink-900 tracking-tight">Collector Mission Board</h1>
+          <p className="text-ink-500 mt-2">Track bounties, performance, and live opportunities.</p>
         </div>
         <div className="flex gap-4">
           <Link
             href="/dashboard/worker/claims"
-            className="text-field-600 hover:text-field-500 text-sm"
+            className="text-field-500 hover:text-field-600 text-sm"
           >
             My Claims &rarr;
           </Link>
           <Link
             href="/dashboard/worker/history"
-            className="text-field-600 hover:text-field-500 text-sm"
+            className="text-field-500 hover:text-field-600 text-sm"
           >
             History &rarr;
           </Link>
@@ -403,13 +403,13 @@ export default function WorkerDashboard() {
       </div>
 
       {/* Tab Navigation */}
-      <div className="flex gap-2 mb-6 border-b border-surface-200">
+      <div className="flex gap-2 mb-6 border-b border-ink-200">
         <button
           onClick={() => setActiveTab('missions')}
           className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
             activeTab === 'missions'
               ? 'border-field-500 text-field-600'
-              : 'border-transparent text-slate-500 hover:text-slate-700'
+              : 'border-transparent text-ink-500 hover:text-ink-700'
           }`}
         >
           Available Missions
@@ -419,7 +419,7 @@ export default function WorkerDashboard() {
           className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
             activeTab === 'stats'
               ? 'border-field-500 text-field-600'
-              : 'border-transparent text-slate-500 hover:text-slate-700'
+              : 'border-transparent text-ink-500 hover:text-ink-700'
           }`}
         >
           Earnings & Stats
@@ -429,7 +429,7 @@ export default function WorkerDashboard() {
           className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
             activeTab === 'history'
               ? 'border-field-500 text-field-600'
-              : 'border-transparent text-slate-500 hover:text-slate-700'
+              : 'border-transparent text-ink-500 hover:text-ink-700'
           }`}
         >
           Task History
@@ -437,8 +437,8 @@ export default function WorkerDashboard() {
       </div>
 
       {error && (
-        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-md">
-          <p className="text-sm text-red-600">{error}</p>
+        <div className="mb-6 p-4 border border-signal-red/30 rounded-sm">
+          <p className="text-sm text-signal-red">{error}</p>
         </div>
       )}
 
@@ -447,16 +447,16 @@ export default function WorkerDashboard() {
         <>
           {/* View Mode Toggle */}
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-lg font-medium text-slate-800">
+            <h2 className="text-lg font-medium text-ink-900">
               {filteredTasks.length} Available {filteredTasks.length === 1 ? 'Task' : 'Tasks'}
             </h2>
-            <div className="flex items-center gap-2 bg-surface-50 p-1 rounded-lg">
+            <div className="flex items-center gap-2 bg-ink-50 p-1 rounded-sm">
               <button
                 onClick={() => setViewMode('grid')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-md transition-colors ${
+                className={`flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-sm transition-colors ${
                   viewMode === 'grid'
-                    ? 'bg-white text-slate-800 shadow-sm'
-                    : 'text-slate-500 hover:text-slate-700'
+                    ? 'bg-paper text-ink-900 shadow-sm'
+                    : 'text-ink-500 hover:text-ink-700'
                 }`}
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -466,10 +466,10 @@ export default function WorkerDashboard() {
               </button>
               <button
                 onClick={() => setViewMode('map')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-md transition-colors ${
+                className={`flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-sm transition-colors ${
                   viewMode === 'map'
-                    ? 'bg-white text-slate-800 shadow-sm'
-                    : 'text-slate-500 hover:text-slate-700'
+                    ? 'bg-paper text-ink-900 shadow-sm'
+                    : 'text-ink-500 hover:text-ink-700'
                 }`}
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -484,7 +484,7 @@ export default function WorkerDashboard() {
           {viewMode === 'map' ? (
             <div className="space-y-6">
               {/* Filters row for map view */}
-              <div className="glass rounded-lg border border-surface-200 p-4">
+              <div className="bg-paper rounded-sm border border-ink-200 p-4">
                 <div className="flex flex-wrap items-center gap-4">
                   <div className="flex items-center gap-2">
                     <input
@@ -492,15 +492,15 @@ export default function WorkerDashboard() {
                       id="distanceFilterMap"
                       checked={useDistanceFilter}
                       onChange={(e) => setUseDistanceFilter(e.target.checked)}
-                      className="rounded border-surface-300 text-field-600"
+                      className="rounded-sm border-ink-200 text-field-600"
                     />
-                    <label htmlFor="distanceFilterMap" className="text-sm text-slate-600">
+                    <label htmlFor="distanceFilterMap" className="text-sm text-ink-700">
                       Within
                     </label>
                     <select
                       value={maxDistanceKm}
                       onChange={(e) => setMaxDistanceKm(Number(e.target.value))}
-                      className="text-sm border border-surface-300 rounded-md px-2 py-1 bg-white"
+                      className="text-sm border border-ink-200 rounded-sm px-2 py-1 bg-paper"
                       disabled={!useDistanceFilter}
                     >
                       {[10, 25, 50, 100, 250, 500].map((km) => (
@@ -509,48 +509,48 @@ export default function WorkerDashboard() {
                     </select>
                   </div>
                   <div className="flex items-center gap-2">
-                    <label className="text-sm text-slate-600">Min bounty</label>
+                    <label className="text-sm text-ink-700">Min bounty</label>
                     <input
                       type="number"
                       min="0"
                       value={minBounty}
                       onChange={(e) => setMinBounty(Number(e.target.value))}
-                      className="w-20 text-sm border border-surface-300 rounded-md px-2 py-1 bg-white"
+                      className="w-20 text-sm border border-ink-200 rounded-sm px-2 py-1 bg-paper"
                     />
                   </div>
                   <select
                     value={taskTemplate}
                     onChange={(e) => setTaskTemplate(e.target.value)}
-                    className="text-sm border border-surface-300 rounded-md px-2 py-1 bg-white"
+                    className="text-sm border border-ink-200 rounded-sm px-2 py-1 bg-paper"
                   >
                     <option value="all">All types</option>
                     {taskTemplates.map((template) => (
                       <option key={template} value={template}>{template}</option>
                     ))}
                   </select>
-                  <label className="flex items-center gap-2 text-sm text-slate-600">
+                  <label className="flex items-center gap-2 text-sm text-ink-700">
                     <input
                       type="checkbox"
                       checked={showClaimed}
                       onChange={(e) => setShowClaimed(e.target.checked)}
-                      className="rounded border-surface-300 text-field-600"
+                      className="rounded-sm border-ink-200 text-field-600"
                     />
                     Show claimed
                   </label>
-                  <div className="ml-auto text-sm text-slate-500">
+                  <div className="ml-auto text-sm text-ink-500">
                     {filteredTasks.length} tasks shown
                   </div>
                 </div>
               </div>
 
               {/* Large map */}
-              <div className="glass rounded-lg border border-surface-200 overflow-hidden">
+              <div className="bg-paper rounded-sm border border-ink-200 overflow-hidden">
                 <TaskBrowseMap
                   tasks={filteredTasks}
                   height="calc(100vh - 400px)"
                   userLocation={mapCenter}
                   radiusFilter={useDistanceFilter ? maxDistanceKm : null}
-                  onTaskSelect={(task) => setSelectedTaskId(task.id)}
+                  onTaskSelect={(task: any) => setSelectedTaskId(task.id)}
                   onTaskClaim={handleClaim}
                   selectedTaskId={selectedTaskId}
                   claimingTaskId={claimingId}
@@ -564,12 +564,12 @@ export default function WorkerDashboard() {
             /* Grid View Mode */
             <>
           <div className="grid gap-6 lg:grid-cols-[280px_1fr] mb-10">
-            <div className="glass rounded-lg border border-surface-200 p-5">
-              <div className="text-xs uppercase tracking-[0.3em] text-slate-400">Filters</div>
-              <h2 className="text-lg font-semibold text-slate-800 mt-2">Mission Search</h2>
-              <div className="mt-6 space-y-6 text-sm text-slate-600">
+            <div className="bg-paper rounded-sm border border-ink-200 p-5">
+              <div className="text-xs uppercase tracking-wider text-ink-500">Filters</div>
+              <h2 className="text-lg font-semibold text-ink-900 mt-2">Mission Search</h2>
+              <div className="mt-6 space-y-6 text-sm text-ink-700">
                 <div>
-                  <label className="block text-xs uppercase tracking-wide text-slate-400 mb-2">Distance</label>
+                  <label className="block text-xs uppercase tracking-wider text-ink-500 mb-2">Distance</label>
                   <label className="flex items-center gap-2 mb-3">
                     <input
                       type="checkbox"
@@ -581,7 +581,7 @@ export default function WorkerDashboard() {
                   <select
                     value={maxDistanceKm}
                     onChange={(event) => setMaxDistanceKm(Number(event.target.value))}
-                    className="border border-surface-300 rounded-md px-3 py-2 bg-white w-full"
+                    className="border border-ink-200 rounded-sm px-3 py-2 bg-paper w-full"
                     disabled={!useDistanceFilter}
                   >
                     {[10, 25, 50, 100, 250, 500].map((km) => (
@@ -592,22 +592,22 @@ export default function WorkerDashboard() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs uppercase tracking-wide text-slate-400 mb-2">Minimum Bounty</label>
+                  <label className="block text-xs uppercase tracking-wider text-ink-500 mb-2">Minimum Bounty</label>
                   <input
                     type="number"
                     min="0"
                     value={minBounty}
                     onChange={(event) => setMinBounty(Number(event.target.value))}
-                    className="border border-surface-300 rounded-md px-3 py-2 bg-white w-full"
+                    className="border border-ink-200 rounded-sm px-3 py-2 bg-paper w-full"
                     placeholder="0"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs uppercase tracking-wide text-slate-400 mb-2">Bounty Currency</label>
+                  <label className="block text-xs uppercase tracking-wider text-ink-500 mb-2">Bounty Currency</label>
                   <select
                     value={bountyCurrency}
                     onChange={(event) => setBountyCurrency(event.target.value)}
-                    className="border border-surface-300 rounded-md px-3 py-2 bg-white w-full"
+                    className="border border-ink-200 rounded-sm px-3 py-2 bg-paper w-full"
                   >
                     <option value="all">All currencies</option>
                     {bountyCurrencies.map((currency) => (
@@ -618,11 +618,11 @@ export default function WorkerDashboard() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs uppercase tracking-wide text-slate-400 mb-2">Task Type</label>
+                  <label className="block text-xs uppercase tracking-wider text-ink-500 mb-2">Task Type</label>
                   <select
                     value={taskTemplate}
                     onChange={(event) => setTaskTemplate(event.target.value)}
-                    className="border border-surface-300 rounded-md px-3 py-2 bg-white w-full"
+                    className="border border-ink-200 rounded-sm px-3 py-2 bg-paper w-full"
                   >
                     <option value="all">All templates</option>
                     {taskTemplates.map((template) => (
@@ -632,8 +632,8 @@ export default function WorkerDashboard() {
                     ))}
                   </select>
                 </div>
-                <div className="rounded-lg border border-surface-200 bg-white px-3 py-3">
-                  <label className="flex items-center justify-between text-xs uppercase tracking-wide text-slate-400">
+                <div className="rounded-sm border border-ink-200 bg-paper px-3 py-3">
+                  <label className="flex items-center justify-between text-xs uppercase tracking-wider text-ink-500">
                     Include claimed
                     <input
                       type="checkbox"
@@ -641,26 +641,26 @@ export default function WorkerDashboard() {
                       onChange={(event) => setShowClaimed(event.target.checked)}
                     />
                   </label>
-                  <div className="text-xs text-slate-500 mt-2">Toggle visibility for claimed tasks.</div>
+                  <div className="text-xs text-ink-500 mt-2">Toggle visibility for claimed tasks.</div>
                 </div>
-                <div className="rounded-lg border border-surface-200 bg-white px-3 py-3">
-                  <div className="text-xs uppercase tracking-wide text-slate-400">Results</div>
-                  <div className="text-lg font-semibold text-slate-800 mt-1">{filteredTasks.length}</div>
-                  <div className="text-xs text-slate-500">Tasks matched</div>
+                <div className="rounded-sm border border-ink-200 bg-paper px-3 py-3">
+                  <div className="text-xs uppercase tracking-wider text-ink-500">Results</div>
+                  <div className="text-lg font-semibold font-mono tabular-nums text-ink-900 mt-1">{filteredTasks.length}</div>
+                  <div className="text-xs text-ink-500">Tasks matched</div>
                 </div>
               </div>
             </div>
 
-            <div className="glass rounded-lg border border-surface-200 p-6">
+            <div className="bg-paper rounded-sm border border-ink-200 p-6">
               <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
                 <div>
-                  <h2 className="text-lg font-semibold text-slate-800">Live Bounty Map</h2>
-                  <p className="text-sm text-slate-500">Click a marker for a quick view without leaving the map.</p>
+                  <h2 className="text-lg font-semibold text-ink-900">Live Bounty Map</h2>
+                  <p className="text-sm text-ink-500">Click a marker for a quick view without leaving the map.</p>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="text-xs uppercase tracking-wide text-slate-400">Operator View</span>
+                  <span className="text-xs uppercase tracking-wider text-ink-500">Operator View</span>
                   {mapCenter && (
-                    <span className="text-xs text-field-600 px-2 py-1 bg-field-50 rounded-full">
+                    <span className="text-xs text-field-500 px-2 py-1 border border-ink-200 rounded-sm">
                       Location active
                     </span>
                   )}
@@ -672,7 +672,7 @@ export default function WorkerDashboard() {
                   height="420px"
                   userLocation={mapCenter}
                   radiusFilter={useDistanceFilter ? maxDistanceKm : null}
-                  onTaskSelect={(task) => setSelectedTaskId(task.id)}
+                  onTaskSelect={(task: any) => setSelectedTaskId(task.id)}
                   onTaskClaim={handleClaim}
                   selectedTaskId={selectedTaskId}
                   claimingTaskId={claimingId}
@@ -689,19 +689,19 @@ export default function WorkerDashboard() {
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-field-500"></div>
             </div>
           ) : tasks.length === 0 ? (
-            <div className="glass rounded-lg p-12 text-center border border-surface-200">
-              <p className="text-slate-500">No tasks available right now. Check back later!</p>
+            <div className="bg-paper rounded-sm p-12 text-center border border-ink-200">
+              <p className="text-ink-500">No tasks available right now. Check back later!</p>
             </div>
           ) : (
             <div>
-              <h2 className="text-lg font-medium text-slate-800 mb-4">Available Tasks</h2>
+              <h2 className="text-lg font-medium text-ink-900 mb-4">Available Tasks</h2>
               <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
                 {filteredTasks.map((task) => (
-                  <div key={task.id} className="glass rounded-lg overflow-hidden border border-surface-200">
+                  <div key={task.id} className="bg-paper rounded-sm overflow-hidden border border-ink-200">
                     <div className="p-6">
                       <div className="flex justify-between items-start mb-4">
-                        <h3 className="text-lg font-medium text-slate-800">{task.title}</h3>
-                        <span className="text-lg font-bold text-green-600">
+                        <h3 className="text-lg font-medium text-ink-900">{task.title}</h3>
+                        <span className="text-lg font-bold font-mono tabular-nums text-signal-green">
                           {task.bounty.currency} {task.bounty.amount.toFixed(2)}
                         </span>
                       </div>
@@ -728,7 +728,7 @@ export default function WorkerDashboard() {
                         </div>
                       )}
 
-                      <div className="space-y-2 text-sm text-slate-500 mb-4">
+                      <div className="space-y-2 text-sm text-ink-500 mb-4">
                         <div className="flex items-center">
                           <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
@@ -752,14 +752,14 @@ export default function WorkerDashboard() {
                       </div>
 
                       {task.is_claimed ? (
-                        <span className="block text-center py-2 text-yellow-600 bg-yellow-50 rounded-md text-sm">
+                        <span className="block text-center py-2 text-signal-amber border border-signal-amber/30 rounded-sm text-sm">
                           Already claimed
                         </span>
                       ) : (
                         <button
                           onClick={() => handleClaim(task.id)}
                           disabled={claimingId === task.id}
-                          className="w-full py-2 bg-field-500 text-white rounded-md hover:bg-field-600 disabled:opacity-50"
+                          className="w-full py-2 bg-field-500 text-white rounded-sm hover:bg-field-600 disabled:opacity-50"
                         >
                           {claimingId === task.id ? 'Claiming...' : 'Claim Task'}
                         </button>
@@ -802,37 +802,37 @@ export default function WorkerDashboard() {
                 />
 
                 {/* Profile Card */}
-                <div className="glass rounded-lg border border-surface-200 p-6">
-                  <h2 className="text-lg font-medium text-slate-800 mb-4">Collector Profile</h2>
+                <div className="bg-paper rounded-sm border border-ink-200 p-6">
+                  <h2 className="text-lg font-medium text-ink-900 mb-4">Collector Profile</h2>
                   <div className="space-y-4">
                     <div className="flex items-center justify-between">
-                      <div className="text-sm text-slate-500">Reliability Score</div>
-                      <div className="text-lg font-semibold text-slate-800">{stats.reliability.toFixed(0)}%</div>
+                      <div className="text-sm text-ink-500">Reliability Score</div>
+                      <div className="text-lg font-semibold font-mono tabular-nums text-ink-900">{stats.reliability.toFixed(0)}%</div>
                     </div>
                     <div className="flex items-center justify-between">
-                      <div className="text-sm text-slate-500">Dispute Rate</div>
-                      <div className="text-lg font-semibold text-slate-800">{stats.disputeRate.toFixed(1)}%</div>
+                      <div className="text-sm text-ink-500">Dispute Rate</div>
+                      <div className="text-lg font-semibold font-mono tabular-nums text-ink-900">{stats.disputeRate.toFixed(1)}%</div>
                     </div>
                     <div className="flex items-center justify-between">
-                      <div className="text-sm text-slate-500">Tasks Delivered</div>
-                      <div className="text-lg font-semibold text-slate-800">{stats.tasksDelivered}</div>
+                      <div className="text-sm text-ink-500">Tasks Delivered</div>
+                      <div className="text-lg font-semibold font-mono tabular-nums text-ink-900">{stats.tasksDelivered}</div>
                     </div>
                     <div className="flex items-center justify-between">
-                      <div className="text-sm text-slate-500">Tasks Accepted</div>
-                      <div className="text-lg font-semibold text-slate-800">{stats.tasksAccepted}</div>
+                      <div className="text-sm text-ink-500">Tasks Accepted</div>
+                      <div className="text-lg font-semibold font-mono tabular-nums text-ink-900">{stats.tasksAccepted}</div>
                     </div>
                     <div className="flex items-center justify-between">
-                      <div className="text-sm text-slate-500">Lifetime Earned</div>
-                      <div className="text-lg font-semibold text-green-600">{stats.totalEarnedApprox}</div>
+                      <div className="text-sm text-ink-500">Lifetime Earned</div>
+                      <div className="text-lg font-semibold font-mono tabular-nums text-signal-green">{stats.totalEarnedApprox}</div>
                     </div>
                   </div>
-                  <div className="mt-6 rounded-lg border border-surface-200 bg-white px-4 py-3 text-sm text-slate-500">
+                  <div className="mt-6 rounded-sm border border-ink-200 bg-paper px-4 py-3 text-sm text-ink-500">
                     Keep your streak clean to unlock lower platform fees and priority access.
                   </div>
-                  <div className="mt-4 rounded-lg border border-surface-200 bg-white px-4 py-3 text-sm text-slate-500">
+                  <div className="mt-4 rounded-sm border border-ink-200 bg-paper px-4 py-3 text-sm text-ink-500">
                     Royalty stream: USDC {royalties.total.toFixed(2)} earned and {royalties.pending.toFixed(2)} pending
                     {royalties.lastPayoutAt && (
-                      <span className="block text-xs text-slate-400 mt-1">
+                      <span className="block text-xs text-ink-300 mt-1">
                         Last payout {new Date(royalties.lastPayoutAt).toLocaleDateString()}
                       </span>
                     )}
@@ -842,13 +842,13 @@ export default function WorkerDashboard() {
 
               {/* Badge Highlights */}
               {badgeHighlights.length > 0 && (
-                <div className="glass rounded-lg border border-surface-200 p-6">
-                  <h2 className="text-lg font-medium text-slate-800 mb-4">Achievement Highlights</h2>
+                <div className="bg-paper rounded-sm border border-ink-200 p-6">
+                  <h2 className="text-lg font-medium text-ink-900 mb-4">Achievement Highlights</h2>
                   <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
                     {badgeHighlights.map((badge) => (
-                      <div key={`${badge.badgeType}-${badge.earnedAt}`} className="rounded-lg border border-surface-200 bg-white px-4 py-3">
-                        <div className="text-sm font-semibold text-slate-800">{badge.title}</div>
-                        <div className="text-xs text-slate-500">{badge.description}</div>
+                      <div key={`${badge.badgeType}-${badge.earnedAt}`} className="rounded-sm border border-ink-200 bg-paper px-4 py-3">
+                        <div className="text-sm font-semibold text-ink-900">{badge.title}</div>
+                        <div className="text-xs text-ink-500">{badge.description}</div>
                       </div>
                     ))}
                   </div>
@@ -856,8 +856,8 @@ export default function WorkerDashboard() {
               )}
             </>
           ) : (
-            <div className="glass rounded-lg p-12 text-center border border-surface-200">
-              <p className="text-slate-500">Unable to load statistics. Please try again later.</p>
+            <div className="bg-paper rounded-sm p-12 text-center border border-ink-200">
+              <p className="text-ink-500">Unable to load statistics. Please try again later.</p>
             </div>
           )}
         </div>
@@ -881,29 +881,29 @@ export default function WorkerDashboard() {
               />
 
               {/* Recent Activity */}
-              <div className="glass rounded-lg border border-surface-200 overflow-hidden">
-                <div className="p-4 border-b border-surface-200">
-                  <h3 className="text-lg font-medium text-slate-800">Recent Activity</h3>
+              <div className="bg-paper rounded-sm border border-ink-200 overflow-hidden">
+                <div className="p-4 border-b border-ink-200">
+                  <h3 className="text-lg font-medium text-ink-900">Recent Activity</h3>
                 </div>
-                <div className="divide-y divide-surface-200">
+                <div className="divide-y divide-ink-100">
                   {workerStats.recent_activity.map((activity) => (
-                    <div key={activity.submission_id} className="p-4 hover:bg-slate-50 transition-colors">
+                    <div key={activity.submission_id} className="p-4 hover:bg-ink-50 transition-colors">
                       <div className="flex items-center justify-between">
                         <div>
-                          <div className="font-medium text-slate-800">{activity.task_title}</div>
-                          <div className="text-sm text-slate-500">
+                          <div className="font-medium text-ink-900">{activity.task_title}</div>
+                          <div className="text-sm text-ink-500">
                             {new Date(activity.updated_at).toLocaleDateString()} - {activity.status}
                           </div>
                         </div>
                         <div className="text-right">
-                          <div className={`font-semibold ${activity.status === 'accepted' ? 'text-green-600' : 'text-slate-600'}`}>
+                          <div className={`font-semibold font-mono tabular-nums ${activity.status === 'accepted' ? 'text-signal-green' : 'text-ink-700'}`}>
                             {activity.bounty.currency} {activity.bounty.amount.toFixed(2)}
                           </div>
-                          <span className={`text-xs px-2 py-0.5 rounded-full ${
-                            activity.status === 'accepted' ? 'bg-green-100 text-green-700' :
-                            activity.status === 'finalised' ? 'bg-purple-100 text-purple-700' :
-                            activity.status === 'rejected' ? 'bg-red-100 text-red-700' :
-                            'bg-slate-100 text-slate-600'
+                          <span className={`text-xs px-2 py-0.5 rounded-sm border ${
+                            activity.status === 'accepted' ? 'text-signal-green border-signal-green/30' :
+                            activity.status === 'finalised' ? 'text-purple-700 border-purple-300' :
+                            activity.status === 'rejected' ? 'text-signal-red border-signal-red/30' :
+                            'text-ink-500 border-ink-200'
                           }`}>
                             {activity.status}
                           </span>
@@ -915,12 +915,12 @@ export default function WorkerDashboard() {
               </div>
             </>
           ) : (
-            <div className="glass rounded-lg p-12 text-center border border-surface-200">
-              <svg className="w-12 h-12 mx-auto mb-4 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="bg-paper rounded-sm p-12 text-center border border-ink-200">
+              <svg className="w-12 h-12 mx-auto mb-4 text-ink-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
               </svg>
-              <p className="text-slate-500">No completed tasks yet.</p>
-              <p className="text-sm text-slate-400 mt-1">Complete tasks to build your history and see them on the map.</p>
+              <p className="text-ink-500">No completed tasks yet.</p>
+              <p className="text-sm text-ink-300 mt-1">Complete tasks to build your history and see them on the map.</p>
             </div>
           )}
         </div>
@@ -929,65 +929,65 @@ export default function WorkerDashboard() {
       {/* Task Quick View Modal */}
       {selectedTask && (
         <div
-          className="fixed inset-0 z-40 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm px-4"
+          className="fixed inset-0 z-40 flex items-center justify-center bg-ink-900/40 px-4"
           onClick={() => setSelectedTaskId(null)}
         >
           <div
-            className="glass w-full max-w-xl rounded-lg border border-surface-200 bg-white p-6 shadow-xl"
+            className="w-full max-w-xl rounded-sm border border-ink-200 bg-paper p-6 shadow-sm"
             onClick={(event) => event.stopPropagation()}
           >
             <div className="flex items-start justify-between gap-4">
               <div>
-                <div className="text-xs uppercase tracking-wide text-slate-400">Quick View</div>
-                <h3 className="text-2xl font-semibold text-slate-800 mt-2">{selectedTask.title}</h3>
-                <p className="text-sm text-slate-500 mt-1">
+                <div className="text-xs uppercase tracking-wider text-ink-500">Quick View</div>
+                <h3 className="text-xl font-bold text-ink-900 mt-2 tracking-tight">{selectedTask.title}</h3>
+                <p className="text-sm text-ink-500 mt-1">
                   {selectedTask.template} - {selectedTask.bounty.currency} {selectedTask.bounty.amount.toFixed(2)}
                 </p>
               </div>
               <button
                 onClick={() => setSelectedTaskId(null)}
-                className="text-sm text-slate-400 hover:text-slate-600"
+                className="text-sm text-ink-300 hover:text-ink-700"
               >
                 Close
               </button>
             </div>
-            <div className="mt-5 grid gap-3 text-sm text-slate-600">
+            <div className="mt-5 grid gap-3 text-sm text-ink-700">
               <div className="flex items-center justify-between">
-                <span className="text-slate-500">Reward</span>
-                <span className="font-semibold text-slate-800">
+                <span className="text-ink-500">Reward</span>
+                <span className="font-semibold font-mono tabular-nums text-ink-900">
                   {selectedTask.bounty.currency} {selectedTask.bounty.amount.toFixed(2)}
                 </span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-slate-500">Location</span>
+                <span className="text-ink-500">Location</span>
                 <span>
                   {selectedTask.location.lat.toFixed(4)}, {selectedTask.location.lon.toFixed(4)}
                 </span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-slate-500">Radius</span>
+                <span className="text-ink-500">Radius</span>
                 <span>{selectedTask.location.radius_m}m</span>
               </div>
               {selectedTaskDistanceKm !== null && (
                 <div className="flex items-center justify-between">
-                  <span className="text-slate-500">Distance</span>
+                  <span className="text-ink-500">Distance</span>
                   <span>{selectedTaskDistanceKm.toFixed(1)} km</span>
                 </div>
               )}
               <div className="flex items-center justify-between">
-                <span className="text-slate-500">Due</span>
+                <span className="text-ink-500">Due</span>
                 <span>{new Date(selectedTask.time_window.end_iso).toLocaleDateString()}</span>
               </div>
             </div>
             <div className="mt-6 flex gap-2">
               {selectedTask.is_claimed ? (
-                <span className="flex-1 rounded-md border border-yellow-200 bg-yellow-50 px-3 py-2 text-center text-sm text-yellow-700">
+                <span className="flex-1 rounded-sm border border-signal-amber/30 px-3 py-2 text-center text-sm text-signal-amber">
                   Already claimed
                 </span>
               ) : (
                 <button
                   onClick={() => handleClaim(selectedTask.id)}
-                  className="flex-1 px-3 py-2 text-sm bg-field-500 text-white rounded-md hover:bg-field-600"
+                  className="flex-1 px-3 py-2 text-sm bg-field-500 text-white rounded-sm hover:bg-field-600"
                 >
                   Claim Task
                 </button>
@@ -996,7 +996,7 @@ export default function WorkerDashboard() {
                 href={`/dashboard/worker/submit/${selectedTask.id}`}
                 target="_blank"
                 rel="noreferrer"
-                className="flex-1 px-3 py-2 text-sm border border-surface-300 rounded-md text-slate-600 hover:text-slate-800 text-center"
+                className="flex-1 px-3 py-2 text-sm border border-ink-200 rounded-sm text-ink-700 hover:text-ink-900 text-center"
               >
                 Open Task
               </a>

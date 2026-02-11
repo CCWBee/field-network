@@ -23,20 +23,20 @@ const ToastContext = createContext<ToastContextValue | null>(null);
 
 const variantStyles: Record<ToastVariant, { container: string; icon: string }> = {
   info: {
-    container: 'bg-white border-blue-200',
-    icon: 'text-blue-500',
+    container: 'bg-paper border-ink-200',
+    icon: 'text-signal-blue',
   },
   success: {
-    container: 'bg-white border-green-200',
-    icon: 'text-green-500',
+    container: 'bg-paper border-ink-200',
+    icon: 'text-signal-green',
   },
   warning: {
-    container: 'bg-white border-yellow-200',
-    icon: 'text-yellow-500',
+    container: 'bg-paper border-ink-200',
+    icon: 'text-signal-amber',
   },
   error: {
-    container: 'bg-white border-red-200',
-    icon: 'text-red-500',
+    container: 'bg-paper border-ink-200',
+    icon: 'text-signal-red',
   },
 };
 
@@ -136,7 +136,7 @@ function ToastContainer({ toasts, onRemove }: { toasts: Toast[]; onRemove: (id: 
             transition={{ duration: 0.2, ease: 'easeOut' }}
             className={`
               pointer-events-auto
-              flex items-start gap-3 p-4 rounded-lg border shadow-lg
+              flex items-start gap-3 p-4 rounded-sm border shadow-lg
               ${variantStyles[toast.variant].container}
             `}
           >
@@ -144,14 +144,14 @@ function ToastContainer({ toasts, onRemove }: { toasts: Toast[]; onRemove: (id: 
               {icons[toast.variant]}
             </span>
             <div className="flex-1 min-w-0">
-              <h4 className="font-medium text-slate-800">{toast.title}</h4>
+              <h4 className="font-medium text-ink-900">{toast.title}</h4>
               {toast.description && (
-                <p className="text-sm text-slate-600 mt-1">{toast.description}</p>
+                <p className="text-sm text-ink-700 mt-1">{toast.description}</p>
               )}
             </div>
             <button
               onClick={() => onRemove(toast.id)}
-              className="flex-shrink-0 p-1 rounded-md text-slate-400 hover:text-slate-600 hover:bg-surface-100 transition-colors"
+              className="flex-shrink-0 p-1 rounded-sm text-ink-500 hover:text-ink-700 hover:bg-ink-50 transition-colors"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path

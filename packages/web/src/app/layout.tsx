@@ -1,10 +1,11 @@
 import type { Metadata } from 'next';
-import { Space_Grotesk } from 'next/font/google';
+import { Inter, JetBrains_Mono } from 'next/font/google';
 import { Web3Provider } from '@/lib/web3/provider';
 import { ToastProvider } from '@/components/ui';
 import './globals.css';
 
-const spaceGrotesk = Space_Grotesk({ subsets: ['latin'] });
+const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
+const jetbrainsMono = JetBrains_Mono({ subsets: ['latin'], variable: '--font-mono' });
 
 export const metadata: Metadata = {
   title: 'Field Network - Decentralized Real-World Data',
@@ -18,7 +19,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className={spaceGrotesk.className}>
+      <body className={`${inter.variable} ${jetbrainsMono.variable} font-sans`}>
         <Web3Provider>
           <ToastProvider>
             <div className="min-h-screen bg-surface">
