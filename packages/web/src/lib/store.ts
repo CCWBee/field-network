@@ -74,6 +74,9 @@ interface AuthState {
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, password: string) => Promise<void>;
 
+  // Dev mode (no API required)
+  devLogin: () => void;
+
   // Wallet auth (for use with useSiweAuth hook)
   setAuth: (token: string, refreshToken: string, user: any) => void;
   clearAuth: () => void;
@@ -132,6 +135,62 @@ export const useAuthStore = create<AuthState>()(
         }
       },
 
+      devLogin: () => {
+        const mockUser: User = {
+          id: 'dev-user-001',
+          email: 'dev@field-network.local',
+          username: 'dev_user',
+          role: 'admin',
+          bio: 'Development mode account',
+          avatarUrl: null,
+          ensName: null,
+          ensAvatarUrl: null,
+          location: 'London, UK',
+          website: null,
+          twitterHandle: null,
+          onboardingCompleted: true,
+          savedAddresses: [],
+          walletAddress: '0xDEV0000000000000000000000000000000000001',
+          wallets: [{
+            id: 'dev-wallet-001',
+            address: '0xDEV0000000000000000000000000000000000001',
+            chain: 'base',
+            chainId: 8453,
+            isPrimary: true,
+            label: 'Dev Wallet',
+          }],
+          stats: {
+            tasksPosted: 12,
+            tasksCompleted: 8,
+            totalBountiesPaid: 245,
+            tasksClaimed: 10,
+            tasksDelivered: 9,
+            tasksAccepted: 8,
+            tasksRejected: 1,
+            totalEarned: 180,
+            reliabilityScore: 94,
+            disputeRate: 0.02,
+            currentStreak: 5,
+            longestStreak: 12,
+            repeatCustomers: 3,
+            emailVerified: true,
+            walletVerified: true,
+            identityVerified: false,
+          },
+          badges: [
+            { badgeType: 'early_adopter', tier: 'gold', title: 'Early Adopter', description: 'Joined during beta', iconUrl: null, earnedAt: '2026-01-15T00:00:00Z' },
+            { badgeType: 'reliable', tier: 'silver', title: 'Reliable', description: '10+ tasks completed', iconUrl: null, earnedAt: '2026-02-01T00:00:00Z' },
+          ],
+        };
+        set({
+          user: mockUser,
+          token: 'dev-mock-token',
+          refreshToken: 'dev-mock-refresh',
+          isLoading: false,
+          error: null,
+        });
+      },
+
       setAuth: (token: string, refreshToken: string, user: any) => {
         api.setToken(token);
         set({
@@ -170,6 +229,9 @@ export const useAuthStore = create<AuthState>()(
       loadUser: async () => {
         const token = get().token;
         if (!token) return;
+
+        // Dev mode — user is already set, skip API
+        if (token === 'dev-mock-token') return;
 
         api.setToken(token);
         try {

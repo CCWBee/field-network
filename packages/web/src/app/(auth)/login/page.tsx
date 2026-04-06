@@ -8,7 +8,7 @@ import { useAuthStore } from '@/lib/store';
 // Lazy import wagmi hooks to avoid SSR issues
 function LoginContent() {
   const router = useRouter();
-  const { login, isLoading: isEmailLoading, error: emailError, clearError } = useAuthStore();
+  const { login, devLogin, isLoading: isEmailLoading, error: emailError, clearError } = useAuthStore();
 
   // These imports are only executed on the client
   const { useConnect, useAccount, useDisconnect } = require('wagmi');
@@ -57,8 +57,9 @@ function LoginContent() {
   const error = emailError || walletError;
   const isLoading = isEmailLoading || isConnecting || isAuthenticating;
 
-  // Find MetaMask connector
-  const metamaskConnector = connectors.find((c: any) => c.name === 'MetaMask');
+  // Find wallet connectors
+  const metamaskConnector = connectors.find((c: any) => c.name === 'MetaMask' || c.id === 'injected');
+  const coinbaseConnector = connectors.find((c: any) => c.name === 'Coinbase Wallet' || c.id === 'coinbaseWalletSDK');
   const walletConnectConnector = connectors.find((c: any) => c.name === 'WalletConnect');
 
   return (
@@ -78,14 +79,14 @@ function LoginContent() {
         {isConnected ? (
           <div className="space-y-3">
             <div className="p-3 bg-paper border border-ink-200 rounded-sm">
-              <p className="text-sm text-field-600">
+              <p className="text-sm text-field-600 font-mono">
                 Connected: {address?.slice(0, 6)}...{address?.slice(-4)}
               </p>
             </div>
             <button
               onClick={handleWalletSignIn}
               disabled={isAuthenticating}
-              className="w-full flex justify-center py-3 px-4 rounded-sm text-sm font-medium text-white bg-field-500 hover:bg-field-600 disabled:opacity-50 transition-colors"
+              className="w-full flex justify-center py-3 px-4 rounded-sm text-sm font-medium text-white bg-field-500 border-2 border-field-600 hover:bg-field-600 disabled:opacity-50 transition-colors"
             >
               {isAuthenticating ? 'Signing in...' : 'Sign Message to Continue'}
             </button>
@@ -114,7 +115,21 @@ function LoginContent() {
                   <path d="M12.6 33.2l4.8-2.4-4.2-3.2-.6 5.6z" fill="#E27625" />
                   <path d="M22.6 30.8l4.8 2.4-.6-5.6-4.2 3.2z" fill="#E27625" />
                 </svg>
-                {isConnecting ? 'Connecting...' : 'Connect with MetaMask'}
+                {isConnecting ? 'Connecting...' : 'MetaMask'}
+              </button>
+            )}
+
+            {coinbaseConnector && (
+              <button
+                onClick={() => handleWalletConnect(coinbaseConnector)}
+                disabled={isConnecting}
+                className="w-full flex items-center justify-center py-3 px-4 border border-ink-200 rounded-sm bg-paper hover:bg-ink-50 text-sm font-medium text-ink-900 disabled:opacity-50 transition-colors"
+              >
+                <svg className="w-5 h-5 mr-2" viewBox="0 0 40 40" fill="none">
+                  <rect width="40" height="40" rx="8" fill="#0052FF" />
+                  <path d="M20 6C12.268 6 6 12.268 6 20s6.268 14 14 14 14-6.268 14-14S27.732 6 20 6zm-4.5 11.5a1 1 0 011-1h7a1 1 0 011 1v5a1 1 0 01-1 1h-7a1 1 0 01-1-1v-5z" fill="white" />
+                </svg>
+                {isConnecting ? 'Connecting...' : 'Coinbase Wallet'}
               </button>
             )}
 
@@ -127,7 +142,7 @@ function LoginContent() {
                 <svg className="w-5 h-5 mr-2" viewBox="0 0 40 40" fill="none">
                   <path d="M10 14.6c5.5-5.4 14.5-5.4 20 0l.7.6c.3.3.3.7 0 1l-2.3 2.2c-.1.2-.4.2-.5 0l-.9-.9c-3.9-3.8-10.1-3.8-14 0l-1 .9c-.1.2-.4.2-.5 0l-2.3-2.2c-.3-.3-.3-.7 0-1l.8-.6zm24.7 4.6l2 2c.3.3.3.7 0 1l-9.2 9c-.3.3-.7.3-1 0l-6.5-6.4c-.1-.1-.2-.1-.3 0l-6.5 6.4c-.3.3-.7.3-1 0l-9.2-9c-.3-.3-.3-.7 0-1l2-2c.3-.3.7-.3 1 0l6.5 6.4c.1.1.2.1.3 0l6.5-6.4c.3-.3.7-.3 1 0l6.5 6.4c.1.1.2.1.3 0l6.5-6.4c.3-.3.7-.3 1 0z" fill="#3B99FC" />
                 </svg>
-                {isConnecting ? 'Connecting...' : 'Connect with WalletConnect'}
+                {isConnecting ? 'Connecting...' : 'WalletConnect'}
               </button>
             )}
           </div>
@@ -196,6 +211,21 @@ function LoginContent() {
           Register here
         </Link>
       </p>
+
+      {/* Dev mode — bypass API */}
+      {process.env.NODE_ENV === 'development' && (
+        <div className="mt-6 pt-4 border-t border-ink-100">
+          <button
+            onClick={() => {
+              devLogin();
+              router.push('/dashboard');
+            }}
+            className="w-full py-2 px-4 text-xs font-mono text-ink-400 border border-dashed border-ink-200 rounded-sm hover:border-ink-300 hover:text-ink-600 transition-colors"
+          >
+            Dev Mode (no API required)
+          </button>
+        </div>
+      )}
     </>
   );
 }

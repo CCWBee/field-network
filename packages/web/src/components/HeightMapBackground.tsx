@@ -149,46 +149,7 @@ export default function HeightMapBackground() {
         ctx.stroke();
       }
 
-      // LAYER 2: Draw tessellation pattern
-      const tessSize = 50;
-      const tessPhase = Math.sin(time * 1.2) * 0.2 + 0.8;
-
-      for (let y = 0; y < h; y += tessSize) {
-        for (let x = 0; x < w; x += tessSize) {
-          const localPhase = Math.sin(time * 2.5 + x * 0.008 + y * 0.008) * 0.25 + 0.75;
-          const localShimmer = Math.sin(time * 2.8 + x * 0.012 - y * 0.01) * 0.2 + 0.8;
-          const finalAlpha = 0.14 * tessPhase * localPhase * localShimmer;
-
-          ctx.strokeStyle = `rgba(20, 184, 166, ${finalAlpha})`;
-          ctx.lineWidth = 0.6;
-
-          const x1 = x;
-          const y1 = y;
-          const x2 = x + tessSize;
-          const y2 = y + tessSize;
-          const xm = x + tessSize / 2;
-          const ym = y + tessSize / 2;
-
-          ctx.beginPath();
-          ctx.moveTo(xm, y1);
-          ctx.lineTo(x2, ym);
-          ctx.lineTo(xm, y2);
-          ctx.lineTo(x1, ym);
-          ctx.closePath();
-          ctx.stroke();
-
-          const crossAlpha = finalAlpha * (Math.sin(time * 3 + x * 0.01 + y * 0.01) * 0.3 + 0.7);
-          ctx.strokeStyle = `rgba(20, 184, 166, ${crossAlpha})`;
-          ctx.beginPath();
-          ctx.moveTo(xm, y1);
-          ctx.lineTo(xm, y2);
-          ctx.moveTo(x1, ym);
-          ctx.lineTo(x2, ym);
-          ctx.stroke();
-        }
-      }
-
-      // LAYER 3: Draw grid lines with scintillation
+      // LAYER 2: Draw grid lines with scintillation
       const gridSize = 100;
       const baseScintillation = Math.sin(time * 0.6) * 0.2 + 0.8;
 

@@ -217,15 +217,9 @@ export default function HomePage() {
 
       {/* AI Agents Section — the headline feature */}
       <div className="py-24 bg-ink-900 relative overflow-hidden">
-        {/* Subtle grid */}
-        <div className="absolute inset-0 opacity-[0.04]" style={{
-          backgroundImage: 'linear-gradient(rgba(255,255,255,0.5) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.5) 1px, transparent 1px)',
-          backgroundSize: '48px 48px'
-        }}></div>
-
         {/* Data texture — scattered verification fragments */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none select-none" aria-hidden="true">
-          <div className="font-mono text-[6px] leading-[3] text-white/[0.025] whitespace-pre tracking-widest">
+          <div className="font-mono text-[6px] leading-[3] text-white/[0.15] whitespace-pre tracking-widest">
             {Array.from({ length: 12 }, (_, row) => (
               <div key={row} className="flex flex-wrap gap-x-12 gap-y-1 justify-around px-8">
                 {[
@@ -256,15 +250,15 @@ export default function HomePage() {
                 AI Agent Integration
               </div>
               <h2 className="text-4xl md:text-5xl font-bold text-white mb-6 leading-tight">
-                AI can install anything.<br/>
-                Find anything. Build anything.<br/>
-                <span className="text-field-400">It just can&apos;t look outside.</span>
+                AI can search anything.<br/>
+                Analyse anything. Build anything.<br/>
+                <span className="text-field-400">It just can&apos;t go outside.</span>
               </h2>
               <p className="text-lg text-ink-300 mb-8 max-w-lg">
-                AI already does everything digital — finds packages, writes code,
-                fixes its own bugs. The one thing it can&apos;t do is answer a question
-                about the real world right now. There&apos;s no package to install for that.
-                Field Network is that package.
+                AI handles the entire digital world. But ask what&apos;s happening
+                at a specific address right now and it&apos;s stuck. Field Network
+                gives AI a way to post bounties for real-world observations
+                and get verified answers from people on the ground.
               </p>
               <div className="flex flex-col sm:flex-row gap-4">
                 <Link
@@ -303,7 +297,6 @@ export default function HomePage() {
                   <span className="text-ink-500 flex-shrink-0">FN</span>
                   <span className="text-ink-300">Task created · 12 GBP escrowed · 340 nearby operators</span>
                 </div>
-                <div className="text-center text-xs text-ink-600 py-1">— 3 hours later —</div>
                 <div className="flex gap-3">
                   <span className="text-ink-500 flex-shrink-0">FN</span>
                   <span className="text-ink-300">Submission from alice.eth · score 0.97 · GPS ✓ EXIF ✓</span>
@@ -423,7 +416,7 @@ export default function HomePage() {
       <div className="py-24 bg-ink-900 relative overflow-hidden">
         {/* Data texture — the raw material of truth */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none select-none" aria-hidden="true">
-          <div className="font-mono text-[7px] leading-[2.4] text-white/[0.04] whitespace-pre tracking-wider">
+          <div className="font-mono text-[7px] leading-[2.4] text-white/[0.15] whitespace-pre tracking-wider">
             {Array.from({ length: 18 }, (_, row) => (
               <div key={row} className="flex flex-wrap gap-x-8 gap-y-1 justify-center px-4">
                 {[

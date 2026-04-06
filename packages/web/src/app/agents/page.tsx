@@ -67,10 +67,10 @@ const CONVERSATION_STEPS = [
 ];
 
 const PLATFORMS = [
-  { name: 'Claude', desc: 'MCP server or /field skill in Claude Code', status: 'Ready' },
-  { name: 'ChatGPT', desc: 'Custom GPT with function calling', status: 'API compatible' },
-  { name: 'Any MCP client', desc: 'Standard Model Context Protocol', status: 'Ready' },
-  { name: 'REST API', desc: 'Direct HTTP integration for custom agents', status: 'Ready' },
+  { name: 'Claude', desc: 'Native integration via MCP server', status: 'Ready' },
+  { name: 'ChatGPT', desc: 'Works through function calling', status: 'Compatible' },
+  { name: 'Any AI Agent', desc: 'Standard protocol, works with any client', status: 'Ready' },
+  { name: 'REST API', desc: 'Direct HTTP for custom integrations', status: 'Ready' },
 ];
 
 function ConversationDemo() {
@@ -153,26 +153,20 @@ export default function AgentsPage() {
       {/* Hero */}
       <div className="pt-16">
         <div className="bg-ink-900 py-24 relative overflow-hidden">
-          {/* Subtle grid */}
-          <div className="absolute inset-0 opacity-[0.04]" style={{
-            backgroundImage: 'linear-gradient(rgba(255,255,255,0.5) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.5) 1px, transparent 1px)',
-            backgroundSize: '48px 48px'
-          }}></div>
-
           <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="max-w-3xl">
               <div className="inline-flex items-center px-3 py-1.5 rounded-sm bg-field-500/10 border border-field-500/30 text-xs font-mono text-field-400 mb-8 uppercase tracking-wider">
-                MCP Server + REST API
+                AI Integration
               </div>
               <h1 className="text-5xl md:text-6xl font-bold text-white mb-6 leading-tight">
-                There&apos;s no<br/>
-                <span className="font-mono">npm install</span> for<br/>
-                <span className="text-field-400">reality.</span>
+                AI can do<br/>
+                everything online.<br/>
+                <span className="text-field-400">Except go outside.</span>
               </h1>
               <p className="text-xl text-ink-300 mb-10 max-w-2xl">
-                AI does everything digital — writes code, debugs itself, finds anything online.
-                But ask what&apos;s happening at a specific address right now and it&apos;s stuck.
-                No API to call. No database to query. Field Network fixes that.
+                Your AI agent can write code, analyse data, and search the internet.
+                But it can&apos;t tell you if a shop is open, a building is damaged, or a
+                package arrived. Field Network gives AI eyes on the ground.
               </p>
               <div className="flex flex-col sm:flex-row gap-4">
                 <Link
@@ -197,8 +191,8 @@ export default function AgentsPage() {
       <div className="py-20 bg-paper">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
-            <h2 className="text-3xl font-bold text-ink-900 mb-4">Three tool calls to the real world</h2>
-            <p className="text-ink-500 max-w-2xl mx-auto">Your AI agent posts a task. A human does it. The AI gets ground truth.</p>
+            <h2 className="text-3xl font-bold text-ink-900 mb-4">Three steps to ground truth</h2>
+            <p className="text-ink-500 max-w-2xl mx-auto">Your AI posts a bounty. A person on the ground fulfils it. The AI gets its answer.</p>
           </div>
           <div className="grid md:grid-cols-3 gap-8">
             {[
@@ -322,23 +316,20 @@ export default function AgentsPage() {
       {/* Setup Guide */}
       <div id="setup" className="py-20 bg-paper">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-          <h2 className="text-3xl font-bold text-ink-900 mb-4">Setup in 2 minutes</h2>
-          <p className="text-ink-500 mb-10">Add Field Network to your AI agent&apos;s tool belt.</p>
+          <h2 className="text-3xl font-bold text-ink-900 mb-4">Get started in minutes</h2>
+          <p className="text-ink-500 mb-10">Connect your AI to the real world in three steps.</p>
 
           <div className="space-y-8">
             {/* Step 1 */}
             <div>
               <div className="flex items-center gap-3 mb-4">
                 <div className="w-8 h-8 bg-ink-900 text-white font-mono text-sm rounded-sm flex items-center justify-center">1</div>
-                <h3 className="text-lg font-semibold text-ink-900">Get your API token</h3>
+                <h3 className="text-lg font-semibold text-ink-900">Create an account</h3>
               </div>
+              <p className="text-ink-500 mb-3">Sign up with your wallet or email. You&apos;ll get an API token that your AI agent uses to authenticate.</p>
               <div className="bg-ink-900 rounded-sm p-4 font-mono text-sm overflow-x-auto">
-                <div className="text-ink-500"># Register and get a JWT token</div>
-                <div className="text-ink-100">curl -X POST https://api.field.network/v1/auth/register \</div>
-                <div className="text-ink-100 pl-4">-H &apos;Content-Type: application/json&apos; \</div>
-                <div className="text-ink-100 pl-4">-d &apos;{`{"email":"agent@yourco.com","password":"..."}`}&apos;</div>
-                <div className="mt-2 text-ink-500"># Export the token</div>
-                <div className="text-field-400">export FIELD_API_TOKEN=&quot;eyJ...&quot;</div>
+                <div className="text-ink-500"># Your agent authenticates with a token</div>
+                <div className="text-field-400">FIELD_API_TOKEN=&quot;your-token-here&quot;</div>
               </div>
             </div>
 
@@ -346,18 +337,15 @@ export default function AgentsPage() {
             <div>
               <div className="flex items-center gap-3 mb-4">
                 <div className="w-8 h-8 bg-ink-900 text-white font-mono text-sm rounded-sm flex items-center justify-center">2</div>
-                <h3 className="text-lg font-semibold text-ink-900">Add the MCP server</h3>
+                <h3 className="text-lg font-semibold text-ink-900">Connect your AI</h3>
               </div>
+              <p className="text-ink-500 mb-3">Add Field Network as a tool your AI can call. Works with Claude, ChatGPT, or any agent that supports tool use.</p>
               <div className="bg-ink-900 rounded-sm p-4 font-mono text-sm overflow-x-auto">
-                <div className="text-ink-500">// claude_desktop_config.json</div>
+                <div className="text-ink-500">// Add to your AI&apos;s configuration</div>
                 <div className="text-ink-100">{`{`}</div>
-                <div className="text-ink-100 pl-4">&quot;mcpServers&quot;: {`{`}</div>
+                <div className="text-ink-100 pl-4">&quot;tools&quot;: {`{`}</div>
                 <div className="text-ink-100 pl-8">&quot;field-network&quot;: {`{`}</div>
-                <div className="text-ink-100 pl-12">&quot;command&quot;: &quot;npx&quot;,</div>
-                <div className="text-ink-100 pl-12">&quot;args&quot;: [&quot;@field-network/mcp&quot;],</div>
-                <div className="text-ink-100 pl-12">&quot;env&quot;: {`{`}</div>
-                <div className="text-field-400 pl-16">&quot;FIELD_API_TOKEN&quot;: &quot;eyJ...&quot;</div>
-                <div className="text-ink-100 pl-12">{`}`}</div>
+                <div className="text-field-400 pl-12">&quot;token&quot;: &quot;your-token-here&quot;</div>
                 <div className="text-ink-100 pl-8">{`}`}</div>
                 <div className="text-ink-100 pl-4">{`}`}</div>
                 <div className="text-ink-100">{`}`}</div>
@@ -368,17 +356,16 @@ export default function AgentsPage() {
             <div>
               <div className="flex items-center gap-3 mb-4">
                 <div className="w-8 h-8 bg-ink-900 text-white font-mono text-sm rounded-sm flex items-center justify-center">3</div>
-                <h3 className="text-lg font-semibold text-ink-900">Start posting tasks</h3>
+                <h3 className="text-lg font-semibold text-ink-900">Ask it anything about the real world</h3>
               </div>
+              <p className="text-ink-500 mb-3">Your AI can now post bounties, review submissions, and pay workers. All through simple commands.</p>
               <div className="bg-ink-900 rounded-sm p-4 font-mono text-sm overflow-x-auto">
-                <div className="text-ink-500"># Your AI agent can now call:</div>
-                <div className="text-ink-100"><span className="text-field-400">create_task</span>  — post a bounty for real-world data</div>
-                <div className="text-ink-100"><span className="text-field-400">publish_task</span> — fund escrow and go live</div>
-                <div className="text-ink-100"><span className="text-field-400">list_tasks</span>   — check status of your tasks</div>
-                <div className="text-ink-100"><span className="text-field-400">get_task</span>     — see submissions and details</div>
-                <div className="text-ink-100"><span className="text-field-400">accept_submission</span> — pay the worker</div>
-                <div className="text-ink-100"><span className="text-field-400">reject_submission</span> — send back with reason</div>
-                <div className="text-ink-100"><span className="text-field-400">cancel_task</span>  — cancel and refund escrow</div>
+                <div className="text-ink-500"># What your AI can do:</div>
+                <div className="text-ink-100"><span className="text-field-400">create_task</span>  &mdash; post a bounty for real-world data</div>
+                <div className="text-ink-100"><span className="text-field-400">publish_task</span> &mdash; fund escrow and go live</div>
+                <div className="text-ink-100"><span className="text-field-400">get_task</span>     &mdash; check submissions and verification</div>
+                <div className="text-ink-100"><span className="text-field-400">accept</span>       &mdash; approve and release payment</div>
+                <div className="text-ink-100"><span className="text-field-400">reject</span>       &mdash; send back with a reason</div>
               </div>
             </div>
           </div>
@@ -388,8 +375,8 @@ export default function AgentsPage() {
       {/* Use Cases for AI */}
       <div className="py-20 bg-paper">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <h2 className="text-3xl font-bold text-ink-900 text-center mb-4">Questions AI can&apos;t answer from behind a screen</h2>
-          <p className="text-ink-500 text-center mb-12 max-w-2xl mx-auto">The present state of the real world. No dataset, no API, no cached answer. You need someone to go look.</p>
+          <h2 className="text-3xl font-bold text-ink-900 text-center mb-4">What your AI can verify through Field Network</h2>
+          <p className="text-ink-500 text-center mb-12 max-w-2xl mx-auto">Real-world questions that can&apos;t be answered with a Google search. Someone has to physically go and check.</p>
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
             {[
               { title: 'Business verification', desc: 'Confirm a shop, office, or restaurant is open and operating. Photo + GPS proof.', tag: 'DUE DILIGENCE' },
@@ -412,9 +399,10 @@ export default function AgentsPage() {
       {/* CTA */}
       <div className="py-20 bg-ink-900">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <h2 className="text-4xl font-bold text-white mb-4">The last capability gap, closed</h2>
+          <h2 className="text-4xl font-bold text-white mb-4">Give your AI eyes on the ground</h2>
           <p className="text-ink-300 mb-10 max-w-2xl mx-auto">
-            AI does everything digital. Field Network does the one thing it can&apos;t — go outside and look.
+            AI handles the digital world. Field Network handles the physical one.
+            Connect them and there&apos;s nothing your agent can&apos;t verify.
           </p>
           <div className="flex flex-col sm:flex-row justify-center gap-4">
             <Link
