@@ -1,0 +1,245 @@
+'use client';
+
+import React, { useEffect, useRef } from 'react';
+
+export default function HeightMapBackground() {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const animationRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const dpr = window.devicePixelRatio || 1;
+
+    // Set canvas size
+    const resize = () => {
+      const rect = canvas.getBoundingClientRect();
+      canvas.width = rect.width * dpr;
+      canvas.height = rect.height * dpr;
+      ctx.scale(dpr, dpr);
+    };
+    resize();
+    window.addEventListener('resize', resize);
+
+    // Terrain parameters for contour generation
+    const resolution = 8;
+    let cols = Math.ceil(canvas.width / dpr / resolution) + 2;
+    let rows = Math.ceil(canvas.height / dpr / resolution) + 2;
+
+    // Generate realistic terrain height field
+    const generateHeight = (x: number, y: number, t: number) => {
+      let height = 0;
+      // Large mountain features
+      height += Math.sin(x * 0.025 + t * 0.12) * Math.cos(y * 0.025) * 60;
+      height += Math.sin((x + 15) * 0.035) * Math.cos((y - 10) * 0.035 + t * 0.1) * 45;
+      // Medium hills
+      height += Math.sin(x * 0.06 + y * 0.06 + t * 0.15) * 25;
+      height += Math.cos(x * 0.09 - y * 0.08 + t * 0.12) * 18;
+      // Small features
+      height += Math.sin(x * 0.15 + y * 0.15 + t * 0.2) * 10;
+      height += Math.cos(x * 0.22 + y * 0.18 + t * 0.18) * 6;
+      return height;
+    };
+
+    // Initialize height map
+    let heightMap: number[][] = [];
+    for (let y = 0; y < rows; y++) {
+      heightMap[y] = [];
+      for (let x = 0; x < cols; x++) {
+        heightMap[y][x] = generateHeight(x, y, 0);
+      }
+    }
+
+    let time = 0;
+
+    const draw = () => {
+      const w = canvas.width / dpr;
+      const h = canvas.height / dpr;
+
+      // Recalculate cols/rows on each frame in case of resize
+      cols = Math.ceil(w / resolution) + 2;
+      rows = Math.ceil(h / resolution) + 2;
+
+      // Ensure heightMap is properly sized
+      while (heightMap.length < rows) {
+        heightMap.push([]);
+      }
+      for (let y = 0; y < rows; y++) {
+        while (heightMap[y].length < cols) {
+          heightMap[y].push(0);
+        }
+      }
+
+      // Clear with dark background
+      ctx.fillStyle = '#050607';
+      ctx.fillRect(0, 0, w, h);
+
+      time += 0.012;
+
+      // Update height map
+      for (let y = 0; y < rows; y++) {
+        for (let x = 0; x < cols; x++) {
+          heightMap[y][x] = generateHeight(x, y, time);
+        }
+      }
+
+      // LAYER 1: Draw flowing contour lines
+      const contourInterval = 8;
+      const numContours = 20;
+
+      for (let i = 0; i < numContours; i++) {
+        const level = -80 + (i * contourInterval);
+        const shimmer = Math.sin(time * 1.8 + i * 0.2) * 0.08 + 0.92;
+        const isMainContour = i % 5 === 0;
+        ctx.lineWidth = isMainContour ? 0.8 : 0.4;
+
+        const baseAlpha = 0.22 + (i / numContours) * 0.18;
+        ctx.strokeStyle = `rgba(20, 184, 166, ${baseAlpha * shimmer})`;
+
+        const segments: { x: number; y: number; edge: string }[][] = [];
+
+        for (let y = 0; y < rows - 1; y++) {
+          for (let x = 0; x < cols - 1; x++) {
+            const h1 = heightMap[y][x];
+            const h2 = heightMap[y][x + 1];
+            const h3 = heightMap[y + 1][x];
+            const h4 = heightMap[y + 1][x + 1];
+
+            const points: { x: number; y: number; edge: string }[] = [];
+
+            if ((h1 <= level && h2 >= level) || (h1 >= level && h2 <= level)) {
+              const t = (level - h1) / (h2 - h1);
+              points.push({ x: (x + t) * resolution, y: y * resolution, edge: 'top' });
+            }
+
+            if ((h2 <= level && h4 >= level) || (h2 >= level && h4 <= level)) {
+              const t = (level - h2) / (h4 - h2);
+              points.push({ x: (x + 1) * resolution, y: (y + t) * resolution, edge: 'right' });
+            }
+
+            if ((h3 <= level && h4 >= level) || (h3 >= level && h4 <= level)) {
+              const t = (level - h3) / (h4 - h3);
+              points.push({ x: (x + t) * resolution, y: (y + 1) * resolution, edge: 'bottom' });
+            }
+
+            if ((h1 <= level && h3 >= level) || (h1 >= level && h3 <= level)) {
+              const t = (level - h1) / (h3 - h1);
+              points.push({ x: x * resolution, y: (y + t) * resolution, edge: 'left' });
+            }
+
+            if (points.length >= 2) {
+              segments.push(points);
+            }
+          }
+        }
+
+        ctx.beginPath();
+        for (const seg of segments) {
+          if (seg.length >= 2) {
+            ctx.moveTo(seg[0].x, seg[0].y);
+            for (let j = 1; j < seg.length; j++) {
+              ctx.lineTo(seg[j].x, seg[j].y);
+            }
+          }
+        }
+        ctx.stroke();
+      }
+
+      // LAYER 2: Draw grid lines with scintillation
+      const gridSize = 100;
+      const baseScintillation = Math.sin(time * 0.6) * 0.2 + 0.8;
+
+      ctx.lineWidth = 1;
+      ctx.setLineDash([5, 5]);
+
+      for (let x = 0; x < w; x += gridSize) {
+        const wave = Math.sin(time * 0.7 + x * 0.003) * 0.25 + 0.75;
+        const pulse = Math.sin(time * 0.4 + x * 0.002) * 0.15 + 0.85;
+        const finalAlpha = 0.5 * baseScintillation * wave * pulse;
+
+        ctx.strokeStyle = `rgba(20, 184, 166, ${finalAlpha})`;
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, h);
+        ctx.stroke();
+      }
+
+      for (let y = 0; y < h; y += gridSize) {
+        const wave = Math.sin(time * 0.7 + y * 0.003) * 0.25 + 0.75;
+        const pulse = Math.sin(time * 0.4 + y * 0.002) * 0.15 + 0.85;
+        const finalAlpha = 0.5 * baseScintillation * wave * pulse;
+
+        ctx.strokeStyle = `rgba(20, 184, 166, ${finalAlpha})`;
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(w, y);
+        ctx.stroke();
+      }
+
+      ctx.setLineDash([]);
+
+      // LAYER 4: Cartographic marginalia — coordinate labels at grid intersections
+      // Seeded pseudo-random: deterministic per position, stable across frames
+      const seedRand = (ix: number, iy: number) => {
+        let seed = ix * 7919 + iy * 104729 + 31;
+        seed = ((seed << 13) ^ seed);
+        return ((seed * (seed * seed * 15731 + 789221) + 1376312589) & 0x7fffffff) / 0x7fffffff;
+      };
+
+      ctx.font = '7px monospace';
+      ctx.textBaseline = 'top';
+
+      for (let gx = 0; gx < w; gx += gridSize) {
+        for (let gy = 0; gy < h; gy += gridSize) {
+          const ix = Math.round(gx / gridSize);
+          const iy = Math.round(gy / gridSize);
+
+          // Only label roughly every other intersection, with seeded randomness
+          const r = seedRand(ix, iy);
+          if (r > 0.55) continue;
+
+          // Opacity: 0.04–0.07 range with subtle time-based flicker
+          const flicker = Math.sin(time * 0.3 + ix * 1.7 + iy * 2.3) * 0.015;
+          const opacity = 0.04 + r * 0.03 + flicker;
+
+          // Generate plausible UK coordinates with slow drift
+          // Latitude: 50–58°N, Longitude: 0–6°W
+          const drift = Math.sin(time * 0.08 + ix * 0.5) * 0.3;
+          const lat = 50 + (seedRand(ix + 100, iy) * 8) + drift * 0.1;
+          const lon = seedRand(ix, iy + 100) * 6 + Math.cos(time * 0.06 + iy * 0.4) * 0.2;
+
+          const latStr = lat.toFixed(1) + '°N';
+          const lonStr = '-' + lon.toFixed(1) + '°W';
+
+          // Alternate between lat and lon labels based on position
+          const label = seedRand(ix * 3, iy * 3) > 0.5 ? latStr : lonStr;
+
+          ctx.fillStyle = `rgba(20, 184, 166, ${Math.max(0, Math.min(opacity, 0.07))})`;
+          ctx.fillText(label, gx + 4, gy + 2);
+        }
+      }
+
+      animationRef.current = requestAnimationFrame(draw);
+    };
+
+    draw();
+
+    return () => {
+      window.removeEventListener('resize', resize);
+      if (animationRef.current) {
+        cancelAnimationFrame(animationRef.current);
+      }
+    };
+  }, []);
+
+  return (
+    <canvas
+      ref={canvasRef}
+      className="absolute inset-0 w-full h-full"
+    />
+  );
+}
