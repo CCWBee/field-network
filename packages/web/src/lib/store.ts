@@ -240,8 +240,11 @@ export const useAuthStore = create<AuthState>()(
         const token = get().token;
         if (!token) return;
 
-        // Dev mode — user is already set, skip API
-        if (token === 'dev-mock-token') return;
+        // Dev mode — populate mock admin user if not already set, skip API
+        if (token === 'dev-mock-token') {
+          if (!get().user) get().devLogin();
+          return;
+        }
 
         api.setToken(token);
         try {
