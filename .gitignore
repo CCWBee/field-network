@@ -45,3 +45,7 @@ packages/api/prisma/*.db-journal
 .cache/
 *.pem
 tmpclaude-*
+
+# Playwright
+packages/web/test-results/
+packages/web/playwright-report/

@@ -162,10 +162,6 @@ jobs:
     name: E2E Tests
     runs-on: ubuntu-latest
     needs: build
-    # E2E tests were written against a stale auth scheme and assume a real
-    # API server is running. They need a rewrite — track failures here but
-    # don't block the build.
-    continue-on-error: true
 
     steps:
       - name: Checkout
@@ -193,22 +189,27 @@ jobs:
           NEXT_PUBLIC_API_URL: http://localhost:3000
           DATABASE_URL: file:./test.db
 
+  # Deploy jobs are gated behind vars.DEPLOY_ENABLED. To enable:
+  # 1. Add the required secrets at github.com/<owner>/<repo>/settings/secrets/actions
+  #    - RAILWAY_TOKEN
+  #    - VERCEL_TOKEN, VERCEL_ORG_ID, VERCEL_PROJECT_ID
+  # 2. Add a repository variable at .../variables/actions:
+  #    - DEPLOY_ENABLED = true
   deploy-api:
     name: Deploy API
     runs-on: ubuntu-latest
     needs: build
-    if: github.ref == 'refs/heads/master' && github.event_name == 'push'
+    if: vars.DEPLOY_ENABLED == 'true' && github.ref == 'refs/heads/master' && github.event_name == 'push'
     environment: production
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v4
+      - uses: actions/setup-node@v4
         with:
-          name: api-build
-          path: packages/api/dist
+          node-version: ${{ env.NODE_VERSION }}
+      - name: Install Railway CLI
+        run: npm install -g @railway/cli
       - name: Deploy to Railway
-        uses: bervProject/railway-deploy@main
-        with:
-          service: api
+        run: railway up --service api --detach
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
 
@@ -216,7 +217,7 @@ jobs:
     name: Deploy Web
     runs-on: ubuntu-latest
     needs: build
-    if: github.ref == 'refs/heads/master' && github.event_name == 'push'
+    if: vars.DEPLOY_ENABLED == 'true' && github.ref == 'refs/heads/master' && github.event_name == 'push'
     environment: production
     steps:
       - uses: actions/checkout@v4

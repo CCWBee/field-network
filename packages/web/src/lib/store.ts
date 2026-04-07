@@ -94,6 +94,11 @@ interface AuthState {
   logout: () => void;
   loadUser: () => Promise<void>;
   clearError: () => void;
+  // True once the persist middleware has rehydrated from localStorage.
+  // Layouts must wait for this before checking `token` to avoid a flash
+  // redirect to /login on first render.
+  _hasHydrated: boolean;
+  _setHasHydrated: (value: boolean) => void;
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -104,6 +109,8 @@ export const useAuthStore = create<AuthState>()(
       refreshToken: null,
       isLoading: false,
       error: null,
+      _hasHydrated: false,
+      _setHasHydrated: (value: boolean) => set({ _hasHydrated: value }),
 
       login: async (email: string, password: string) => {
         set({ isLoading: true, error: null });
@@ -314,6 +321,9 @@ export const useAuthStore = create<AuthState>()(
     {
       name: 'field-network-auth',
       partialize: (state) => ({ token: state.token, refreshToken: state.refreshToken }),
+      onRehydrateStorage: () => (state) => {
+        state?._setHasHydrated(true);
+      },
     }
   )
 );

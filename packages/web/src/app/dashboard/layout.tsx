@@ -81,16 +81,20 @@ export default function DashboardLayout({
 }) {
   const router = useRouter();
   const pathname = usePathname();
-  const { user, token, logout, loadUser } = useAuthStore();
+  const { user, token, logout, loadUser, _hasHydrated } = useAuthStore();
   const [showOnboarding, setShowOnboarding] = useState(false);
 
   useEffect(() => {
+    // Wait for Zustand persist to hydrate from localStorage before deciding
+    // to redirect — otherwise we'd flash to /login before the persisted
+    // token is loaded.
+    if (!_hasHydrated) return;
     if (!token) {
       router.push('/login');
       return;
     }
     loadUser();
-  }, [token, router, loadUser]);
+  }, [_hasHydrated, token, router, loadUser]);
 
   // Show onboarding modal if user hasn't completed it
   useEffect(() => {
@@ -99,7 +103,7 @@ export default function DashboardLayout({
     }
   }, [user]);
 
-  if (!token) {
+  if (!_hasHydrated || !token) {
     return (
       <div className="min-h-screen bg-paper-warm flex items-center justify-center">
         <Spinner size="lg" />

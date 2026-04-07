@@ -1,24 +1,10 @@
 import { test, expect } from '@playwright/test';
+import { setupAuth } from './fixtures';
 
-// Helper to mock admin authentication
+// Backwards-compat alias — uses the shared fixture which sets dev-mock-token
+// (auto-populates admin via store devLogin) and mocks all /v1/** API responses.
 async function mockAdminAuth(page: any) {
-  await page.addInitScript(() => {
-    window.localStorage.setItem(
-      'field-network-auth',
-      JSON.stringify({
-        state: {
-          token: 'mock-admin-jwt-token',
-          refreshToken: 'mock-admin-refresh-token',
-          user: {
-            id: 'admin-123',
-            email: 'admin@test.com',
-            role: 'admin',
-          },
-        },
-        version: 0,
-      })
-    );
-  });
+  await setupAuth(page);
 }
 
 test.describe('Admin Dashboard - Overview', () => {
@@ -29,15 +15,16 @@ test.describe('Admin Dashboard - Overview', () => {
   test('should display the admin panel sidebar', async ({ page }) => {
     await page.goto('/dashboard/admin');
 
-    // Check sidebar navigation
-    await expect(page.locator('text=Admin Panel')).toBeVisible();
-    await expect(page.locator('text=Manage platform operations')).toBeVisible();
+    // Sidebar nav lives inside an <aside> — scope locators to avoid
+    // collisions with the top nav bar links.
+    const sidebar = page.locator('aside');
+    await expect(sidebar.getByText('Admin Panel')).toBeVisible();
+    await expect(sidebar.getByText('Manage platform operations')).toBeVisible();
 
-    // Check navigation links
-    await expect(page.locator('a[href="/dashboard/admin"]')).toBeVisible();
-    await expect(page.locator('a[href="/dashboard/admin/disputes"]')).toBeVisible();
-    await expect(page.locator('a[href="/dashboard/admin/tasks"]')).toBeVisible();
-    await expect(page.locator('a[href="/dashboard/admin/users"]')).toBeVisible();
+    await expect(sidebar.locator('a[href="/dashboard/admin"]')).toBeVisible();
+    await expect(sidebar.locator('a[href="/dashboard/admin/disputes"]')).toBeVisible();
+    await expect(sidebar.locator('a[href="/dashboard/admin/tasks"]')).toBeVisible();
+    await expect(sidebar.locator('a[href="/dashboard/admin/users"]')).toBeVisible();
   });
 
   test('should display admin overview stats', async ({ page }) => {
@@ -54,7 +41,7 @@ test.describe('Admin Dashboard - Overview', () => {
   test('should navigate to disputes from sidebar', async ({ page }) => {
     await page.goto('/dashboard/admin');
 
-    await page.locator('a[href="/dashboard/admin/disputes"]').click();
+    await page.locator('aside a[href="/dashboard/admin/disputes"]').click();
     await expect(page).toHaveURL(/\/dashboard\/admin\/disputes/);
     await expect(page.locator('h1:has-text("Dispute Resolution")')).toBeVisible();
   });
@@ -62,7 +49,7 @@ test.describe('Admin Dashboard - Overview', () => {
   test('should navigate to tasks from sidebar', async ({ page }) => {
     await page.goto('/dashboard/admin');
 
-    await page.locator('a[href="/dashboard/admin/tasks"]').click();
+    await page.locator('aside a[href="/dashboard/admin/tasks"]').click();
     await expect(page).toHaveURL(/\/dashboard\/admin\/tasks/);
     await expect(page.locator('h1:has-text("Task Moderation")')).toBeVisible();
   });
@@ -94,24 +81,23 @@ test.describe('Admin Dashboard - Disputes List', () => {
 
   test('should filter disputes by status', async ({ page }) => {
     await page.goto('/dashboard/admin/disputes');
+    await page.waitForLoadState('networkidle');
 
-    // Select status filter
     const statusSelect = page.locator('select').first();
     await statusSelect.selectOption('opened');
 
-    // URL should update with filter
-    await expect(page).toHaveURL(/status=opened/);
+    // URL update is async via router.replace — give it time
+    await expect(page).toHaveURL(/status=opened/, { timeout: 10000 });
   });
 
   test('should change sort order', async ({ page }) => {
     await page.goto('/dashboard/admin/disputes');
+    await page.waitForLoadState('networkidle');
 
-    // Find and change sort order
     const orderSelect = page.locator('select').last();
     await orderSelect.selectOption('asc');
 
-    // URL should update
-    await expect(page).toHaveURL(/sort_order=asc/);
+    await expect(page).toHaveURL(/sort_order=asc/, { timeout: 10000 });
   });
 
   test('should display empty state when no disputes', async ({ page }) => {
@@ -126,11 +112,12 @@ test.describe('Admin Dashboard - Disputes List', () => {
 
   test('should reset filters', async ({ page }) => {
     await page.goto('/dashboard/admin/disputes?status=opened&sort_order=asc');
+    await page.waitForLoadState('networkidle');
 
-    await page.locator('button:has-text("Reset Filters")').click();
+    await page.getByRole('button', { name: 'Reset Filters' }).click();
 
-    // URL should be clean
-    await expect(page).toHaveURL('/dashboard/admin/disputes');
+    // URL should be clean (router.replace is async)
+    await expect(page).toHaveURL(/\/dashboard\/admin\/disputes\/?$/, { timeout: 10000 });
   });
 });
 
@@ -185,11 +172,12 @@ test.describe('Admin Dashboard - Task Moderation', () => {
 
   test('should filter tasks by status', async ({ page }) => {
     await page.goto('/dashboard/admin/tasks');
+    await page.waitForLoadState('networkidle');
 
     const statusSelect = page.locator('select').first();
     await statusSelect.selectOption('posted');
 
-    await expect(page).toHaveURL(/status=posted/);
+    await expect(page).toHaveURL(/status=posted/, { timeout: 10000 });
   });
 
   test('should display tasks table headers', async ({ page }) => {
@@ -362,16 +350,21 @@ test.describe('Admin Dashboard - URL State Management', () => {
 
   test('should preserve filter state in URL', async ({ page }) => {
     await page.goto('/dashboard/admin/disputes');
+    await page.waitForLoadState('networkidle');
 
     // Apply filters
     const statusSelect = page.locator('select').first();
     await statusSelect.selectOption('opened');
 
+    // Wait for the URL to actually update before reloading
+    await expect(page).toHaveURL(/status=opened/, { timeout: 10000 });
+
     // Refresh page
     await page.reload();
+    await page.waitForLoadState('networkidle');
 
-    // Filter should be preserved
-    await expect(statusSelect).toHaveValue('opened');
+    // Filter should be preserved (re-query select after reload)
+    await expect(page.locator('select').first()).toHaveValue('opened');
   });
 
   test('should handle pagination in URL', async ({ page }) => {

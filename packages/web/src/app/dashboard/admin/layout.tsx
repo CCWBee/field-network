@@ -12,11 +12,14 @@ interface AdminLayoutProps {
 export default function AdminLayout({ children }: AdminLayoutProps) {
   const router = useRouter();
   const pathname = usePathname();
-  const { user, token } = useAuthStore();
+  const { user, token, _hasHydrated } = useAuthStore();
   const [isAuthorized, setIsAuthorized] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    // Wait for Zustand persist to hydrate before checking auth.
+    if (!_hasHydrated) return;
+
     // Check admin authorization
     if (!token) {
       router.push('/auth/login');
@@ -33,7 +36,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     }
 
     setIsLoading(false);
-  }, [user, token, router]);
+  }, [_hasHydrated, user, token, router]);
 
   if (isLoading) {
     return (
