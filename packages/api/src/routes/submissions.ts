@@ -22,6 +22,7 @@ import {
 } from '../services/fees';
 import { dispatchWebhookEvent } from '../jobs/webhook-delivery';
 import { releaseTaskStake } from '../services/staking';
+import { log } from '../lib/logger';
 import { formatVerificationResult } from '../services/verificationFormatter';
 
 // Helper to safely extract string from query/param
@@ -433,13 +434,13 @@ router.post('/:submissionId/accept', authenticate, requireScope('decisions:accep
     const escrowResult = await releaseEscrow(submission.taskId, submission.workerId);
     if (!escrowResult.success) {
       // Log but don't fail - submission is accepted, escrow release can be retried
-      console.error(`Escrow release failed for task ${submission.taskId}: ${escrowResult.error}`);
+      log.error(`Escrow release failed for task ${submission.taskId}: ${escrowResult.error}`);
     }
 
     // Release stake back to worker (successful submission)
     const stakeResult = await releaseTaskStake(submission.taskId, submission.workerId);
     if (!stakeResult.success) {
-      console.error(`Stake release failed for task ${submission.taskId}: ${stakeResult.error}`);
+      log.error(`Stake release failed for task ${submission.taskId}: ${stakeResult.error}`);
     }
 
     // Record platform fee in ledger
@@ -601,7 +602,7 @@ router.post('/:submissionId/reject', authenticate, requireScope('decisions:rejec
     // Worker can dispute if they believe rejection was unfair
     const stakeResult = await releaseTaskStake(submission.taskId, submission.workerId);
     if (!stakeResult.success) {
-      console.error(`Stake release failed for rejected task ${submission.taskId}: ${stakeResult.error}`);
+      log.error(`Stake release failed for rejected task ${submission.taskId}: ${stakeResult.error}`);
     }
 
     await prisma.auditEvent.create({

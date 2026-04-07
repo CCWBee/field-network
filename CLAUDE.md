@@ -314,6 +314,9 @@ All users can both post tasks (requester) AND claim/complete tasks (worker). The
 - [ ] Purchase domain (field-network.com available)
 - [ ] Set up Railway + Vercel accounts
 - [ ] Deploy to production (see PRODUCTION.md)
+- [ ] Fill in deployment runbook emergency contacts
+- [ ] Configure GitHub secrets for deploy (CI/CD workflows ready, secrets needed)
+- [ ] OpenAPI/Swagger docs (deferred — API page placeholder live)
 - [ ] Add map view for task locations
 - [ ] Mobile responsive improvements
 - [ ] Test full task flow end-to-end
@@ -685,4 +688,43 @@ success('Task created!', 'Your task is now live.');
 
 **After Schema Changes:**
 Run `npm run db:generate` to regenerate Prisma client before starting API.
+
+#### Session 7: Cleanup, CI/CD, and Issue Fixes (Apr 6, 2026)
+
+**Issues Fixed (GitHub Issues 18-21):**
+
+**Issue 18 — Stub Pages Content:**
+- API page (`packages/web/src/app/api/page.tsx`) upgraded from minimal endpoint list to full "Coming Soon" page with nav, hero section, "Coming Soon" badge, endpoint categories with availability badges, quick reference code block, and consistent styling (teal accents, rounded-sm, light theme)
+- Agents page already had full content (conversation demo, platform grid, setup guide) — no changes needed
+
+**Issue 19 — Admin Dispute Pagination UI:**
+- Pagination controls already present in `packages/web/src/app/dashboard/admin/disputes/page.tsx` (Previous/Next buttons, page number buttons, "Showing X to Y of Z" indicator) — confirmed working, no changes needed
+
+**Issue 20 — Stale Branch Cleanup:**
+- Deleted 5 merged branches from GitHub remote:
+  - `feature/aesthetic-craft-pass`
+  - `feature/design-system-mcp-agents`
+  - `feature/design-system-mcp-agents-v2`
+  - `feature/permissionless-transparency-overhaul`
+  - `fix/security-hardening-and-compliance`
+
+**Issue 21 — CLAUDE.md Updated:**
+- Added Session 7 documenting all changes
+- Updated Next Priority Items with remaining work:
+  - Fill in deployment runbook emergency contacts
+  - Configure GitHub secrets for deploy
+  - OpenAPI/Swagger docs (deferred)
+
+**Prior Session Work Referenced:**
+- API client completion (full CRUD, auto-refresh, token management)
+- CI/CD pipeline (GitHub Actions workflows for build/test/deploy)
+- Console cleanup (removed debug logs, standardized error handling)
+- Type safety improvements (strict TypeScript, Zod validation throughout)
+- Form validation (client-side + server-side with error messages)
+- Design system compliance (consistent use of component library, teal accents, rounded-sm)
+- Chain ID consistency (Base Sepolia 84532 throughout all config)
+
+**Files Modified:**
+- `packages/web/src/app/api/page.tsx` - Full "Coming Soon" API docs page
+- `CLAUDE.md` - Session 7 entry, updated priority items
 

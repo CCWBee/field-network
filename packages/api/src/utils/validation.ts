@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { log } from '../lib/logger';
 
 /**
  * Safe URL validator that only allows http:// and https:// protocols
@@ -45,10 +46,10 @@ export function safeJsonParse<T>(
     if (result.success) {
       return result.data;
     }
-    console.warn('JSON schema validation failed:', result.error.message);
+    log.warn('JSON schema validation failed', { error: result.error.message });
     return defaultValue;
   } catch (error) {
-    console.warn('JSON parse failed:', error);
+    log.warn('JSON parse failed', { error: error instanceof Error ? error.message : String(error) });
     return defaultValue;
   }
 }

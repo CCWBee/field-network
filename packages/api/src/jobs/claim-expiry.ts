@@ -1,6 +1,7 @@
 import { Job } from 'bullmq';
 import { prisma } from '../services/database';
 import { QUEUE_NAMES, registerWorker, scheduleRepeatingJob } from '../lib/queue';
+import { log } from '../lib/logger';
 
 /**
  * Claim Expiry Job
@@ -56,12 +57,12 @@ async function processExpiredClaims(dryRun = false): Promise<ClaimExpiryResult> 
     },
   });
 
-  console.log(`Found ${expiredClaims.length} expired claims to process`);
+  log.info(`Found ${expiredClaims.length} expired claims to process`);
 
   for (const claim of expiredClaims) {
     try {
       if (dryRun) {
-        console.log(`[DRY RUN] Would expire claim ${claim.id} for task ${claim.taskId}`);
+        log.debug(`[DRY RUN] Would expire claim ${claim.id} for task ${claim.taskId}`);
         result.expiredClaims.push(claim.id);
         continue;
       }
@@ -150,12 +151,12 @@ async function processExpiredClaims(dryRun = false): Promise<ClaimExpiryResult> 
       result.expiredClaims.push(claim.id);
       result.processedCount++;
 
-      console.log(`Expired claim ${claim.id} for task "${claim.task.title}"`);
+      log.info(`Expired claim ${claim.id} for task "${claim.task.title}"`);
     } catch (error) {
       const errorMsg = `Failed to process claim ${claim.id}: ${
         error instanceof Error ? error.message : 'Unknown error'
       }`;
-      console.error(errorMsg);
+      log.error(errorMsg);
       result.errors.push(errorMsg);
     }
   }
@@ -167,13 +168,14 @@ async function processExpiredClaims(dryRun = false): Promise<ClaimExpiryResult> 
  * Job processor function
  */
 async function processClaimExpiryJob(job: Job<ClaimExpiryJobData>): Promise<ClaimExpiryResult> {
-  console.log(`Processing claim expiry job ${job.id} at ${new Date().toISOString()}`);
+  log.info(`Processing claim expiry job ${job.id}`);
 
   const result = await processExpiredClaims(job.data.dryRun);
 
-  console.log(
-    `Claim expiry job completed: ${result.processedCount} claims expired, ${result.errors.length} errors`
-  );
+  log.info('Claim expiry job completed', {
+    processedCount: result.processedCount,
+    errors: result.errors.length,
+  });
 
   return result;
 }
@@ -190,7 +192,7 @@ export function registerClaimExpiryWorker(): void {
     },
   });
 
-  console.log('Claim expiry worker registered');
+  log.info('Claim expiry worker registered');
 }
 
 /**
@@ -205,13 +207,13 @@ export async function scheduleClaimExpiryJob(): Promise<void> {
     { every: 5 * 60 * 1000 } // Every 5 minutes
   );
 
-  console.log('Claim expiry job scheduled (every 5 minutes)');
+  log.info('Claim expiry job scheduled (every 5 minutes)');
 }
 
 /**
  * Run claim expiry manually (for testing or manual intervention)
  */
 export async function runClaimExpiryNow(dryRun = false): Promise<ClaimExpiryResult> {
-  console.log(`Running claim expiry manually (dryRun=${dryRun})`);
+  log.info(`Running claim expiry manually (dryRun=${dryRun})`);
   return processExpiredClaims(dryRun);
 }

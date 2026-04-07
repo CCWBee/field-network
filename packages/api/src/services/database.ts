@@ -1,4 +1,5 @@
 import { PrismaClient } from '@prisma/client';
+import { log } from '../lib/logger';
 
 /**
  * Database connection configuration with connection pooling
@@ -61,7 +62,7 @@ export async function checkDatabaseConnection(): Promise<boolean> {
     await prisma.$queryRaw`SELECT 1`;
     return true;
   } catch (error) {
-    console.error('Database connection check failed:', error);
+    log.error('Database connection check failed', error);
     return false;
   }
 }

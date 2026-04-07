@@ -145,145 +145,182 @@ function calculateMaxDistanceKm(tasks: Array<{ lat: number; lon: number }>) {
   return max;
 }
 
-async function ensureBadgeDefinitions() {
-  const definitions = [
-    {
-      type: 'first_light',
-      name: 'First Light',
-      description: 'Complete your first accepted bounty.',
-      category: 'milestone',
-    },
-    {
-      type: 'signal_boost',
-      name: 'Signal Boost',
-      description: '10 accepted bounties.',
-      category: 'milestone',
-    },
-    {
-      type: 'wayfinder',
-      name: 'Wayfinder',
-      description: '25 accepted bounties.',
-      category: 'milestone',
-    },
-    {
-      type: 'ground_crew',
-      name: 'Ground Crew',
-      description: '50 accepted bounties.',
-      category: 'milestone',
-    },
-    {
-      type: 'geoguesser',
-      name: 'GeoGuessr',
-      description: '100 accepted bounties.',
-      category: 'milestone',
-    },
-    {
-      type: 'cartographer',
-      name: 'Cartographer',
-      description: '250 accepted bounties.',
-      category: 'milestone',
-    },
-    {
-      type: 'atlas_operator',
-      name: 'Atlas Operator',
-      description: '500 accepted bounties.',
-      category: 'milestone',
-    },
-    {
-      type: 'orbital',
-      name: 'Orbital',
-      description: '1,000 accepted bounties.',
-      category: 'milestone',
-    },
-    {
-      type: 'comet',
-      name: 'Comet',
-      description: 'Complete a bounty worth 250 or more.',
-      category: 'bounty',
-    },
-    {
-      type: 'high_roller',
-      name: 'High Roller',
-      description: 'Complete a bounty worth 1,000 or more.',
-      category: 'bounty',
-    },
-    {
-      type: 'whale_signal',
-      name: 'Whale Signal',
-      description: 'Complete a bounty worth 5,000 or more.',
-      category: 'bounty',
-    },
-    {
-      type: 'long_haul',
-      name: 'Long Haul',
-      description: 'Distance between two accepted bounties exceeds 1,000 km.',
-      category: 'distance',
-    },
-    {
-      type: 'blue_marble',
-      name: 'Blue Marble',
-      description: 'Distance between two accepted bounties exceeds 5,000 km.',
-      category: 'distance',
-    },
-    {
-      type: 'glidepath',
-      name: 'Glidepath',
-      description: 'Maintain a 5-task acceptance streak.',
-      category: 'streak',
-    },
-    {
-      type: 'iron_streak',
-      name: 'Iron Streak',
-      description: 'Maintain a 10-task acceptance streak.',
-      category: 'streak',
-    },
-    {
-      type: 'marathon',
-      name: 'Marathon',
-      description: 'Maintain a 50-task acceptance streak.',
-      category: 'streak',
-    },
-    {
-      type: 'clean_signal',
-      name: 'Clean Signal',
-      description: 'Keep dispute rate under 1% after 20 accepted tasks.',
-      category: 'quality',
-    },
-    {
-      type: 'silent_running',
-      name: 'Silent Running',
-      description: 'Zero disputes after 10 accepted tasks.',
-      category: 'quality',
-    },
-    {
-      type: 'treasure_map',
-      name: 'Treasure Map',
-      description: 'Earn 10,000 in lifetime bounties.',
-      category: 'earnings',
-    },
-  ];
+export type TierThreshold = { tier: string; threshold: number };
 
-  await Promise.all(definitions.map((definition) => (
+// Tier threshold tables (exported for reuse in seed/tests)
+export const BADGE_TIERS: Record<string, TierThreshold[]> = {
+  // Acceptance count milestones
+  first_light: [
+    { tier: 'bronze', threshold: 1 },
+    { tier: 'silver', threshold: 5 },
+    { tier: 'gold', threshold: 25 },
+    { tier: 'platinum', threshold: 100 },
+  ],
+  signal_boost: [
+    { tier: 'bronze', threshold: 10 },
+    { tier: 'silver', threshold: 25 },
+    { tier: 'gold', threshold: 100 },
+    { tier: 'platinum', threshold: 500 },
+  ],
+  wayfinder: [
+    { tier: 'bronze', threshold: 25 },
+    { tier: 'silver', threshold: 75 },
+    { tier: 'gold', threshold: 250 },
+    { tier: 'platinum', threshold: 1000 },
+  ],
+  ground_crew: [
+    { tier: 'bronze', threshold: 50 },
+    { tier: 'silver', threshold: 150 },
+    { tier: 'gold', threshold: 500 },
+    { tier: 'platinum', threshold: 2000 },
+  ],
+  geoguesser: [
+    { tier: 'bronze', threshold: 100 },
+    { tier: 'silver', threshold: 300 },
+    { tier: 'gold', threshold: 1000 },
+    { tier: 'platinum', threshold: 5000 },
+  ],
+  cartographer: [
+    { tier: 'bronze', threshold: 250 },
+    { tier: 'silver', threshold: 750 },
+    { tier: 'gold', threshold: 2500 },
+    { tier: 'platinum', threshold: 10000 },
+  ],
+  atlas_operator: [
+    { tier: 'bronze', threshold: 500 },
+    { tier: 'silver', threshold: 1500 },
+    { tier: 'gold', threshold: 5000 },
+    { tier: 'platinum', threshold: 20000 },
+  ],
+  orbital: [
+    { tier: 'bronze', threshold: 1000 },
+    { tier: 'silver', threshold: 3000 },
+    { tier: 'gold', threshold: 10000 },
+    { tier: 'platinum', threshold: 50000 },
+  ],
+  // Single-bounty value
+  comet: [
+    { tier: 'bronze', threshold: 250 },
+    { tier: 'silver', threshold: 500 },
+    { tier: 'gold', threshold: 1000 },
+    { tier: 'platinum', threshold: 2500 },
+  ],
+  high_roller: [
+    { tier: 'bronze', threshold: 1000 },
+    { tier: 'silver', threshold: 2500 },
+    { tier: 'gold', threshold: 5000 },
+    { tier: 'platinum', threshold: 10000 },
+  ],
+  whale_signal: [
+    { tier: 'bronze', threshold: 5000 },
+    { tier: 'silver', threshold: 10000 },
+    { tier: 'gold', threshold: 25000 },
+    { tier: 'platinum', threshold: 100000 },
+  ],
+  // Distance (km)
+  long_haul: [
+    { tier: 'bronze', threshold: 10 },
+    { tier: 'silver', threshold: 50 },
+    { tier: 'gold', threshold: 200 },
+    { tier: 'platinum', threshold: 1000 },
+  ],
+  blue_marble: [
+    { tier: 'bronze', threshold: 1000 },
+    { tier: 'silver', threshold: 2500 },
+    { tier: 'gold', threshold: 5000 },
+    { tier: 'platinum', threshold: 15000 },
+  ],
+  // Streaks
+  glidepath: [
+    { tier: 'bronze', threshold: 3 },
+    { tier: 'silver', threshold: 10 },
+    { tier: 'gold', threshold: 30 },
+    { tier: 'platinum', threshold: 100 },
+  ],
+  iron_streak: [
+    { tier: 'bronze', threshold: 10 },
+    { tier: 'silver', threshold: 25 },
+    { tier: 'gold', threshold: 50 },
+    { tier: 'platinum', threshold: 200 },
+  ],
+  marathon: [
+    { tier: 'bronze', threshold: 50 },
+    { tier: 'silver', threshold: 100 },
+    { tier: 'gold', threshold: 250 },
+    { tier: 'platinum', threshold: 1000 },
+  ],
+  // Quality (binary -> single gold tier)
+  clean_signal: [{ tier: 'gold', threshold: 1 }],
+  silent_running: [{ tier: 'gold', threshold: 1 }],
+  // Lifetime earnings
+  treasure_map: [
+    { tier: 'bronze', threshold: 1000 },
+    { tier: 'silver', threshold: 5000 },
+    { tier: 'gold', threshold: 10000 },
+    { tier: 'platinum', threshold: 50000 },
+  ],
+};
+
+const BADGE_METADATA: Array<{
+  type: string;
+  name: string;
+  description: string;
+  category: string;
+}> = [
+  { type: 'first_light', name: 'First Light', description: 'Complete accepted bounties.', category: 'milestone' },
+  { type: 'signal_boost', name: 'Signal Boost', description: 'Rack up accepted bounties.', category: 'milestone' },
+  { type: 'wayfinder', name: 'Wayfinder', description: 'Reach wayfinder territory with accepted bounties.', category: 'milestone' },
+  { type: 'ground_crew', name: 'Ground Crew', description: 'Become part of the ground crew.', category: 'milestone' },
+  { type: 'geoguesser', name: 'GeoGuessr', description: 'Hit triple-digit accepted bounties.', category: 'milestone' },
+  { type: 'cartographer', name: 'Cartographer', description: 'Map the world with accepted bounties.', category: 'milestone' },
+  { type: 'atlas_operator', name: 'Atlas Operator', description: 'Operate at atlas scale.', category: 'milestone' },
+  { type: 'orbital', name: 'Orbital', description: 'Achieve orbital throughput on accepted bounties.', category: 'milestone' },
+  { type: 'comet', name: 'Comet', description: 'Complete high-value bounties.', category: 'bounty' },
+  { type: 'high_roller', name: 'High Roller', description: 'Complete premium bounties.', category: 'bounty' },
+  { type: 'whale_signal', name: 'Whale Signal', description: 'Complete whale-tier bounties.', category: 'bounty' },
+  { type: 'long_haul', name: 'Long Haul', description: 'Cover long distances between accepted bounties.', category: 'distance' },
+  { type: 'blue_marble', name: 'Blue Marble', description: 'Span the planet with accepted bounties.', category: 'distance' },
+  { type: 'glidepath', name: 'Glidepath', description: 'Maintain an acceptance streak.', category: 'streak' },
+  { type: 'iron_streak', name: 'Iron Streak', description: 'Forge an iron acceptance streak.', category: 'streak' },
+  { type: 'marathon', name: 'Marathon', description: 'Run a marathon-length acceptance streak.', category: 'streak' },
+  { type: 'clean_signal', name: 'Clean Signal', description: 'Keep dispute rate under 1% after 20 accepted tasks.', category: 'quality' },
+  { type: 'silent_running', name: 'Silent Running', description: 'Zero disputes after 10 accepted tasks.', category: 'quality' },
+  { type: 'treasure_map', name: 'Treasure Map', description: 'Earn lifetime bounty milestones.', category: 'earnings' },
+];
+
+export async function ensureBadgeDefinitions() {
+  await Promise.all(BADGE_METADATA.map((definition) => (
     prisma.badgeDefinition.upsert({
       where: { type: definition.type },
       update: {
         name: definition.name,
         description: definition.description,
         category: definition.category,
+        tiers: BADGE_TIERS[definition.type] ?? [],
       },
       create: {
         type: definition.type,
         name: definition.name,
         description: definition.description,
         category: definition.category,
+        tiers: BADGE_TIERS[definition.type] ?? [],
       },
     })
   )));
 }
 
+export function calculateTier(value: number, thresholds: TierThreshold[]): string | null {
+  const sorted = [...thresholds].sort((a, b) => b.threshold - a.threshold);
+  for (const t of sorted) {
+    if (value >= t.threshold) return t.tier;
+  }
+  return null;
+}
+
 async function awardBadge(
   userId: string,
   badgeType: string,
+  tier: string,
   title: string,
   description: string,
   currentScore: number
@@ -293,7 +330,7 @@ async function awardBadge(
       userId_badgeType_tier: {
         userId,
         badgeType,
-        tier: 'gold',
+        tier,
       },
     },
   });
@@ -304,23 +341,22 @@ async function awardBadge(
     data: {
       userId,
       badgeType,
-      tier: 'gold',
+      tier,
       title,
       description,
     },
   });
 
-  // Log badge earned event
   await logReputationEvent({
     userId,
     previousScore: currentScore,
     newScore: currentScore,
     reason: 'badge_earned',
     badgeType,
-    metadata: { title, description },
+    metadata: { title, description, tier },
   });
 
-  return true; // Badge was awarded
+  return true;
 }
 
 async function syncBadges(userId: string, data: {
@@ -334,130 +370,57 @@ async function syncBadges(userId: string, data: {
 }): Promise<string[]> {
   await ensureBadgeDefinitions();
 
-  const awardedBadges: string[] = [];
-  const awards: Array<{ type: string; title: string; description: string; condition: boolean }> = [
-    {
-      type: 'first_light',
-      title: 'First Light',
-      description: 'Complete your first accepted bounty.',
-      condition: data.acceptedCount >= 1,
-    },
-    {
-      type: 'signal_boost',
-      title: 'Signal Boost',
-      description: '10 accepted bounties.',
-      condition: data.acceptedCount >= 10,
-    },
-    {
-      type: 'wayfinder',
-      title: 'Wayfinder',
-      description: '25 accepted bounties.',
-      condition: data.acceptedCount >= 25,
-    },
-    {
-      type: 'ground_crew',
-      title: 'Ground Crew',
-      description: '50 accepted bounties.',
-      condition: data.acceptedCount >= 50,
-    },
-    {
-      type: 'geoguesser',
-      title: 'GeoGuessr',
-      description: '100 accepted bounties.',
-      condition: data.acceptedCount >= 100,
-    },
-    {
-      type: 'cartographer',
-      title: 'Cartographer',
-      description: '250 accepted bounties.',
-      condition: data.acceptedCount >= 250,
-    },
-    {
-      type: 'atlas_operator',
-      title: 'Atlas Operator',
-      description: '500 accepted bounties.',
-      condition: data.acceptedCount >= 500,
-    },
-    {
-      type: 'orbital',
-      title: 'Orbital',
-      description: '1,000 accepted bounties.',
-      condition: data.acceptedCount >= 1000,
-    },
-    {
-      type: 'comet',
-      title: 'Comet',
-      description: 'Complete a bounty worth 250 or more.',
-      condition: data.maxBounty >= 250,
-    },
-    {
-      type: 'high_roller',
-      title: 'High Roller',
-      description: 'Complete a bounty worth 1,000 or more.',
-      condition: data.maxBounty >= 1000,
-    },
-    {
-      type: 'whale_signal',
-      title: 'Whale Signal',
-      description: 'Complete a bounty worth 5,000 or more.',
-      condition: data.maxBounty >= 5000,
-    },
-    {
-      type: 'long_haul',
-      title: 'Long Haul',
-      description: 'Distance between two accepted bounties exceeds 1,000 km.',
-      condition: data.maxDistanceKm >= 1000,
-    },
-    {
-      type: 'blue_marble',
-      title: 'Blue Marble',
-      description: 'Distance between two accepted bounties exceeds 5,000 km.',
-      condition: data.maxDistanceKm >= 5000,
-    },
-    {
-      type: 'glidepath',
-      title: 'Glidepath',
-      description: 'Maintain a 5-task acceptance streak.',
-      condition: data.currentStreak >= 5,
-    },
-    {
-      type: 'iron_streak',
-      title: 'Iron Streak',
-      description: 'Maintain a 10-task acceptance streak.',
-      condition: data.currentStreak >= 10,
-    },
-    {
-      type: 'marathon',
-      title: 'Marathon',
-      description: 'Maintain a 50-task acceptance streak.',
-      condition: data.currentStreak >= 50,
-    },
-    {
-      type: 'clean_signal',
-      title: 'Clean Signal',
-      description: 'Keep dispute rate under 1% after 20 accepted tasks.',
-      condition: data.acceptedCount >= 20 && data.disputeRate < 1,
-    },
-    {
-      type: 'silent_running',
-      title: 'Silent Running',
-      description: 'Zero disputes after 10 accepted tasks.',
-      condition: data.acceptedCount >= 10 && data.disputeRate === 0,
-    },
-    {
-      type: 'treasure_map',
-      title: 'Treasure Map',
-      description: 'Earn 10,000 in lifetime bounties.',
-      condition: data.totalEarned >= 10000,
-    },
-  ];
+  const metricForBadge = (type: string): number => {
+    switch (type) {
+      case 'first_light':
+      case 'signal_boost':
+      case 'wayfinder':
+      case 'ground_crew':
+      case 'geoguesser':
+      case 'cartographer':
+      case 'atlas_operator':
+      case 'orbital':
+        return data.acceptedCount;
+      case 'comet':
+      case 'high_roller':
+      case 'whale_signal':
+        return data.maxBounty;
+      case 'long_haul':
+      case 'blue_marble':
+        return data.maxDistanceKm;
+      case 'glidepath':
+      case 'iron_streak':
+      case 'marathon':
+        return data.currentStreak;
+      case 'treasure_map':
+        return data.totalEarned;
+      case 'clean_signal':
+        return data.acceptedCount >= 20 && data.disputeRate < 1 ? 1 : 0;
+      case 'silent_running':
+        return data.acceptedCount >= 10 && data.disputeRate === 0 ? 1 : 0;
+      default:
+        return 0;
+    }
+  };
 
-  for (const award of awards) {
-    if (award.condition) {
-      const wasAwarded = await awardBadge(userId, award.type, award.title, award.description, data.reliabilityScore);
-      if (wasAwarded) {
-        awardedBadges.push(award.type);
-      }
+  const awardedBadges: string[] = [];
+
+  for (const meta of BADGE_METADATA) {
+    const thresholds = BADGE_TIERS[meta.type] ?? [];
+    const value = metricForBadge(meta.type);
+    const tier = calculateTier(value, thresholds);
+    if (!tier) continue;
+
+    const wasAwarded = await awardBadge(
+      userId,
+      meta.type,
+      tier,
+      meta.name,
+      meta.description,
+      data.reliabilityScore
+    );
+    if (wasAwarded) {
+      awardedBadges.push(`${meta.type}:${tier}`);
     }
   }
 

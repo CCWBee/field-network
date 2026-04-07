@@ -10,6 +10,8 @@ import { createPublicClient, http, parseAbi, stringToHex, keccak256, encodePacke
 import { base, baseSepolia } from 'viem/chains';
 import { calculatePlatformFee } from './fees';
 import { getSignerProvider } from './signer';
+import { log } from '../lib/logger';
+import { isMainnet, getCurrentChainConfig, getUsdcAddress } from '../config/tokens';
 
 // Contract ABI (minimal subset for escrow operations)
 const ESCROW_ABI = parseAbi([
@@ -254,7 +256,7 @@ class MockEscrowProvider implements EscrowProvider {
       // Verify amounts sum correctly (within floating point tolerance)
       const total = workerAmount + requesterAmount;
       if (Math.abs(total - escrow.amount) > 0.01) {
-        console.error(`Split calculation error: ${workerAmount} + ${requesterAmount} = ${total}, expected ${escrow.amount}`);
+        log.error(`Split calculation error: ${workerAmount} + ${requesterAmount} = ${total}, expected ${escrow.amount}`);
         return { success: false, error: 'Split calculation error' };
       }
 
@@ -363,17 +365,12 @@ class OnChainEscrowProvider implements EscrowProvider {
       );
     }
 
-    const chainId = process.env.CHAIN_ID === '8453' ? 'mainnet' : 'sepolia';
-    const chain = chainId === 'mainnet' ? base : baseSepolia;
-    const rpcUrl = process.env.BASE_RPC_URL || (chainId === 'mainnet'
-      ? 'https://mainnet.base.org'
-      : 'https://sepolia.base.org');
+    const chainConfig = getCurrentChainConfig();
+    const chain = isMainnet() ? base : baseSepolia;
+    const rpcUrl = chainConfig.rpcUrl;
 
     this.contractAddress = contractAddress as `0x${string}`;
-    this.usdcAddress = (process.env.USDC_ADDRESS || (chainId === 'mainnet'
-      ? '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913' // Base mainnet USDC
-      : '0x036CbD53842c5426634e7929541eC2318f3dCF7e' // Base Sepolia USDC
-    )) as `0x${string}`;
+    this.usdcAddress = getUsdcAddress();
 
     this.publicClient = createPublicClient({
       chain,
@@ -384,10 +381,11 @@ class OnChainEscrowProvider implements EscrowProvider {
     const signer = getSignerProvider();
     this.walletClient = signer.getWalletClient();
 
-    console.log(`On-chain escrow provider initialized:`);
-    console.log(`  Contract: ${this.contractAddress}`);
-    console.log(`  Chain: ${chain.name} (${chain.id})`);
-    console.log(`  Operator: ${signer.getAddress()}`);
+    log.info('On-chain escrow provider initialized', {
+      contract: this.contractAddress,
+      chain: `${chain.name} (${chain.id})`,
+      operator: signer.getAddress(),
+    });
   }
 
   /**
@@ -780,11 +778,11 @@ function createEscrowProvider(): EscrowProvider {
   const providerType = process.env.ESCROW_PROVIDER || 'mock';
 
   if (providerType === 'onchain') {
-    console.log('Using on-chain escrow provider (Base)');
+    log.info('Using on-chain escrow provider (Base)');
     return new OnChainEscrowProvider();
   }
 
-  console.log('Using mock escrow provider (development)');
+  log.info('Using mock escrow provider (development)');
   return new MockEscrowProvider();
 }
 

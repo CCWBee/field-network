@@ -1,6 +1,7 @@
 import { createPublicClient, http, parseAbiItem, Log, decodeEventLog } from 'viem';
 import { base, baseSepolia } from 'viem/chains';
 import { prisma } from './database';
+import { log } from '../lib/logger';
 
 // Escrow contract ABI events
 const ESCROW_EVENTS = {
@@ -55,8 +56,7 @@ export class ChainIndexer {
     if (this.isRunning) return;
     this.isRunning = true;
 
-    console.log(`[ChainIndexer] Starting indexer for chain ${this.chainId}`);
-    console.log(`[ChainIndexer] Contract: ${this.contractAddress}`);
+    log.info('[ChainIndexer] Starting indexer', { chainId: this.chainId, contract: this.contractAddress });
 
     // Initialize cursor if needed
     await this.initializeCursor();
@@ -72,7 +72,7 @@ export class ChainIndexer {
       clearInterval(this.intervalId);
       this.intervalId = null;
     }
-    console.log(`[ChainIndexer] Stopped`);
+    log.info('[ChainIndexer] Stopped');
   }
 
   private async initializeCursor(): Promise<void> {
@@ -92,7 +92,7 @@ export class ChainIndexer {
         },
       });
 
-      console.log(`[ChainIndexer] Initialized cursor at block ${startBlock}`);
+      log.info(`[ChainIndexer] Initialized cursor at block ${startBlock}`);
     }
   }
 
@@ -112,7 +112,7 @@ export class ChainIndexer {
 
       if (fromBlock > toBlock) return;
 
-      console.log(`[ChainIndexer] Fetching logs from ${fromBlock} to ${toBlock}`);
+      log.debug(`[ChainIndexer] Fetching logs from ${fromBlock} to ${toBlock}`);
 
       // Fetch all escrow events
       const logs = await this.client.getLogs({
@@ -122,7 +122,7 @@ export class ChainIndexer {
       });
 
       if (logs.length > 0) {
-        console.log(`[ChainIndexer] Found ${logs.length} events`);
+        log.info(`[ChainIndexer] Found ${logs.length} events`);
         await this.processLogs(logs);
       }
 
@@ -132,7 +132,7 @@ export class ChainIndexer {
         data: { lastBlock: Number(toBlock) },
       });
     } catch (error) {
-      console.error('[ChainIndexer] Poll error:', error);
+      log.error('[ChainIndexer] Poll error', error);
     }
   }
 
@@ -163,7 +163,7 @@ export class ChainIndexer {
           });
           eventName = decoded.eventName;
         } catch {
-          console.warn(`[ChainIndexer] Could not decode event in tx ${log.transactionHash}`);
+          log.warn(`[ChainIndexer] Could not decode event in tx ${log.transactionHash}`);
           continue;
         }
 
@@ -183,7 +183,7 @@ export class ChainIndexer {
         // Process event
         await this.handleEvent(eventName, decoded.args, log);
       } catch (error) {
-        console.error(`[ChainIndexer] Error processing log:`, error);
+        log.error('[ChainIndexer] Error processing log', error);
       }
     }
 
@@ -244,7 +244,7 @@ export class ChainIndexer {
             },
           });
 
-          console.log(`[ChainIndexer] Deposited: Task ${taskId}, Amount ${amount} USDC`);
+          log.info(`[ChainIndexer] Deposited: Task ${taskId}, Amount ${amount} USDC`);
         }
         break;
       }
@@ -265,7 +265,7 @@ export class ChainIndexer {
           });
         }
         if (!escrow) {
-          console.warn(`[ChainIndexer] Released: No escrow found for escrowId ${escrowIdLookup} (hex: ${escrowIdHex})`);
+          log.warn(`[ChainIndexer] Released: No escrow found for escrowId ${escrowIdLookup} (hex: ${escrowIdHex})`);
           break;
         }
 
@@ -307,7 +307,7 @@ export class ChainIndexer {
             ],
           });
 
-          console.log(`[ChainIndexer] Released: ${amount} USDC to ${worker}`);
+          log.info(`[ChainIndexer] Released: ${amount} USDC to ${worker}`);
         }
         break;
       }
@@ -326,7 +326,7 @@ export class ChainIndexer {
           });
         }
         if (!escrow) {
-          console.warn(`[ChainIndexer] Refunded: No escrow found for escrowId ${escrowIdLookup} (hex: ${escrowIdHex})`);
+          log.warn(`[ChainIndexer] Refunded: No escrow found for escrowId ${escrowIdLookup} (hex: ${escrowIdHex})`);
           break;
         }
 
@@ -354,7 +354,7 @@ export class ChainIndexer {
             },
           });
 
-          console.log(`[ChainIndexer] Refunded: ${amount} USDC to ${requester}`);
+          log.info(`[ChainIndexer] Refunded: ${amount} USDC to ${requester}`);
         }
         break;
       }
@@ -377,9 +377,9 @@ export class ChainIndexer {
             where: { id: disputeEscrow.id },
             data: { status: 'disputed' },
           });
-          console.log(`[ChainIndexer] Dispute opened by ${opener} for escrow ${disputeEscrow.id}`);
+          log.info(`[ChainIndexer] Dispute opened by ${opener} for escrow ${disputeEscrow.id}`);
         } else {
-          console.warn(`[ChainIndexer] DisputeOpened: No escrow found for escrowId ${escrowIdLookup}`);
+          log.warn(`[ChainIndexer] DisputeOpened: No escrow found for escrowId ${escrowIdLookup}`);
         }
         break;
       }
@@ -428,9 +428,9 @@ export class ChainIndexer {
             await prisma.ledgerEntry.createMany({ data: entries });
           }
 
-          console.log(`[ChainIndexer] Dispute resolved: ${winner} wins ${winnerAmount} USDC`);
+          log.info(`[ChainIndexer] Dispute resolved: ${winner} wins ${winnerAmount} USDC`);
         } else {
-          console.warn(`[ChainIndexer] DisputeResolved: No escrow found for escrowId ${escrowIdLookup}`);
+          log.warn(`[ChainIndexer] DisputeResolved: No escrow found for escrowId ${escrowIdLookup}`);
         }
         break;
       }

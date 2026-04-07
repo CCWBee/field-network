@@ -2,6 +2,7 @@ import { Job } from 'bullmq';
 import { createHmac } from 'crypto';
 import { prisma } from '../services/database';
 import { QUEUE_NAMES, registerWorker, addJob } from '../lib/queue';
+import { log } from '../lib/logger';
 
 /**
  * Webhook Delivery Job
@@ -141,7 +142,7 @@ async function deliverWebhook(
 async function processWebhookDeliveryJob(job: Job<WebhookDeliveryJobData>): Promise<WebhookDeliveryResult> {
   const { webhookId, eventType, payload, attempt, maxAttempts } = job.data;
 
-  console.log(`Processing webhook delivery job ${job.id}: ${eventType} to webhook ${webhookId} (attempt ${attempt}/${maxAttempts})`);
+  log.info(`Processing webhook delivery job ${job.id}`, { eventType, webhookId, attempt, maxAttempts });
 
   // Fetch webhook details
   const webhook = await prisma.webhook.findUnique({
@@ -149,13 +150,13 @@ async function processWebhookDeliveryJob(job: Job<WebhookDeliveryJobData>): Prom
   });
 
   if (!webhook) {
-    console.error(`Webhook ${webhookId} not found`);
+    log.error(`Webhook ${webhookId} not found`);
     return { success: false, error: 'Webhook not found', attempt };
   }
 
   // Check if webhook is still active
   if (webhook.status !== 'active') {
-    console.log(`Webhook ${webhookId} is not active (status: ${webhook.status}), skipping delivery`);
+    log.info(`Webhook ${webhookId} is not active (status: ${webhook.status}), skipping delivery`);
     return { success: false, error: 'Webhook not active', attempt };
   }
 
@@ -166,7 +167,7 @@ async function processWebhookDeliveryJob(job: Job<WebhookDeliveryJobData>): Prom
     // Calculate backoff delay: 1s, 2s, 4s, 8s, 16s, 32s...
     const backoffDelay = Math.min(1000 * Math.pow(2, attempt - 1), 60000); // Cap at 1 minute
 
-    console.log(`Webhook delivery failed, scheduling retry in ${backoffDelay}ms`);
+    log.warn(`Webhook delivery failed, scheduling retry in ${backoffDelay}ms`);
 
     // Schedule retry
     await addJob<WebhookDeliveryJobData>(
@@ -197,7 +198,7 @@ async function processWebhookDeliveryJob(job: Job<WebhookDeliveryJobData>): Prom
     });
 
     if (recentFailures >= 10) {
-      console.log(`Disabling webhook ${webhookId} due to repeated failures`);
+      log.warn(`Disabling webhook ${webhookId} due to repeated failures`);
       await prisma.webhook.update({
         where: { id: webhookId },
         data: { status: 'disabled' },
@@ -220,7 +221,7 @@ export function registerWebhookDeliveryWorker(): void {
     },
   });
 
-  console.log('Webhook delivery worker registered');
+  log.info('Webhook delivery worker registered');
 }
 
 /**
@@ -285,14 +286,14 @@ export async function dispatchWebhookEvent(
     }
   });
 
-  console.log(`Dispatching ${eventType} to ${matchingWebhooks.length} webhooks`);
+  log.debug(`Dispatching ${eventType} to ${matchingWebhooks.length} webhooks`);
 
   // Queue delivery for each matching webhook
   for (const webhook of matchingWebhooks) {
     try {
       await addWebhookDeliveryJob(webhook.id, eventType, payload);
     } catch (error) {
-      console.error(`Failed to queue webhook delivery for ${webhook.id}:`, error);
+      log.error(`Failed to queue webhook delivery for ${webhook.id}`, error);
     }
   }
 }

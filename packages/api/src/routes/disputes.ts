@@ -30,6 +30,7 @@ import {
   resolveAdminAppeal,
 } from '../services/disputes';
 import { slashTaskStake, releaseTaskStake, stakingProvider } from '../services/staking';
+import { log } from '../lib/logger';
 
 const router = Router();
 
@@ -1029,7 +1030,7 @@ router.post('/:disputeId/resolve', authenticate, requireRole('admin'), async (re
         // Worker wins dispute - release stake
         stakeResult = await releaseTaskStake(dispute.submission.taskId, dispute.submission.workerId);
         if (!stakeResult.success) {
-          console.error(`Stake release failed for dispute ${disputeId}: ${stakeResult.error}`);
+          log.error(`Stake release failed for dispute ${disputeId}: ${stakeResult.error}`);
         }
         break;
       case 'reject_refund':
@@ -1043,7 +1044,7 @@ router.post('/:disputeId/resolve', authenticate, requireRole('admin'), async (re
           5000 // 50% to requester
         );
         if (!stakeResult.success) {
-          console.error(`Stake slash failed for dispute ${disputeId}: ${stakeResult.error}`);
+          log.error(`Stake slash failed for dispute ${disputeId}: ${stakeResult.error}`);
         }
         break;
       case 'partial_pay':
@@ -1059,7 +1060,7 @@ router.post('/:disputeId/resolve', authenticate, requireRole('admin'), async (re
           requesterShareBps
         );
         if (!stakeResult.success) {
-          console.error(`Partial stake slash failed for dispute ${disputeId}: ${stakeResult.error}`);
+          log.error(`Partial stake slash failed for dispute ${disputeId}: ${stakeResult.error}`);
         }
         break;
     }

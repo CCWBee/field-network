@@ -1,5 +1,6 @@
 import { Queue, Worker, QueueEvents, Job, ConnectionOptions } from 'bullmq';
 import IORedis from 'ioredis';
+import { log } from './logger';
 
 /**
  * BullMQ Queue Configuration
@@ -107,15 +108,15 @@ export function registerWorker<T = unknown, R = unknown>(
 
   // Error handling
   worker.on('error', (error) => {
-    console.error(`Worker ${name} error:`, error);
+    log.error(`Worker ${name} error`, error);
   });
 
   worker.on('failed', (job, error) => {
-    console.error(`Job ${job?.id} in ${name} failed:`, error);
+    log.error(`Job ${job?.id} in ${name} failed`, error);
   });
 
   worker.on('completed', (job) => {
-    console.log(`Job ${job.id} in ${name} completed`);
+    log.debug(`Job ${job.id} in ${name} completed`);
   });
 
   workers.set(name, worker);

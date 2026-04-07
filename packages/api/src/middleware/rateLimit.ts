@@ -11,6 +11,7 @@
 
 import { rateLimit, type Options } from 'express-rate-limit';
 import { Request, Response } from 'express';
+import { log } from '../lib/logger';
 
 /**
  * Configuration from environment
@@ -225,10 +226,11 @@ export const rateLimitConfig = {
  * Log rate limit configuration on startup
  */
 export function logRateLimitConfig(): void {
-  console.log('Rate Limiting Configuration:');
-  console.log(`  General: ${config.maxRequests} req/${config.windowMs / 60000} min (anon)`);
-  console.log(`  General: ${config.maxRequestsAuthenticated} req/${config.windowMs / 60000} min (auth)`);
-  console.log(`  Auth: ${config.maxAuthAttempts} attempts/${config.authWindowMs / 3600000} hr`);
-  console.log(`  Upload: ${config.maxUploads} uploads/${config.uploadWindowMs / 3600000} hr`);
-  console.log(`  Trust Proxy: ${config.trustProxy}`);
+  log.info('Rate Limiting Configuration', {
+    generalAnon: `${config.maxRequests} req/${config.windowMs / 60000} min`,
+    generalAuth: `${config.maxRequestsAuthenticated} req/${config.windowMs / 60000} min`,
+    auth: `${config.maxAuthAttempts} attempts/${config.authWindowMs / 3600000} hr`,
+    upload: `${config.maxUploads} uploads/${config.uploadWindowMs / 3600000} hr`,
+    trustProxy: config.trustProxy,
+  });
 }

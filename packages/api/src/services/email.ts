@@ -1,6 +1,7 @@
 import * as nodemailer from 'nodemailer';
 import type { Transporter } from 'nodemailer';
 import * as sgMail from '@sendgrid/mail';
+import { log } from '../lib/logger';
 
 /**
  * Email Service
@@ -346,7 +347,7 @@ class SendGridProvider implements EmailProvider {
         messageId: response.headers['x-message-id'] as string,
       };
     } catch (error) {
-      console.error('SendGrid email error:', error);
+      log.error('SendGrid email error', error);
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown SendGrid error',
@@ -414,7 +415,7 @@ class SMTPProvider implements EmailProvider {
         messageId: info.messageId,
       };
     } catch (error) {
-      console.error('SMTP email error:', error);
+      log.error('SMTP email error', error);
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown SMTP error',
@@ -443,12 +444,11 @@ class SMTPProvider implements EmailProvider {
 
 class ConsoleProvider implements EmailProvider {
   async send(options: SendEmailOptions): Promise<{ success: boolean; messageId?: string; error?: string }> {
-    console.log('========== EMAIL (Console Provider) ==========');
-    console.log(`To: ${Array.isArray(options.to) ? options.to.join(', ') : options.to}`);
-    console.log(`Subject: ${options.subject}`);
-    console.log('---');
-    console.log(options.text || options.html);
-    console.log('==============================================');
+    log.debug('EMAIL (Console Provider)', {
+      to: Array.isArray(options.to) ? options.to.join(', ') : options.to,
+      subject: options.subject,
+      body: options.text || options.html,
+    });
 
     return {
       success: true,
@@ -462,14 +462,13 @@ class ConsoleProvider implements EmailProvider {
       return { success: false, error: `Unknown template: ${options.template}` };
     }
 
-    console.log('========== EMAIL (Console Provider) ==========');
-    console.log(`Template: ${options.template}`);
-    console.log(`To: ${Array.isArray(options.to) ? options.to.join(', ') : options.to}`);
-    console.log(`Subject: ${template.subject}`);
-    console.log('Data:', JSON.stringify(options.data, null, 2));
-    console.log('---');
-    console.log(template.text(options.data));
-    console.log('==============================================');
+    log.debug('EMAIL (Console Provider)', {
+      template: options.template,
+      to: Array.isArray(options.to) ? options.to.join(', ') : options.to,
+      subject: template.subject,
+      data: options.data,
+      body: template.text(options.data),
+    });
 
     return {
       success: true,
@@ -494,16 +493,16 @@ export function getEmailProvider(): EmailProvider {
   switch (providerType.toLowerCase()) {
     case 'sendgrid':
       emailProvider = new SendGridProvider();
-      console.log('Email provider: SendGrid');
+      log.info('Email provider: SendGrid');
       break;
     case 'smtp':
       emailProvider = new SMTPProvider();
-      console.log('Email provider: SMTP');
+      log.info('Email provider: SMTP');
       break;
     case 'console':
     default:
       emailProvider = new ConsoleProvider();
-      console.log('Email provider: Console (emails will be logged, not sent)');
+      log.info('Email provider: Console (emails will be logged, not sent)');
       break;
   }
 

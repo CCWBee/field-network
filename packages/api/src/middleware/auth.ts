@@ -4,6 +4,7 @@ import { createHash } from 'crypto';
 import { v4 as uuidv4 } from 'uuid';
 import { prisma } from '../services/database';
 import { UnauthorizedError, ForbiddenError } from './errorHandler';
+import { log } from '../lib/logger';
 import {
   isTokenBlacklisted,
   wasTokenInvalidatedForUser,
@@ -24,11 +25,11 @@ function getJwtSecret(): string {
 
   if (process.env.NODE_ENV === 'production') {
     if (!secret) {
-      console.error('FATAL: JWT_SECRET environment variable is required in production');
+      log.error('FATAL: JWT_SECRET environment variable is required in production');
       process.exit(1);
     }
     if (secret.length < 32) {
-      console.error('FATAL: JWT_SECRET must be at least 32 characters in production');
+      log.error('FATAL: JWT_SECRET must be at least 32 characters in production');
       process.exit(1);
     }
     return secret;
@@ -36,7 +37,7 @@ function getJwtSecret(): string {
 
   // Development/test: allow fallback with warning
   if (!secret) {
-    console.warn('WARNING: JWT_SECRET not set, using insecure development fallback');
+    log.warn('WARNING: JWT_SECRET not set, using insecure development fallback');
     return 'dev-secret-do-not-use-in-production';
   }
 
@@ -325,7 +326,7 @@ export function adminAuthHardening(req: Request, res: Response, next: NextFuncti
       logAdminAction(req, 'session_timeout', {
         reason: 'inactivity',
         last_activity_ms_ago: timeSinceLastActivity,
-      }).catch(console.error);
+      }).catch((err) => log.error('Failed to log admin session timeout', err));
       return next(new UnauthorizedError('Admin session expired due to inactivity'));
     }
   }
@@ -353,7 +354,7 @@ export function adminAuthHardening(req: Request, res: Response, next: NextFuncti
   logAdminAction(req, 'access', {
     endpoint: req.originalUrl,
     method: req.method,
-  }).catch(console.error);
+  }).catch((err) => log.error('Failed to log admin access', err));
 
   next();
 }

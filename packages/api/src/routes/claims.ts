@@ -6,6 +6,7 @@ import { NotFoundError, ValidationError, StateTransitionError } from '../middlew
 import { notifyTaskClaimed } from '../services/notifications';
 import { dispatchWebhookEvent } from '../jobs/webhook-delivery';
 import { createTaskStake, calculateStakeForTask, releaseTaskStake, getTaskStake } from '../services/staking';
+import { log } from '../lib/logger';
 
 // Helper to safely extract string from query param
 function qs(param: any): string | undefined {
@@ -323,7 +324,7 @@ router.post('/:taskId/unclaim', authenticate, requireScope('claims:write'), asyn
     // Release stake back to worker (voluntary unclaim returns stake)
     const stakeResult = await releaseTaskStake(taskId as string, req.user!.userId);
     if (!stakeResult.success) {
-      console.error(`Failed to release stake for task ${taskId}: ${stakeResult.error}`);
+      log.error(`Failed to release stake for task ${taskId}: ${stakeResult.error}`);
       // Continue with unclaim even if stake release fails - can be retried
     }
 

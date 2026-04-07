@@ -21,6 +21,7 @@ import {
 } from './types';
 import { LocalStorageProvider, createLocalStorageProvider } from './local';
 import { S3StorageProvider, createS3StorageProvider } from './s3';
+import { log } from '../../lib/logger';
 
 // Re-export types for convenience
 export * from './types';
@@ -62,12 +63,12 @@ export function getStorageProvider(): StorageProvider {
   switch (providerType) {
     case 'local':
       storageProviderInstance = createLocalStorageProvider();
-      console.log('[Storage] Using local file storage provider');
+      log.info('[Storage] Using local file storage provider');
       break;
 
     case 's3':
       storageProviderInstance = createS3StorageProvider();
-      console.log(`[Storage] Using S3 storage provider (bucket: ${process.env.S3_BUCKET})`);
+      log.info(`[Storage] Using S3 storage provider (bucket: ${process.env.S3_BUCKET})`);
       break;
 
     default:

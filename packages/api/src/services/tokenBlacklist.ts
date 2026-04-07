@@ -1,5 +1,6 @@
 import { getRedisClient } from '../lib/queue';
 import jwt from 'jsonwebtoken';
+import { log } from '../lib/logger';
 
 /**
  * Token Blacklist Service
@@ -31,7 +32,7 @@ export function isBlacklistAvailable(): boolean {
  */
 export async function blacklistToken(token: string, expiresAt?: Date): Promise<void> {
   if (!isBlacklistAvailable()) {
-    console.warn('Token blacklist unavailable: REDIS_URL not configured');
+    log.warn('Token blacklist unavailable: REDIS_URL not configured');
     return;
   }
 
@@ -63,7 +64,7 @@ export async function blacklistToken(token: string, expiresAt?: Date): Promise<v
 
     await redis.setex(key, ttlSeconds, '1');
   } catch (error) {
-    console.error('Failed to blacklist token:', error);
+    log.error('Failed to blacklist token', error);
     throw error;
   }
 }
@@ -75,7 +76,7 @@ export async function blacklistToken(token: string, expiresAt?: Date): Promise<v
  */
 export async function blacklistRefreshToken(token: string): Promise<void> {
   if (!isBlacklistAvailable()) {
-    console.warn('Token blacklist unavailable: REDIS_URL not configured');
+    log.warn('Token blacklist unavailable: REDIS_URL not configured');
     return;
   }
 
@@ -98,7 +99,7 @@ export async function blacklistRefreshToken(token: string): Promise<void> {
 
     await redis.setex(key, ttlSeconds, '1');
   } catch (error) {
-    console.error('Failed to blacklist refresh token:', error);
+    log.error('Failed to blacklist refresh token', error);
     throw error;
   }
 }
@@ -131,7 +132,7 @@ export async function isTokenBlacklisted(token: string): Promise<boolean> {
     const result = await redis.exists(`${BLACKLIST_PREFIX}${hash}`);
     return result === 1;
   } catch (error) {
-    console.error('Failed to check token blacklist:', error);
+    log.error('Failed to check token blacklist', error);
     // On error, allow the token (fail open) - but log for monitoring
     return false;
   }
@@ -156,7 +157,7 @@ export async function isRefreshTokenBlacklisted(token: string): Promise<boolean>
     const result = await redis.exists(`${REFRESH_BLACKLIST_PREFIX}${hash}`);
     return result === 1;
   } catch (error) {
-    console.error('Failed to check refresh token blacklist:', error);
+    log.error('Failed to check refresh token blacklist', error);
     return false;
   }
 }
@@ -169,7 +170,7 @@ export async function isRefreshTokenBlacklisted(token: string): Promise<boolean>
  */
 export async function blacklistAllUserTokens(userId: string, reason: string): Promise<void> {
   if (!isBlacklistAvailable()) {
-    console.warn('Token blacklist unavailable: REDIS_URL not configured');
+    log.warn('Token blacklist unavailable: REDIS_URL not configured');
     return;
   }
 
@@ -181,9 +182,9 @@ export async function blacklistAllUserTokens(userId: string, reason: string): Pr
     const key = `${USER_SESSIONS_PREFIX}${userId}:invalidated_at`;
     await redis.setex(key, 7 * 24 * 60 * 60, Date.now().toString());
 
-    console.log(`Blacklisted all tokens for user ${userId}: ${reason}`);
+    log.info(`Blacklisted all tokens for user ${userId}: ${reason}`);
   } catch (error) {
-    console.error('Failed to blacklist user tokens:', error);
+    log.error('Failed to blacklist user tokens', error);
     throw error;
   }
 }
@@ -214,7 +215,7 @@ export async function wasTokenInvalidatedForUser(userId: string, issuedAt: numbe
     // Token was issued before invalidation time = invalid
     return issuedAt * 1000 < invalidatedAt;
   } catch (error) {
-    console.error('Failed to check user token invalidation:', error);
+    log.error('Failed to check user token invalidation', error);
     return false;
   }
 }

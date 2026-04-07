@@ -1,7 +1,52 @@
 import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcrypt';
+import { BADGE_TIERS } from '../src/services/reputation';
 
 const prisma = new PrismaClient();
+
+// Inline badge metadata mirror (kept aligned with src/services/reputation.ts)
+const SEED_BADGE_METADATA: Array<{ type: string; name: string; description: string; category: string }> = [
+  { type: 'first_light', name: 'First Light', description: 'Complete accepted bounties.', category: 'milestone' },
+  { type: 'signal_boost', name: 'Signal Boost', description: 'Rack up accepted bounties.', category: 'milestone' },
+  { type: 'wayfinder', name: 'Wayfinder', description: 'Reach wayfinder territory with accepted bounties.', category: 'milestone' },
+  { type: 'ground_crew', name: 'Ground Crew', description: 'Become part of the ground crew.', category: 'milestone' },
+  { type: 'geoguesser', name: 'GeoGuessr', description: 'Hit triple-digit accepted bounties.', category: 'milestone' },
+  { type: 'cartographer', name: 'Cartographer', description: 'Map the world with accepted bounties.', category: 'milestone' },
+  { type: 'atlas_operator', name: 'Atlas Operator', description: 'Operate at atlas scale.', category: 'milestone' },
+  { type: 'orbital', name: 'Orbital', description: 'Achieve orbital throughput on accepted bounties.', category: 'milestone' },
+  { type: 'comet', name: 'Comet', description: 'Complete high-value bounties.', category: 'bounty' },
+  { type: 'high_roller', name: 'High Roller', description: 'Complete premium bounties.', category: 'bounty' },
+  { type: 'whale_signal', name: 'Whale Signal', description: 'Complete whale-tier bounties.', category: 'bounty' },
+  { type: 'long_haul', name: 'Long Haul', description: 'Cover long distances between accepted bounties.', category: 'distance' },
+  { type: 'blue_marble', name: 'Blue Marble', description: 'Span the planet with accepted bounties.', category: 'distance' },
+  { type: 'glidepath', name: 'Glidepath', description: 'Maintain an acceptance streak.', category: 'streak' },
+  { type: 'iron_streak', name: 'Iron Streak', description: 'Forge an iron acceptance streak.', category: 'streak' },
+  { type: 'marathon', name: 'Marathon', description: 'Run a marathon-length acceptance streak.', category: 'streak' },
+  { type: 'clean_signal', name: 'Clean Signal', description: 'Keep dispute rate under 1% after 20 accepted tasks.', category: 'quality' },
+  { type: 'silent_running', name: 'Silent Running', description: 'Zero disputes after 10 accepted tasks.', category: 'quality' },
+  { type: 'treasure_map', name: 'Treasure Map', description: 'Earn lifetime bounty milestones.', category: 'earnings' },
+];
+
+async function ensureBadgeDefinitions() {
+  for (const def of SEED_BADGE_METADATA) {
+    await prisma.badgeDefinition.upsert({
+      where: { type: def.type },
+      update: {
+        name: def.name,
+        description: def.description,
+        category: def.category,
+        tiers: BADGE_TIERS[def.type] ?? [],
+      },
+      create: {
+        type: def.type,
+        name: def.name,
+        description: def.description,
+        category: def.category,
+        tiers: BADGE_TIERS[def.type] ?? [],
+      },
+    });
+  }
+}
 
 // Helper to hash passwords
 async function hashPassword(password: string): Promise<string> {
@@ -325,68 +370,7 @@ async function main() {
   // =========================================================================
   console.log('Creating badge definitions...');
 
-  await prisma.badgeDefinition.createMany({
-    data: [
-      {
-        type: 'early_adopter',
-        name: 'Early Adopter',
-        description: 'Joined Field Network during the beta period',
-        category: 'milestone',
-        tiers: [{ tier: 'bronze', threshold: 1 }],
-        isActive: true,
-      },
-      {
-        type: 'tasks_completed',
-        name: 'Task Master',
-        description: 'Complete tasks to earn this badge',
-        category: 'milestone',
-        tiers: [
-          { tier: 'bronze', threshold: 5 },
-          { tier: 'silver', threshold: 25 },
-          { tier: 'gold', threshold: 100 },
-          { tier: 'platinum', threshold: 500 },
-        ],
-        isActive: true,
-      },
-      {
-        type: 'streak',
-        name: 'On Fire',
-        description: 'Complete consecutive tasks without abandonment',
-        category: 'streak',
-        tiers: [
-          { tier: 'bronze', threshold: 5 },
-          { tier: 'silver', threshold: 15 },
-          { tier: 'gold', threshold: 30 },
-        ],
-        isActive: true,
-      },
-      {
-        type: 'earnings',
-        name: 'Top Earner',
-        description: 'Total earnings milestones',
-        category: 'achievement',
-        tiers: [
-          { tier: 'bronze', threshold: 100 },
-          { tier: 'silver', threshold: 500 },
-          { tier: 'gold', threshold: 2500 },
-          { tier: 'platinum', threshold: 10000 },
-        ],
-        isActive: true,
-      },
-      {
-        type: 'reliable',
-        name: 'Reliable Collector',
-        description: 'Maintain high reliability score',
-        category: 'achievement',
-        tiers: [
-          { tier: 'bronze', threshold: 90 },
-          { tier: 'silver', threshold: 95 },
-          { tier: 'gold', threshold: 98 },
-        ],
-        isActive: true,
-      },
-    ],
-  });
+  await ensureBadgeDefinitions();
 
   // =========================================================================
   // 6. CREATE USER BADGES
@@ -397,42 +381,42 @@ async function main() {
     data: [
       {
         userId: worker1.id,
-        badgeType: 'early_adopter',
-        tier: 'bronze',
-        title: 'Early Adopter',
-        description: 'Joined during beta',
-        metadata: { joinedAt: '2025-01-01' },
-      },
-      {
-        userId: worker1.id,
-        badgeType: 'tasks_completed',
+        badgeType: 'first_light',
         tier: 'silver',
-        title: 'Task Master',
-        description: 'Completed 25+ tasks',
+        title: 'First Light',
+        description: 'Complete accepted bounties.',
         metadata: { count: 47 },
       },
       {
         userId: worker1.id,
-        badgeType: 'streak',
+        badgeType: 'signal_boost',
+        tier: 'bronze',
+        title: 'Signal Boost',
+        description: 'Rack up accepted bounties.',
+        metadata: { count: 47 },
+      },
+      {
+        userId: worker1.id,
+        badgeType: 'glidepath',
         tier: 'silver',
-        title: 'On Fire',
-        description: '15 task streak',
+        title: 'Glidepath',
+        description: 'Maintain an acceptance streak.',
         metadata: { streak: 15 },
       },
       {
         userId: worker2.id,
-        badgeType: 'early_adopter',
+        badgeType: 'first_light',
         tier: 'bronze',
-        title: 'Early Adopter',
-        description: 'Joined during beta',
+        title: 'First Light',
+        description: 'Complete accepted bounties.',
         metadata: {},
       },
       {
         userId: worker2.id,
-        badgeType: 'reliable',
-        tier: 'silver',
-        title: 'Reliable Collector',
-        description: '95%+ reliability',
+        badgeType: 'silent_running',
+        tier: 'gold',
+        title: 'Silent Running',
+        description: 'Zero disputes after 10 accepted tasks.',
         metadata: { score: 96 },
       },
     ],

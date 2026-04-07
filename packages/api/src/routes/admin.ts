@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { prisma } from '../services/database';
 import { authenticate, requireRole, adminAuthHardening, logAdminAction, getClientIp } from '../middleware/auth';
 import { NotFoundError, ValidationError } from '../middleware/errorHandler';
+import { log } from '../lib/logger';
 import { splitEscrow, refundEscrow, releaseEscrow } from '../services/escrow';
 import { recalculateUserStats } from '../services/reputation';
 import { deleteArtefacts } from '../services/storage';
@@ -636,7 +637,7 @@ router.post('/disputes/:disputeId/resolve', async (req: Request, res: Response, 
     }
 
     if (!escrowResult.success) {
-      console.error(`Escrow operation failed for dispute ${disputeId}: ${escrowResult.error}`);
+      log.error(`Escrow operation failed for dispute ${disputeId}: ${escrowResult.error}`);
       // Continue with resolution even if escrow fails - can be retried
     }
 
@@ -748,7 +749,7 @@ router.post('/disputes/:disputeId/resolve', async (req: Request, res: Response, 
       const artefactKeys = dispute.submission.artefacts.map((a) => a.storageKey);
       if (artefactKeys.length > 0) {
         deleteArtefacts(artefactKeys).catch((err) => {
-          console.error(`Failed to delete artefacts for dispute ${disputeId}:`, err);
+          log.error(`Failed to delete artefacts for dispute ${disputeId}`, err);
         });
       }
     }
@@ -895,7 +896,7 @@ router.post('/tasks/:taskId/cancel', async (req: Request, res: Response, next: N
     if (task.escrows[0]?.status === 'funded') {
       const refundResult = await refundEscrow(taskId as string);
       if (!refundResult.success) {
-        console.error(`Escrow refund failed for task ${taskId}: ${refundResult.error}`);
+        log.error(`Escrow refund failed for task ${taskId}: ${refundResult.error}`);
       }
     }
 

@@ -1,6 +1,7 @@
 import { Job } from 'bullmq';
 import { prisma } from '../services/database';
 import { QUEUE_NAMES, registerWorker, scheduleRepeatingJob } from '../lib/queue';
+import { log } from '../lib/logger';
 import {
   processTier1Result,
   checkJuryVotingComplete,
@@ -57,23 +58,23 @@ async function processDisputeDeadlines(dryRun = false): Promise<DisputeTierDeadl
     d.currentTier === 1 && d.autoScoreResult === null
   );
 
-  console.log(`Found ${tier1ToProcess.length} Tier 1 disputes to process`);
+  log.info(`Found ${tier1ToProcess.length} Tier 1 disputes to process`);
 
   for (const dispute of tier1ToProcess) {
     try {
       if (dryRun) {
-        console.log(`[DRY RUN] Would process Tier 1 dispute ${dispute.id}`);
+        log.debug(`[DRY RUN] Would process Tier 1 dispute ${dispute.id}`);
         continue;
       }
 
       await processTier1Result(dispute.id);
       result.tier1Processed++;
-      console.log(`Processed Tier 1 dispute ${dispute.id}`);
+      log.info(`Processed Tier 1 dispute ${dispute.id}`);
     } catch (error) {
       const errorMsg = `Failed to process Tier 1 dispute ${dispute.id}: ${
         error instanceof Error ? error.message : 'Unknown error'
       }`;
-      console.error(errorMsg);
+      log.error(errorMsg);
       result.errors.push(errorMsg);
     }
   }
@@ -90,23 +91,23 @@ async function processDisputeDeadlines(dryRun = false): Promise<DisputeTierDeadl
     d.currentTier === 2 && d.tier2Deadline && new Date(d.tier2Deadline) < now
   );
 
-  console.log(`Found ${tier2Disputes.length} Tier 2 disputes to finalize`);
+  log.info(`Found ${tier2Disputes.length} Tier 2 disputes to finalize`);
 
   for (const dispute of tier2Disputes) {
     try {
       if (dryRun) {
-        console.log(`[DRY RUN] Would finalize Tier 2 voting for dispute ${dispute.id}`);
+        log.debug(`[DRY RUN] Would finalize Tier 2 voting for dispute ${dispute.id}`);
         continue;
       }
 
       await checkJuryVotingComplete(dispute.id);
       result.tier2Finalized++;
-      console.log(`Finalized Tier 2 voting for dispute ${dispute.id}`);
+      log.info(`Finalized Tier 2 voting for dispute ${dispute.id}`);
     } catch (error) {
       const errorMsg = `Failed to finalize Tier 2 dispute ${dispute.id}: ${
         error instanceof Error ? error.message : 'Unknown error'
       }`;
-      console.error(errorMsg);
+      log.error(errorMsg);
       result.errors.push(errorMsg);
     }
   }
@@ -130,12 +131,12 @@ async function processDisputeDeadlines(dryRun = false): Promise<DisputeTierDeadl
     d.currentTier === 3 && d.tier3Deadline && new Date(d.tier3Deadline) < now
   );
 
-  console.log(`Found ${tier3Disputes.length} Tier 3 appeals that have expired`);
+  log.info(`Found ${tier3Disputes.length} Tier 3 appeals that have expired`);
 
   for (const dispute of tier3Disputes) {
     try {
       if (dryRun) {
-        console.log(`[DRY RUN] Would expire Tier 3 appeal for dispute ${dispute.id}`);
+        log.debug(`[DRY RUN] Would expire Tier 3 appeal for dispute ${dispute.id}`);
         continue;
       }
 
@@ -158,12 +159,12 @@ async function processDisputeDeadlines(dryRun = false): Promise<DisputeTierDeadl
       });
 
       result.tier3Expired++;
-      console.log(`Expired Tier 3 appeal for dispute ${dispute.id} - previous decision upheld`);
+      log.info(`Expired Tier 3 appeal for dispute ${dispute.id} - previous decision upheld`);
     } catch (error) {
       const errorMsg = `Failed to expire Tier 3 dispute ${dispute.id}: ${
         error instanceof Error ? error.message : 'Unknown error'
       }`;
-      console.error(errorMsg);
+      log.error(errorMsg);
       result.errors.push(errorMsg);
     }
   }
@@ -175,13 +176,16 @@ async function processDisputeDeadlines(dryRun = false): Promise<DisputeTierDeadl
  * Job processor function
  */
 async function processDisputeTierDeadlineJob(job: Job<DisputeTierDeadlineJobData>): Promise<DisputeTierDeadlineResult> {
-  console.log(`Processing dispute tier deadline job ${job.id} at ${new Date().toISOString()}`);
+  log.info(`Processing dispute tier deadline job ${job.id}`);
 
   const result = await processDisputeDeadlines(job.data.dryRun);
 
-  console.log(
-    `Dispute tier deadline job completed: ${result.tier1Processed} Tier 1, ${result.tier2Finalized} Tier 2, ${result.tier3Expired} Tier 3, ${result.errors.length} errors`
-  );
+  log.info('Dispute tier deadline job completed', {
+    tier1Processed: result.tier1Processed,
+    tier2Finalized: result.tier2Finalized,
+    tier3Expired: result.tier3Expired,
+    errors: result.errors.length,
+  });
 
   return result;
 }
@@ -198,7 +202,7 @@ export function registerDisputeTierDeadlineWorker(): void {
     },
   });
 
-  console.log('Dispute tier deadline worker registered');
+  log.info('Dispute tier deadline worker registered');
 }
 
 /**
@@ -213,13 +217,13 @@ export async function scheduleDisputeTierDeadlineJob(): Promise<void> {
     { every: 5 * 60 * 1000 } // Every 5 minutes
   );
 
-  console.log('Dispute tier deadline job scheduled (every 5 minutes)');
+  log.info('Dispute tier deadline job scheduled (every 5 minutes)');
 }
 
 /**
  * Run dispute tier deadline processing manually (for testing or manual intervention)
  */
 export async function runDisputeTierDeadlineNow(dryRun = false): Promise<DisputeTierDeadlineResult> {
-  console.log(`Running dispute tier deadline processing manually (dryRun=${dryRun})`);
+  log.info(`Running dispute tier deadline processing manually (dryRun=${dryRun})`);
   return processDisputeDeadlines(dryRun);
 }

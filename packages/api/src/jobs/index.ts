@@ -5,6 +5,7 @@
  * Import and call initializeJobs() to start all workers.
  */
 
+import { log } from '../lib/logger';
 import { registerClaimExpiryWorker, scheduleClaimExpiryJob } from './claim-expiry';
 import { registerWebhookDeliveryWorker } from './webhook-delivery';
 import { registerDisputeTierDeadlineWorker, scheduleDisputeTierDeadlineJob } from './dispute-tier-deadline';
@@ -14,7 +15,7 @@ import { registerDisputeTierDeadlineWorker, scheduleDisputeTierDeadlineJob } fro
  * Call this when starting the worker process
  */
 export async function initializeJobs(): Promise<void> {
-  console.log('Initializing background jobs...');
+  log.info('Initializing background jobs...');
 
   // Register workers
   registerClaimExpiryWorker();
@@ -25,7 +26,7 @@ export async function initializeJobs(): Promise<void> {
   await scheduleClaimExpiryJob();
   await scheduleDisputeTierDeadlineJob();
 
-  console.log('Background jobs initialized');
+  log.info('Background jobs initialized');
 }
 
 // Re-export individual job functions for manual triggering

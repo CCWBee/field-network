@@ -106,6 +106,13 @@ export const CHAIN_CONFIGS: Record<number, ChainConfig> = {
 };
 
 /**
+ * Check if the current environment targets Base Mainnet
+ */
+export function isMainnet(): boolean {
+  return process.env.CHAIN_ID === '8453';
+}
+
+/**
  * Get current chain configuration based on environment
  */
 export function getCurrentChainConfig(): ChainConfig {

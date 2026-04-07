@@ -1,6 +1,7 @@
 import { createPublicClient, http } from 'viem';
 import { mainnet } from 'viem/chains';
 import { normalize } from 'viem/ens';
+import { log } from '../lib/logger';
 
 // ENS resolution happens on mainnet regardless of which chain we use for escrow
 const publicClient = createPublicClient({
@@ -23,7 +24,7 @@ export async function resolveENSName(address: string): Promise<string | null> {
     });
     return ensName;
   } catch (error) {
-    console.error('ENS name resolution failed:', error);
+    log.error('ENS name resolution failed', error);
     return null;
   }
 }
@@ -44,7 +45,7 @@ export async function resolveENSAvatar(
     });
     return avatar;
   } catch (error) {
-    console.error('ENS avatar resolution failed:', error);
+    log.error('ENS avatar resolution failed', error);
     return null;
   }
 }
@@ -59,7 +60,7 @@ export async function resolveENSAddress(name: string): Promise<string | null> {
     });
     return address;
   } catch (error) {
-    console.error('ENS address resolution failed:', error);
+    log.error('ENS address resolution failed', error);
     return null;
   }
 }

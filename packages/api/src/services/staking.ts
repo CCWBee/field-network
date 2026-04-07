@@ -20,6 +20,8 @@ import { prisma } from './database';
 import { createPublicClient, http, parseAbi, keccak256, encodePacked } from 'viem';
 import { base, baseSepolia } from 'viem/chains';
 import { getSignerProvider } from './signer';
+import { log } from '../lib/logger';
+import { isMainnet, getCurrentChainConfig, getUsdcAddress } from '../config/tokens';
 
 // Contract ABI (minimal subset for staking operations)
 const STAKING_ABI = parseAbi([
@@ -514,17 +516,12 @@ class OnChainStakingProvider implements StakingProvider {
   private usdcAddress: `0x${string}`;
 
   constructor() {
-    const chainId = process.env.CHAIN_ID === '8453' ? 'mainnet' : 'sepolia';
-    const chain = chainId === 'mainnet' ? base : baseSepolia;
-    const rpcUrl = process.env.BASE_RPC_URL || (chainId === 'mainnet'
-      ? 'https://mainnet.base.org'
-      : 'https://sepolia.base.org');
+    const chainConfig = getCurrentChainConfig();
+    const chain = isMainnet() ? base : baseSepolia;
+    const rpcUrl = chainConfig.rpcUrl;
 
     this.contractAddress = (process.env.STAKING_CONTRACT_ADDRESS || '0x0') as `0x${string}`;
-    this.usdcAddress = (process.env.USDC_ADDRESS || (chainId === 'mainnet'
-      ? '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913'
-      : '0x036CbD53842c5426634e7929541eC2318f3dCF7e'
-    )) as `0x${string}`;
+    this.usdcAddress = getUsdcAddress();
 
     this.publicClient = createPublicClient({
       chain,
@@ -623,7 +620,7 @@ class OnChainStakingProvider implements StakingProvider {
           reputationScore,
           stakePercentage: percentage,
           status: 'pending',
-          chainId: parseInt(process.env.CHAIN_ID || '84532'),
+          chainId: getCurrentChainConfig().chainId,
           contractAddress: this.contractAddress,
         },
       });
@@ -668,7 +665,7 @@ class OnChainStakingProvider implements StakingProvider {
           counterpartyId: workerId,
           walletAddress: workerAddress,
           txHash,
-          chainId: parseInt(process.env.CHAIN_ID || '84532'),
+          chainId: getCurrentChainConfig().chainId,
           metadata: JSON.stringify({
             stake_id: stake.id,
             strike_count: strikeCount,
@@ -760,7 +757,7 @@ class OnChainStakingProvider implements StakingProvider {
                 counterpartyId: workerId,
                 walletAddress: workerWallet.walletAddress,
                 txHash,
-                chainId: parseInt(process.env.CHAIN_ID || '84532'),
+                chainId: getCurrentChainConfig().chainId,
                 metadata: JSON.stringify({ stake_id: stake.id }),
               },
             }),
@@ -775,7 +772,7 @@ class OnChainStakingProvider implements StakingProvider {
         } catch (error) {
           // If on-chain release fails (e.g., delay not passed and not worker),
           // we mark it for later processing
-          console.warn(`On-chain stake release failed, will retry later: ${error}`);
+          log.warn(`On-chain stake release failed, will retry later: ${error}`);
           return {
             success: false,
             error: 'Stake release pending - worker can release immediately from wallet, or anyone after 24h delay',
@@ -874,7 +871,7 @@ class OnChainStakingProvider implements StakingProvider {
             counterpartyId: workerId,
             walletAddress: workerWallet.walletAddress,
             txHash,
-            chainId: parseInt(process.env.CHAIN_ID || '84532'),
+            chainId: getCurrentChainConfig().chainId,
             metadata: JSON.stringify({
               stake_id: stake.id,
               reason,
@@ -979,7 +976,7 @@ class OnChainStakingProvider implements StakingProvider {
             counterpartyId: workerId,
             walletAddress: workerWallet.walletAddress,
             txHash,
-            chainId: parseInt(process.env.CHAIN_ID || '84532'),
+            chainId: getCurrentChainConfig().chainId,
             metadata: JSON.stringify({
               stake_id: stake.id,
               worker_return: workerReturn,
@@ -1050,11 +1047,11 @@ function createStakingProvider(): StakingProvider {
   const providerType = process.env.STAKING_PROVIDER || process.env.ESCROW_PROVIDER || 'mock';
 
   if (providerType === 'onchain') {
-    console.log('Using on-chain staking provider (Base)');
+    log.info('Using on-chain staking provider (Base)');
     return new OnChainStakingProvider();
   }
 
-  console.log('Using mock staking provider (development)');
+  log.info('Using mock staking provider (development)');
   return new MockStakingProvider();
 }
 

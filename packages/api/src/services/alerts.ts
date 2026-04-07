@@ -14,6 +14,7 @@
  */
 
 import { getCurrentChainConfig, getExplorerTxUrl, getExplorerAddressUrl } from '../config/tokens';
+import { log } from '../lib/logger';
 
 export type AlertSeverity = 'info' | 'warning' | 'error' | 'critical';
 
@@ -44,11 +45,7 @@ class ConsoleAlertChannel implements AlertChannel {
       critical: '[CRITICAL]',
     }[alert.severity];
 
-    console.log(`\n${prefix} ${alert.title}`);
-    console.log(`  ${alert.message}`);
-    if (alert.details) {
-      console.log('  Details:', JSON.stringify(alert.details, null, 2));
-    }
+    log.info(`${prefix} ${alert.title}: ${alert.message}`, alert.details ? { details: alert.details } : undefined);
   }
 }
 
@@ -106,10 +103,10 @@ class WebhookAlertChannel implements AlertChannel {
       });
 
       if (!response.ok) {
-        console.error(`Webhook alert failed: ${response.status} ${response.statusText}`);
+        log.error(`Webhook alert failed: ${response.status} ${response.statusText}`);
       }
     } catch (error) {
-      console.error('Webhook alert error:', error);
+      log.error('Webhook alert error', error);
     }
   }
 }
@@ -139,15 +136,16 @@ class EmailAlertChannel implements AlertChannel {
 
   async send(alert: AlertPayload): Promise<void> {
     if (!this.config.host || !this.config.to) {
-      console.log('Email alerts not configured, skipping');
+      log.debug('Email alerts not configured, skipping');
       return;
     }
 
     // Note: In production, use a proper email library like nodemailer
     // This is a placeholder that logs the email that would be sent
-    console.log(`[EMAIL ALERT] Would send to ${this.config.to}:`);
-    console.log(`  Subject: [${alert.severity.toUpperCase()}] ${alert.title}`);
-    console.log(`  Body: ${alert.message}`);
+    log.info(`[EMAIL ALERT] Would send to ${this.config.to}`, {
+      subject: `[${alert.severity.toUpperCase()}] ${alert.title}`,
+      body: alert.message,
+    });
   }
 }
 
@@ -194,7 +192,7 @@ class AlertService {
 
     const sendPromises = this.channels.map((channel) =>
       channel.send(alert).catch((error) => {
-        console.error(`Alert channel ${channel.name} failed:`, error);
+        log.error(`Alert channel ${channel.name} failed`, error);
       })
     );
 

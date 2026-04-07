@@ -9,6 +9,7 @@
 import { createWalletClient, http, type WalletClient, type Chain } from 'viem';
 import { privateKeyToAccount, type PrivateKeyAccount } from 'viem/accounts';
 import { base, baseSepolia } from 'viem/chains';
+import { isMainnet } from '../config/tokens';
 
 export interface SignerProvider {
   getWalletClient(): WalletClient;
@@ -76,7 +77,7 @@ class KmsSignerProvider implements SignerProvider {
 
 // Helpers
 function getChain(): Chain {
-  return process.env.CHAIN_ID === '8453' ? base : baseSepolia;
+  return isMainnet() ? base : baseSepolia;
 }
 
 function getRpcUrl(chain: Chain): string {

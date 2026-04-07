@@ -1,4 +1,5 @@
 import 'dotenv/config';
+import { log } from './lib/logger';
 import { initializeJobs } from './jobs';
 import { closeQueues } from './lib/queue';
 import { disconnectDatabase } from './services/database';
@@ -18,41 +19,42 @@ import { disconnectDatabase } from './services/database';
  */
 
 async function main() {
-  console.log('Starting Field Network background worker...');
-  console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`Redis URL: ${process.env.REDIS_URL ? 'configured' : 'using default'}`);
+  log.info('Starting Field Network background worker...', {
+    environment: process.env.NODE_ENV || 'development',
+    redisConfigured: !!process.env.REDIS_URL,
+  });
 
   try {
     // Initialize all job workers and schedules
     await initializeJobs();
 
-    console.log('Worker is running. Press Ctrl+C to stop.');
+    log.info('Worker is running. Press Ctrl+C to stop.');
 
     // Keep the process running
     await new Promise(() => {});
   } catch (error) {
-    console.error('Worker failed to start:', error);
+    log.error('Worker failed to start', error);
     process.exit(1);
   }
 }
 
 // Graceful shutdown
 async function shutdown(signal: string) {
-  console.log(`\nReceived ${signal}. Shutting down gracefully...`);
+  log.info(`Received ${signal}. Shutting down gracefully...`);
 
   try {
     // Close all queues and workers
     await closeQueues();
-    console.log('Job queues closed');
+    log.info('Job queues closed');
 
     // Disconnect from database
     await disconnectDatabase();
-    console.log('Database disconnected');
+    log.info('Database disconnected');
 
-    console.log('Shutdown complete');
+    log.info('Shutdown complete');
     process.exit(0);
   } catch (error) {
-    console.error('Error during shutdown:', error);
+    log.error('Error during shutdown', error);
     process.exit(1);
   }
 }
@@ -63,12 +65,12 @@ process.on('SIGTERM', () => shutdown('SIGTERM'));
 
 // Handle uncaught errors
 process.on('uncaughtException', (error) => {
-  console.error('Uncaught exception:', error);
+  log.error('Uncaught exception', error);
   shutdown('uncaughtException');
 });
 
 process.on('unhandledRejection', (reason, promise) => {
-  console.error('Unhandled rejection at:', promise, 'reason:', reason);
+  log.error('Unhandled rejection', reason instanceof Error ? reason : new Error(String(reason)), { promise: String(promise) });
   shutdown('unhandledRejection');
 });
 

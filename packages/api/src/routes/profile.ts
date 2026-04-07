@@ -86,6 +86,50 @@ router.put('/', authenticate, async (req: Request, res: Response, next: NextFunc
   }
 });
 
+// PUT /v1/profile/worker-profile - Update worker profile
+router.put('/worker-profile', authenticate, async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const schema = z.object({
+      displayName: z.string().min(1).max(100).optional(),
+      radiusKm: z.number().int().min(5).max(500).optional(),
+      skills: z.array(z.string()).max(20).optional(),
+      kit: z.array(z.string()).max(20).optional(),
+    });
+    const data = schema.parse(req.body);
+
+    const userId = req.user!.userId;
+
+    const workerProfile = await prisma.workerProfile.upsert({
+      where: { userId },
+      create: {
+        userId,
+        displayName: data.displayName || 'Collector',
+        radiusKm: data.radiusKm || 50,
+        skills: data.skills || [],
+        kit: data.kit || [],
+      },
+      update: {
+        ...(data.displayName !== undefined && { displayName: data.displayName }),
+        ...(data.radiusKm !== undefined && { radiusKm: data.radiusKm }),
+        ...(data.skills !== undefined && { skills: data.skills }),
+        ...(data.kit !== undefined && { kit: data.kit }),
+      },
+    });
+
+    res.json({
+      display_name: workerProfile.displayName,
+      radius_km: workerProfile.radiusKm,
+      skills: workerProfile.skills,
+      kit: workerProfile.kit,
+      rating: workerProfile.rating,
+      completed_count: workerProfile.completedCount,
+      strikes: workerProfile.strikes,
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
 // POST /v1/profile/onboarding - Complete onboarding with username + email
 const OnboardingSchema = z.object({
   username: z.string().min(3).max(30).regex(/^[a-zA-Z0-9_]+$/, 'Username can only contain letters, numbers, and underscores'),

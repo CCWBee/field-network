@@ -7,6 +7,7 @@
 
 import sharp from 'sharp';
 import exifReader from 'exif-reader';
+import { log } from '../lib/logger';
 
 export interface ExifData {
   width: number;
@@ -101,11 +102,11 @@ export async function extractExifData(buffer: Buffer): Promise<ExifData> {
         }
       } catch (exifError) {
         // EXIF parsing failed, continue with dimensions only
-        console.warn('EXIF parsing failed:', exifError);
+        log.warn('EXIF parsing failed', { error: exifError instanceof Error ? exifError.message : String(exifError) });
       }
     }
   } catch (error) {
-    console.error('Image processing failed:', error);
+    log.error('Image processing failed', error);
     throw new Error('Failed to process image');
   }
 

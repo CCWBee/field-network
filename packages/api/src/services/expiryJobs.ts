@@ -1,4 +1,5 @@
 import { prisma } from './database';
+import { log } from '../lib/logger';
 
 /**
  * Background job service for handling task and claim expiration
@@ -54,9 +55,9 @@ export async function checkExpiredClaims(): Promise<number> {
         }),
       ]);
       count++;
-      console.log(`[ExpiryJobs] Expired claim ${claim.id} for task ${claim.taskId}`);
+      log.info(`[ExpiryJobs] Expired claim ${claim.id} for task ${claim.taskId}`);
     } catch (error) {
-      console.error(`[ExpiryJobs] Error expiring claim ${claim.id}:`, error);
+      log.error(`[ExpiryJobs] Error expiring claim ${claim.id}`, error);
     }
   }
 
@@ -101,9 +102,9 @@ export async function checkExpiredTasks(): Promise<number> {
         }),
       ]);
       count++;
-      console.log(`[ExpiryJobs] Expired task ${task.id}`);
+      log.info(`[ExpiryJobs] Expired task ${task.id}`);
     } catch (error) {
-      console.error(`[ExpiryJobs] Error expiring task ${task.id}:`, error);
+      log.error(`[ExpiryJobs] Error expiring task ${task.id}`, error);
     }
   }
 
@@ -127,10 +128,10 @@ export async function checkAutoReleaseEscrows(): Promise<number> {
     try {
       // In a real implementation, this would trigger the on-chain release
       // For now, we just log it
-      console.log(`[ExpiryJobs] Escrow ${escrow.id} ready for auto-release`);
+      log.info(`[ExpiryJobs] Escrow ${escrow.id} ready for auto-release`);
       count++;
     } catch (error) {
-      console.error(`[ExpiryJobs] Error processing escrow ${escrow.id}:`, error);
+      log.error(`[ExpiryJobs] Error processing escrow ${escrow.id}`, error);
     }
   }
 
@@ -138,28 +139,26 @@ export async function checkAutoReleaseEscrows(): Promise<number> {
 }
 
 async function runExpiryChecks(): Promise<void> {
-  console.log('[ExpiryJobs] Running expiry checks...');
+  log.info('[ExpiryJobs] Running expiry checks...');
 
   try {
     const expiredClaims = await checkExpiredClaims();
     const expiredTasks = await checkExpiredTasks();
     const autoReleases = await checkAutoReleaseEscrows();
 
-    console.log(
-      `[ExpiryJobs] Completed: ${expiredClaims} claims, ${expiredTasks} tasks, ${autoReleases} escrows`
-    );
+    log.info('[ExpiryJobs] Completed', { expiredClaims, expiredTasks, autoReleases });
   } catch (error) {
-    console.error('[ExpiryJobs] Error in expiry checks:', error);
+    log.error('[ExpiryJobs] Error in expiry checks', error);
   }
 }
 
 export function startExpiryJobs(): void {
   if (intervalId) {
-    console.log('[ExpiryJobs] Already running');
+    log.debug('[ExpiryJobs] Already running');
     return;
   }
 
-  console.log(`[ExpiryJobs] Starting (interval: ${EXPIRY_CHECK_INTERVAL}ms)`);
+  log.info(`[ExpiryJobs] Starting (interval: ${EXPIRY_CHECK_INTERVAL}ms)`);
 
   // Run immediately on start
   runExpiryChecks();
@@ -172,6 +171,6 @@ export function stopExpiryJobs(): void {
   if (intervalId) {
     clearInterval(intervalId);
     intervalId = null;
-    console.log('[ExpiryJobs] Stopped');
+    log.info('[ExpiryJobs] Stopped');
   }
 }

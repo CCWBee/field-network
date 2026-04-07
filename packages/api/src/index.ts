@@ -32,6 +32,7 @@ import { sanctionsMiddleware } from './services/sanctions';
 import { startChainIndexer } from './services/chainIndexer';
 import { disconnectDatabase } from './services/database';
 import { startExpiryJobs, stopExpiryJobs } from './services/expiryJobs';
+import { getCurrentChainConfig } from './config/tokens';
 
 // Initialize Sentry for error tracking (must be done early)
 if (process.env.SENTRY_DSN) {
@@ -144,13 +145,13 @@ const server = app.listen(PORT, () => {
 
   // Start chain indexer if on-chain escrow is enabled
   if (process.env.ESCROW_PROVIDER === 'onchain' && process.env.ESCROW_CONTRACT_ADDRESS) {
-    const chainId = process.env.CHAIN_ID === '8453' ? 8453 : 84532;
+    const chainConfig = getCurrentChainConfig();
     startChainIndexer({
-      chainId,
+      chainId: chainConfig.chainId,
       contractAddress: process.env.ESCROW_CONTRACT_ADDRESS,
-      rpcUrl: process.env.BASE_RPC_URL,
+      rpcUrl: chainConfig.rpcUrl,
     });
-    logger.info({ chainId }, 'Chain indexer started');
+    logger.info({ chainId: chainConfig.chainId }, 'Chain indexer started');
   }
 });
 
