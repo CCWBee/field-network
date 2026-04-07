@@ -123,7 +123,7 @@ export default function HomePage() {
         <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-32 pt-40">
           <div className="text-center">
             <div className="inline-flex items-center px-4 py-2 rounded-sm bg-teal-500/10 border border-field-500/30 text-sm text-teal-100/70 mb-8">
-              <span className="w-2 h-2 bg-teal-400 rounded-full mr-2 animate-pulse"></span>
+              <span className="w-2 h-2 bg-teal-400 rounded-full mr-2"></span>
               Decentralized Observation Network
             </div>
             <h1 className="text-5xl md:text-7xl lg:text-8xl font-extrabold mb-6 text-white tracking-tight leading-[0.92]">

@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/lib/store';
+import { useToast } from '@/components/ui';
 
 interface ApiToken {
   id: string;
@@ -24,6 +25,7 @@ interface NewTokenResult {
 
 export default function SettingsPage() {
   const { token, user, loadUser } = useAuthStore();
+  const toast = useToast();
   const [apiTokens, setApiTokens] = useState<ApiToken[]>([]);
   const [availableScopes, setAvailableScopes] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -90,8 +92,11 @@ export default function SettingsPage() {
       });
       setShowNewToken(false);
       await loadData();
+      toast.success('API token created');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to create token');
+      const message = err instanceof Error ? err.message : 'Failed to create token';
+      setError(message);
+      toast.error('Failed to create token', message);
     } finally {
       setIsCreating(false);
     }
@@ -104,8 +109,11 @@ export default function SettingsPage() {
       api.setToken(token);
       await api.revokeApiToken(tokenId);
       await loadData();
+      toast.success('Token revoked');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to revoke token');
+      const message = err instanceof Error ? err.message : 'Failed to revoke token';
+      setError(message);
+      toast.error('Failed to revoke token', message);
     }
   };
 
@@ -262,9 +270,9 @@ export default function SettingsPage() {
 
         {/* Token List */}
         {apiTokens.length > 0 ? (
-          <div className="space-y-3">
+          <div className="-mx-6 divide-y divide-ink-100 border-t border-ink-100">
             {apiTokens.map((t) => (
-              <div key={t.id} className="p-4 border border-ink-200 rounded-sm">
+              <div key={t.id} className="px-6 py-4 hover:bg-ink-50/50 transition-colors">
                 <div className="flex justify-between items-start">
                   <div>
                     <h4 className="font-medium text-ink-900">{t.name}</h4>
@@ -279,7 +287,7 @@ export default function SettingsPage() {
                 </div>
                 <div className="mt-2 flex flex-wrap gap-1">
                   {t.scopes.map((scope) => (
-                    <span key={scope} className="px-2 py-0.5 bg-ink-50 text-ink-700 text-xs rounded-sm border border-ink-200">
+                    <span key={scope} className="px-2 py-0.5 bg-field-50/60 text-field-700 text-xs rounded-sm">
                       {scope}
                     </span>
                   ))}

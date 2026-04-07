@@ -16,6 +16,8 @@ import {
   StaggeredList,
   StaggeredItem,
   HoverScale,
+  useToast,
+  ConfirmDialog,
 } from '@/components/ui';
 import PublicProfileCard from '@/components/PublicProfileCard';
 
@@ -68,9 +70,11 @@ type WorkerStats = {
 
 export default function WorkerDashboard() {
   const { token, user } = useAuthStore();
+  const toast = useToast();
   const [tasks, setTasks] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [claimingId, setClaimingId] = useState<string | null>(null);
+  const [pendingClaim, setPendingClaim] = useState<{ taskId: string; stakeAmount: number; currency: string } | null>(null);
   const [error, setError] = useState('');
   const [workerStats, setWorkerStats] = useState<WorkerStats | null>(null);
   const [statsLoading, setStatsLoading] = useState(true);
@@ -85,6 +89,25 @@ export default function WorkerDashboard() {
   const [showClaimed, setShowClaimed] = useState(true);
   const [activeTab, setActiveTab] = useState<'missions' | 'stats' | 'history'>('missions');
   const [viewMode, setViewMode] = useState<'grid' | 'map'>('grid');
+  const [sortBy, setSortBy] = useState<'newest' | 'closest' | 'bounty' | 'ending'>('newest');
+  const [locationDenied, setLocationDenied] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+
+  const activeFilterCount =
+    (useDistanceFilter ? 1 : 0) +
+    (minBounty > 0 ? 1 : 0) +
+    (bountyCurrency !== 'all' ? 1 : 0) +
+    (taskTemplate !== 'all' ? 1 : 0) +
+    (!showClaimed ? 1 : 0);
+
+  const directionsUrl = (lat: number, lon: number) =>
+    `https://www.google.com/maps/dir/?api=1&destination=${lat},${lon}`;
+
+  const formatDistance = (km: number) => {
+    if (km < 1) return `${Math.round(km * 1000)} m away`;
+    if (km < 10) return `${km.toFixed(1)} km away`;
+    return `${Math.round(km)} km away`;
+  };
 
   useEffect(() => {
     fetchTasks();
@@ -97,6 +120,7 @@ export default function WorkerDashboard() {
       const [saved] = user.savedAddresses;
       if (saved?.lat != null && saved?.lon != null) {
         setMapCenter([saved.lat, saved.lon]);
+        setSortBy((prev) => (prev === 'newest' ? 'closest' : prev));
         return;
       }
     }
@@ -105,9 +129,11 @@ export default function WorkerDashboard() {
       navigator.geolocation.getCurrentPosition(
         (position) => {
           setMapCenter([position.coords.latitude, position.coords.longitude]);
+          setSortBy((prev) => (prev === 'newest' ? 'closest' : prev));
         },
         () => {
           setMapCenter(null);
+          setLocationDenied(true);
         }
       );
     }
@@ -154,12 +180,34 @@ export default function WorkerDashboard() {
     setError('');
     try {
       api.setToken(token);
-      await api.claimTask(taskId);
-      await fetchTasks();
+      const info = await api.getStakeInfo(taskId);
+      setPendingClaim({ taskId, stakeAmount: info.stake_amount, currency: info.currency });
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to claim task');
+      const message = err instanceof Error ? err.message : 'Failed to load stake info';
+      setError(message);
+      toast.error('Could not load stake info', message);
     } finally {
       setClaimingId(null);
+    }
+  };
+
+  const confirmClaim = async () => {
+    if (!pendingClaim) return;
+    const taskId = pendingClaim.taskId;
+    setClaimingId(taskId);
+    setError('');
+    try {
+      api.setToken(token);
+      await api.claimTask(taskId);
+      await fetchTasks();
+      toast.success('Task claimed!', 'You have 4 hours to submit');
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to claim task';
+      setError(message);
+      toast.error('Could not claim task', message);
+    } finally {
+      setClaimingId(null);
+      setPendingClaim(null);
     }
   };
 
@@ -259,7 +307,7 @@ export default function WorkerDashboard() {
   }, [workerStats, user]);
 
   const filteredTasks = useMemo(() => {
-    return tasks.filter((task) => {
+    const filtered = tasks.filter((task) => {
       if (minBounty > 0 && task.bounty.amount < minBounty) {
         return false;
       }
@@ -278,7 +326,31 @@ export default function WorkerDashboard() {
       }
       return true;
     });
-  }, [tasks, minBounty, bountyCurrency, taskTemplate, showClaimed, mapCenter, maxDistanceKm, useDistanceFilter]);
+
+    const sorted = [...filtered];
+    const effectiveSort = sortBy === 'closest' && !mapCenter ? 'newest' : sortBy;
+    if (effectiveSort === 'closest' && mapCenter) {
+      sorted.sort((a, b) => {
+        const da = calculateDistanceKm(mapCenter[0], mapCenter[1], a.location.lat, a.location.lon);
+        const db = calculateDistanceKm(mapCenter[0], mapCenter[1], b.location.lat, b.location.lon);
+        return da - db;
+      });
+    } else if (effectiveSort === 'bounty') {
+      sorted.sort((a, b) => (b.bounty?.amount ?? 0) - (a.bounty?.amount ?? 0));
+    } else if (effectiveSort === 'ending') {
+      sorted.sort(
+        (a, b) =>
+          new Date(a.time_window.end_iso).getTime() - new Date(b.time_window.end_iso).getTime()
+      );
+    } else {
+      sorted.sort((a, b) => {
+        const ta = new Date(a.created_at ?? a.time_window?.start_iso ?? 0).getTime();
+        const tb = new Date(b.created_at ?? b.time_window?.start_iso ?? 0).getTime();
+        return tb - ta;
+      });
+    }
+    return sorted;
+  }, [tasks, minBounty, bountyCurrency, taskTemplate, showClaimed, mapCenter, maxDistanceKm, useDistanceFilter, sortBy]);
 
   const selectedTask = useMemo(() => {
     return tasks.find((task) => task.id === selectedTaskId) ?? null;
@@ -563,11 +635,59 @@ export default function WorkerDashboard() {
           ) : (
             /* Grid View Mode */
             <>
+          <button
+            type="button"
+            onClick={() => setFiltersOpen((v) => !v)}
+            className="lg:hidden mb-4 w-full flex items-center justify-between px-4 py-3 bg-paper border border-ink-200 rounded-sm text-sm font-medium text-ink-900"
+            aria-expanded={filtersOpen}
+          >
+            <span>
+              Filters{activeFilterCount > 0 && ` (${activeFilterCount})`}
+            </span>
+            <svg className={`w-4 h-4 transition-transform ${filtersOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
           <div className="grid gap-6 lg:grid-cols-[280px_1fr] mb-10">
-            <div className="bg-paper rounded-sm border border-ink-200 p-5">
+            <div className={`${filtersOpen ? 'block' : 'hidden'} lg:block bg-paper rounded-sm border border-ink-200 p-5`}>
               <div className="text-xs uppercase tracking-wider text-ink-500">Filters</div>
               <h2 className="text-lg font-semibold text-ink-900 mt-2">Mission Search</h2>
               <div className="mt-6 space-y-6 text-sm text-ink-700">
+                <div>
+                  <label className="block text-xs uppercase tracking-wider text-ink-500 mb-2">Sort by</label>
+                  <select
+                    value={sortBy === 'closest' && !mapCenter ? 'newest' : sortBy}
+                    onChange={(event) => setSortBy(event.target.value as any)}
+                    className="border border-ink-200 rounded-sm px-3 py-2 bg-paper w-full"
+                  >
+                    <option value="newest">Newest</option>
+                    <option value="closest" disabled={!mapCenter}>
+                      Closest{!mapCenter ? ' (enable location)' : ''}
+                    </option>
+                    <option value="bounty">Highest Bounty</option>
+                    <option value="ending">Ending Soon</option>
+                  </select>
+                  {!mapCenter && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (navigator.geolocation) {
+                          navigator.geolocation.getCurrentPosition(
+                            (position) => {
+                              setMapCenter([position.coords.latitude, position.coords.longitude]);
+                              setLocationDenied(false);
+                              setSortBy('closest');
+                            },
+                            () => setLocationDenied(true)
+                          );
+                        }
+                      }}
+                      className="mt-2 text-xs text-field-600 hover:text-field-700"
+                    >
+                      {locationDenied ? 'Location blocked - retry' : 'Enable location'}
+                    </button>
+                  )}
+                </div>
                 <div>
                   <label className="block text-xs uppercase tracking-wider text-ink-500 mb-2">Distance</label>
                   <label className="flex items-center gap-2 mb-3">
@@ -632,7 +752,7 @@ export default function WorkerDashboard() {
                     ))}
                   </select>
                 </div>
-                <div className="rounded-sm border border-ink-200 bg-paper px-3 py-3">
+                <div className="pt-4 border-t border-ink-100">
                   <label className="flex items-center justify-between text-xs uppercase tracking-wider text-ink-500">
                     Include claimed
                     <input
@@ -643,9 +763,9 @@ export default function WorkerDashboard() {
                   </label>
                   <div className="text-xs text-ink-500 mt-2">Toggle visibility for claimed tasks.</div>
                 </div>
-                <div className="rounded-sm border border-ink-200 bg-paper px-3 py-3">
+                <div className="pt-4 border-t border-ink-100">
                   <div className="text-xs uppercase tracking-wider text-ink-500">Results</div>
-                  <div className="text-lg font-semibold font-mono tabular-nums text-ink-900 mt-1">{filteredTasks.length}</div>
+                  <div className="text-lg font-semibold font-mono tabular-nums text-field-600 mt-1">{filteredTasks.length}</div>
                   <div className="text-xs text-ink-500">Tasks matched</div>
                 </div>
               </div>
@@ -660,7 +780,7 @@ export default function WorkerDashboard() {
                 <div className="flex items-center gap-2">
                   <span className="text-xs uppercase tracking-wider text-ink-500">Operator View</span>
                   {mapCenter && (
-                    <span className="text-xs text-field-500 px-2 py-1 border border-ink-200 rounded-sm">
+                    <span className="text-xs text-field-600 bg-field-50 px-2 py-1 rounded-sm">
                       Location active
                     </span>
                   )}
@@ -696,7 +816,11 @@ export default function WorkerDashboard() {
             <div>
               <h2 className="text-lg font-medium text-ink-900 mb-4">Available Tasks</h2>
               <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                {filteredTasks.map((task) => (
+                {filteredTasks.map((task) => {
+                  const taskDistanceKm = mapCenter
+                    ? calculateDistanceKm(mapCenter[0], mapCenter[1], task.location.lat, task.location.lon)
+                    : null;
+                  return (
                   <div key={task.id} className="bg-paper rounded-sm overflow-hidden border border-ink-200">
                     <div className="p-6">
                       <div className="flex justify-between items-start mb-4">
@@ -737,6 +861,33 @@ export default function WorkerDashboard() {
                           {task.location.lat.toFixed(4)}, {task.location.lon.toFixed(4)}
                           <span className="ml-1">({task.location.radius_m}m radius)</span>
                         </div>
+                        {taskDistanceKm !== null && (
+                          <div className="flex items-center justify-between">
+                            <span className="text-field-600 font-mono tabular-nums">{formatDistance(taskDistanceKm)}</span>
+                            <a
+                              href={directionsUrl(task.location.lat, task.location.lon)}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-field-600 hover:text-field-700 inline-flex items-center gap-1"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <span aria-hidden>&#9758;</span> Directions
+                            </a>
+                          </div>
+                        )}
+                        {taskDistanceKm === null && (
+                          <div>
+                            <a
+                              href={directionsUrl(task.location.lat, task.location.lon)}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-field-600 hover:text-field-700 inline-flex items-center gap-1"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <span aria-hidden>&#9758;</span> Directions
+                            </a>
+                          </div>
+                        )}
                         <div className="flex items-center">
                           <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -766,7 +917,8 @@ export default function WorkerDashboard() {
                       )}
                     </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           )}
@@ -826,11 +978,11 @@ export default function WorkerDashboard() {
                       <div className="text-lg font-semibold font-mono tabular-nums text-signal-green">{stats.totalEarnedApprox}</div>
                     </div>
                   </div>
-                  <div className="mt-6 rounded-sm border border-ink-200 bg-paper px-4 py-3 text-sm text-ink-500">
+                  <div className="mt-6 pt-4 border-t border-ink-100 text-sm text-ink-500">
                     Keep your streak clean to unlock lower platform fees and priority access.
                   </div>
-                  <div className="mt-4 rounded-sm border border-ink-200 bg-paper px-4 py-3 text-sm text-ink-500">
-                    Royalty stream: USDC {royalties.total.toFixed(2)} earned and {royalties.pending.toFixed(2)} pending
+                  <div className="mt-4 text-sm text-ink-500">
+                    Royalty stream: <span className="text-field-600 font-medium">USDC {royalties.total.toFixed(2)}</span> earned and <span className="text-field-600 font-medium">{royalties.pending.toFixed(2)}</span> pending
                     {royalties.lastPayoutAt && (
                       <span className="block text-xs text-ink-300 mt-1">
                         Last payout {new Date(royalties.lastPayoutAt).toLocaleDateString()}
@@ -846,8 +998,8 @@ export default function WorkerDashboard() {
                   <h2 className="text-lg font-medium text-ink-900 mb-4">Achievement Highlights</h2>
                   <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
                     {badgeHighlights.map((badge) => (
-                      <div key={`${badge.badgeType}-${badge.earnedAt}`} className="rounded-sm border border-ink-200 bg-paper px-4 py-3">
-                        <div className="text-sm font-semibold text-ink-900">{badge.title}</div>
+                      <div key={`${badge.badgeType}-${badge.earnedAt}`} className="bg-field-50/30 px-4 py-3 rounded-sm">
+                        <div className="text-sm font-semibold text-field-600">{badge.title}</div>
                         <div className="text-xs text-ink-500">{badge.description}</div>
                       </div>
                     ))}
@@ -1004,6 +1156,22 @@ export default function WorkerDashboard() {
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        isOpen={!!pendingClaim}
+        onClose={() => setPendingClaim(null)}
+        onConfirm={confirmClaim}
+        title="Claim task?"
+        message={
+          pendingClaim
+            ? `You'll stake ${pendingClaim.currency} ${pendingClaim.stakeAmount.toFixed(2)} for 4 hours. Stake is returned on successful submission or rejection.`
+            : ''
+        }
+        confirmLabel="Claim & stake"
+        cancelLabel="Cancel"
+        variant="default"
+        isLoading={!!claimingId}
+      />
     </div>
   );
 }

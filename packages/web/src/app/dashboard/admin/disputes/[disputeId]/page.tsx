@@ -6,6 +6,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/lib/store';
+import { useToast } from '@/components/ui';
 
 interface Artefact {
   id: string;
@@ -208,6 +209,7 @@ export default function DisputeDetailPage() {
   const params = useParams();
   const router = useRouter();
   const { token, user } = useAuthStore();
+  const toast = useToast();
   const disputeId = params.disputeId as string;
 
   const [dispute, setDispute] = useState<DisputeDetail | null>(null);
@@ -236,17 +238,8 @@ export default function DisputeDetailPage() {
     setError(null);
 
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'}/v1/admin/disputes/${disputeId}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to load dispute');
-      }
-
-      const data: DisputeDetail = await response.json();
+      api.setToken(token);
+      const data: DisputeDetail = await api.getDispute(disputeId);
       setDispute(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
@@ -269,32 +262,23 @@ export default function DisputeDetailPage() {
     setError(null);
 
     try {
-      const body: Record<string, any> = {
-        outcome,
-        reason,
+      const resolveData: Record<string, any> = {
+        resolution_type: outcome,
+        comment: reason,
       };
 
       if (outcome === 'split') {
-        body.split_percentage = splitPercentage;
+        resolveData.worker_payout_percent = splitPercentage;
       }
 
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'}/v1/admin/disputes/${disputeId}/resolve`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(body),
-      });
+      await api.resolveDispute(disputeId, resolveData);
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to resolve dispute');
-      }
-
+      toast.success('Dispute resolved');
       router.push('/dashboard/admin/disputes');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to resolve dispute');
+      const message = err instanceof Error ? err.message : 'Failed to resolve dispute';
+      setError(message);
+      toast.error('Failed to resolve dispute', message);
     } finally {
       setIsResolving(false);
     }
@@ -876,7 +860,7 @@ export default function DisputeDetailPage() {
 
                       {/* File attachment */}
                       {evidence.type !== 'text' && evidence.storage_key && (
-                        <div className="flex items-center gap-3 p-3 bg-paper rounded-sm border border-ink-200">
+                        <div className="flex items-center gap-3 p-3 bg-ink-50/60 rounded-sm">
                           <div className={`p-2 rounded-sm ${
                             evidence.type === 'image' ? 'bg-purple-100 text-purple-600' : 'bg-signal-red/10 text-signal-red'
                           }`}>

@@ -10,6 +10,10 @@ export type { CardProps, CardHeaderProps, CardBodyProps, CardFooterProps } from 
 export { Modal, ModalFooter } from './Modal';
 export type { ModalProps, ModalFooterProps } from './Modal';
 
+// Confirm Dialog
+export { ConfirmDialog } from './ConfirmDialog';
+export type { ConfirmDialogProps, ConfirmVariant } from './ConfirmDialog';
+
 // Badge
 export { Badge } from './Badge';
 export type { BadgeProps, BadgeVariant, BadgeSize } from './Badge';

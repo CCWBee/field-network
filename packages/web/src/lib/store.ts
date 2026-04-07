@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { api } from './api';
+import type { TaskRecord, SavedAddress, WorkerProfile } from './api';
 
 interface Wallet {
   id: string;
@@ -53,11 +54,11 @@ interface User {
   website: string | null;
   twitterHandle: string | null;
   onboardingCompleted: boolean;
-  savedAddresses: any[];
+  savedAddresses: SavedAddress[];
   // Wallet fields
   walletAddress?: string;
   wallets?: Wallet[];
-  workerProfile?: any;
+  workerProfile?: WorkerProfile;
   // Reputation
   stats?: UserStats | null;
   badges?: Badge[];
@@ -78,7 +79,16 @@ interface AuthState {
   devLogin: () => void;
 
   // Wallet auth (for use with useSiweAuth hook)
-  setAuth: (token: string, refreshToken: string, user: any) => void;
+  setAuth: (token: string, refreshToken: string, user: {
+    id: string;
+    email: string | null;
+    username: string | null;
+    role: string;
+    ens_name?: string | null;
+    ens_avatar_url?: string | null;
+    onboarding_completed?: boolean;
+    wallet_address?: string;
+  }) => void;
   clearAuth: () => void;
 
   logout: () => void;
@@ -191,7 +201,7 @@ export const useAuthStore = create<AuthState>()(
         });
       },
 
-      setAuth: (token: string, refreshToken: string, user: any) => {
+      setAuth: (token, refreshToken, user) => {
         api.setToken(token);
         set({
           token,
@@ -253,7 +263,7 @@ export const useAuthStore = create<AuthState>()(
               onboardingCompleted: userData.onboarding_completed ?? false,
               savedAddresses: userData.saved_addresses ?? [],
               // Wallets
-              wallets: userData.wallets?.map((w: any) => ({
+              wallets: userData.wallets?.map((w) => ({
                 id: w.id,
                 address: w.address,
                 chain: w.chain,
@@ -281,7 +291,7 @@ export const useAuthStore = create<AuthState>()(
                 walletVerified: userData.stats.wallet_verified,
                 identityVerified: userData.stats.identity_verified,
               } : null,
-              badges: userData.badges?.map((b: any) => ({
+              badges: userData.badges?.map((b) => ({
                 badgeType: b.badge_type,
                 tier: b.tier,
                 title: b.title,
@@ -306,15 +316,22 @@ export const useAuthStore = create<AuthState>()(
 );
 
 // Task store for managing tasks
+interface TaskFilters {
+  status?: string;
+  template?: string;
+  min_bounty?: number;
+  limit?: number;
+}
+
 interface TaskState {
-  tasks: any[];
-  currentTask: any | null;
+  tasks: TaskRecord[];
+  currentTask: TaskRecord | null;
   isLoading: boolean;
   error: string | null;
 
-  fetchTasks: (filters?: any) => Promise<void>;
+  fetchTasks: (filters?: TaskFilters) => Promise<void>;
   fetchTask: (taskId: string) => Promise<void>;
-  createTask: (taskData: any) => Promise<string>;
+  createTask: (taskData: Record<string, unknown>) => Promise<string>;
   publishTask: (taskId: string) => Promise<void>;
   claimTask: (taskId: string) => Promise<void>;
   clearError: () => void;

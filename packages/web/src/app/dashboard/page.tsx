@@ -74,8 +74,8 @@ export default function DashboardPage() {
                   Post tasks and pay bounties for verified observations
                 </p>
               </div>
-              <div className="w-10 h-10 border border-ink-200 rounded-sm flex items-center justify-center flex-shrink-0">
-                <svg className="w-5 h-5 text-ink-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <div className="w-10 h-10 rounded-sm bg-field-50 text-field-600 flex items-center justify-center flex-shrink-0">
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 4v16m8-8H4" />
                 </svg>
               </div>
@@ -107,8 +107,8 @@ export default function DashboardPage() {
                   Complete tasks and earn USDC for verified submissions
                 </p>
               </div>
-              <div className="w-10 h-10 border border-ink-200 rounded-sm flex items-center justify-center flex-shrink-0">
-                <svg className="w-5 h-5 text-ink-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <div className="w-10 h-10 rounded-sm bg-field-50 text-field-600 flex items-center justify-center flex-shrink-0">
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
                 </svg>
@@ -137,19 +137,19 @@ export default function DashboardPage() {
         <h3 className="text-xs font-medium uppercase tracking-wider text-ink-500 mb-4">How it works</h3>
         <div className="grid md:grid-cols-3 gap-4 text-sm">
           <div className="flex items-start space-x-3">
-            <div className="w-6 h-6 bg-field-50 border border-field-500/20 rounded-sm flex items-center justify-center flex-shrink-0">
+            <div className="w-6 h-6 bg-field-50 rounded-sm flex items-center justify-center flex-shrink-0">
               <span className="font-mono text-xs font-bold text-field-600">1</span>
             </div>
             <p className="text-ink-700"><span className="font-medium text-ink-900">Post or Browse</span> — Create tasks with bounties or find tasks near you</p>
           </div>
           <div className="flex items-start space-x-3">
-            <div className="w-6 h-6 bg-field-50 border border-field-500/20 rounded-sm flex items-center justify-center flex-shrink-0">
+            <div className="w-6 h-6 bg-field-50 rounded-sm flex items-center justify-center flex-shrink-0">
               <span className="font-mono text-xs font-bold text-field-600">2</span>
             </div>
             <p className="text-ink-700"><span className="font-medium text-ink-900">Capture & Submit</span> — Take geo-verified photos with your phone</p>
           </div>
           <div className="flex items-start space-x-3">
-            <div className="w-6 h-6 bg-field-50 border border-field-500/20 rounded-sm flex items-center justify-center flex-shrink-0">
+            <div className="w-6 h-6 bg-field-50 rounded-sm flex items-center justify-center flex-shrink-0">
               <span className="font-mono text-xs font-bold text-field-600">3</span>
             </div>
             <p className="text-ink-700"><span className="font-medium text-ink-900">Verify & Pay</span> — Automated checks + escrow release on approval</p>

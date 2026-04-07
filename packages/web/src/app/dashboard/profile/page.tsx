@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useAuthStore } from '@/lib/store';
 import { api } from '@/lib/api';
 import ReputationChart from '@/components/ReputationChart';
+import { useToast } from '@/components/ui';
 
 interface FeeTierInfo {
   current_tier: {
@@ -36,6 +37,7 @@ interface FeeHistoryEntry {
 
 export default function ProfilePage() {
   const { user, loadUser, token } = useAuthStore();
+  const toast = useToast();
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -122,8 +124,11 @@ export default function ProfilePage() {
       await loadUser();
       setSuccess('Profile updated successfully');
       setIsEditing(false);
+      toast.success('Profile saved');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to update profile');
+      const message = err instanceof Error ? err.message : 'Failed to update profile';
+      setError(message);
+      toast.error('Failed to save profile', message);
     } finally {
       setIsSaving(false);
     }
@@ -245,7 +250,7 @@ export default function ProfilePage() {
         {user?.badges?.length ? (
           <div className="mt-6 flex flex-wrap gap-3">
             {user.badges.slice(0, 4).map((badge, i) => (
-              <div key={`${badge.badgeType}-${i}`} className="flex items-center gap-2 px-3 py-2 rounded-sm bg-ink-50 text-xs text-ink-700 border border-ink-200">
+              <div key={`${badge.badgeType}-${i}`} className="flex items-center gap-2 px-3 py-2 rounded-sm bg-field-50/60 text-xs text-field-700">
                 <span className="text-field-500">*</span>
                 {badge.title}
               </div>

@@ -91,8 +91,20 @@ export default function MapPopup({
         </div>
       </div>
 
+      {/* Directions link */}
+      <div className="pt-2 border-t border-ink-100">
+        <a
+          href={`https://www.google.com/maps/dir/?api=1&destination=${task.location.lat},${task.location.lon}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-xs text-field-600 hover:text-field-700 inline-flex items-center gap-1"
+        >
+          <span aria-hidden>&#9758;</span> Directions
+        </a>
+      </div>
+
       {/* Actions */}
-      <div className="pt-2 border-t border-ink-100 flex gap-2">
+      <div className="pt-2 flex gap-2">
         {task.is_claimed ? (
           <span className="flex-1 text-center py-1.5 text-xs text-signal-amber border border-signal-amber/30 rounded-sm">
             Already claimed

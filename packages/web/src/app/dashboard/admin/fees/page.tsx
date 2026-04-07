@@ -209,19 +209,19 @@ export default function AdminFeesPage() {
             <div className="bg-paper rounded-sm p-6 border border-ink-200">
               <h2 className="text-xs uppercase tracking-wider font-semibold text-ink-500 mb-4">Fee Statistics</h2>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div className="bg-paper rounded-sm p-4 border border-ink-200">
+                <div className="p-4 bg-ink-50/40 rounded-sm">
                   <p className="text-xs uppercase tracking-wider text-ink-500">Total Platform Fees</p>
                   <p className="text-2xl font-bold font-mono tabular-nums text-field-600">${stats.total_platform_fees.toFixed(2)}</p>
                 </div>
-                <div className="bg-paper rounded-sm p-4 border border-ink-200">
+                <div className="p-4 bg-ink-50/40 rounded-sm">
                   <p className="text-xs uppercase tracking-wider text-ink-500">Total Arbitration Fees</p>
                   <p className="text-2xl font-bold font-mono tabular-nums text-field-600">${stats.total_arbitration_fees.toFixed(2)}</p>
                 </div>
-                <div className="bg-paper rounded-sm p-4 border border-ink-200">
+                <div className="p-4 bg-ink-50/40 rounded-sm">
                   <p className="text-xs uppercase tracking-wider text-ink-500">Combined Total</p>
                   <p className="text-2xl font-bold font-mono tabular-nums text-field-600">${stats.total_fees.toFixed(2)}</p>
                 </div>
-                <div className="bg-paper rounded-sm p-4 border border-ink-200">
+                <div className="p-4 bg-ink-50/40 rounded-sm">
                   <p className="text-xs uppercase tracking-wider text-ink-500">Transaction Count</p>
                   <p className="text-2xl font-bold font-mono tabular-nums text-field-600">{stats.transaction_count}</p>
                 </div>
@@ -250,11 +250,11 @@ export default function AdminFeesPage() {
             {platformConfigs.length === 0 ? (
               <p className="text-ink-500">No platform fee tiers configured. Click "Seed Default Configs" to create them.</p>
             ) : (
-              <div className="space-y-4">
+              <div className="-mx-6 divide-y divide-ink-100 border-t border-ink-100">
                 {platformConfigs.map((config) => (
                   <div
                     key={config.id}
-                    className={`p-4 rounded-sm border ${config.is_active ? 'bg-white border-ink-200' : 'bg-paper-warm border-ink-100'}`}
+                    className={`px-6 py-4 ${config.is_active ? '' : 'bg-ink-50/40'}`}
                   >
                     {editingConfig === config.id ? (
                       <div className="space-y-4">
@@ -367,7 +367,7 @@ export default function AdminFeesPage() {
           <div className="bg-paper rounded-sm p-6 border border-ink-200">
             <h2 className="text-xs uppercase tracking-wider font-semibold text-ink-500 mb-4">Arbitration Fee</h2>
             {arbitrationConfig ? (
-              <div className="p-4 bg-white rounded-sm border border-ink-200">
+              <div className="p-4 bg-ink-50/40 rounded-sm">
                 {editingConfig === arbitrationConfig.id ? (
                   <div className="space-y-4">
                     <div className="grid grid-cols-3 gap-4">

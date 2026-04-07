@@ -326,25 +326,27 @@ export default function RequesterDashboard() {
                   </div>
                 </div>
               </div>
-              <div className="mt-6 rounded-sm border border-ink-200 bg-paper px-4 py-3 text-sm text-ink-500">
-                Reliability score: {user?.stats?.reliabilityScore?.toFixed(0) || 0}% - Repeat workers: {stats.repeatWorkers}
+              <div className="mt-6 pt-4 border-t border-ink-100 text-sm text-ink-500">
+                Reliability score: <span className="text-field-600 font-medium">{user?.stats?.reliabilityScore?.toFixed(0) || 0}%</span> - Repeat workers: <span className="text-field-600 font-medium">{stats.repeatWorkers}</span>
               </div>
             </div>
 
             {/* Pending Reviews */}
-            <div className="bg-paper rounded-sm border border-ink-200 p-6">
-              <h2 className="text-lg font-medium text-ink-900 mb-4">Pending Reviews</h2>
+            <div className="bg-paper rounded-sm border border-ink-200">
+              <div className="p-6 pb-4">
+                <h2 className="text-lg font-medium text-ink-900">Pending Reviews</h2>
+              </div>
               {statsLoading ? (
                 <div className="flex justify-center py-8">
                   <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-field-500"></div>
                 </div>
               ) : requesterStats?.pending_reviews && requesterStats.pending_reviews.length > 0 ? (
-                <div className="space-y-3">
+                <div className="divide-y divide-ink-100">
                   {requesterStats.pending_reviews.slice(0, 5).map((review) => (
                     <Link
                       key={review.submission_id}
                       href={`/dashboard/requester/tasks/${review.task_id}`}
-                      className="block rounded-sm border border-ink-200 bg-paper px-4 py-3 hover:border-field-500/30 transition-colors"
+                      className="block px-6 py-3 hover:bg-ink-50 transition-colors"
                     >
                       <div className="flex items-center justify-between">
                         <div>
@@ -360,13 +362,13 @@ export default function RequesterDashboard() {
                     </Link>
                   ))}
                   {requesterStats.pending_reviews.length > 5 && (
-                    <p className="text-sm text-ink-300 text-center mt-2">
+                    <p className="text-sm text-ink-300 text-center py-3">
                       +{requesterStats.pending_reviews.length - 5} more submissions
                     </p>
                   )}
                 </div>
               ) : (
-                <div className="rounded-sm border border-dashed border-ink-200 p-4 text-sm text-ink-500 text-center">
+                <div className="px-6 pb-6 text-sm text-ink-500 text-center">
                   No pending submissions to review
                 </div>
               )}
@@ -498,12 +500,12 @@ export default function RequesterDashboard() {
             </div>
             <div className="mt-6 space-y-3">
               {inventory.length === 0 ? (
-                <div className="rounded-sm border border-dashed border-ink-200 p-4 text-sm text-ink-500">
+                <div className="text-sm text-ink-500">
                   Curated resale inventory will appear here once tasks pass the exclusivity window.
                 </div>
               ) : (
                 inventory.slice(0, 3).map((item) => (
-                  <div key={item.task_id} className="rounded-sm border border-ink-200 bg-paper px-4 py-3">
+                  <div key={item.task_id} className="px-4 py-3 -mx-4 hover:bg-ink-50 transition-colors border-t border-ink-100">
                     <div className="flex items-center justify-between">
                       <div className="text-sm font-medium text-ink-900">{item.title}</div>
                       <span className={`text-xs px-2 py-1 rounded-sm border ${

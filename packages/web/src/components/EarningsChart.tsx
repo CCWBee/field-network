@@ -44,7 +44,7 @@ const CustomTooltip = ({
   currency,
 }: {
   active?: boolean;
-  payload?: any[];
+  payload?: Array<{ value: number; name: string; dataKey: string }>;
   label?: string;
   currency: string;
 }) => {
@@ -127,7 +127,7 @@ export default function EarningsChart({
               axisLine={false}
               tickLine={false}
               tick={{ fill: '#64748b', fontSize: 12 }}
-              tickFormatter={(value: any) => formatCurrency(value, '')}
+              tickFormatter={(value: number) => formatCurrency(value, '')}
               width={50}
             />
             <Tooltip content={<CustomTooltip currency={currency} />} />
@@ -157,7 +157,7 @@ export default function EarningsChart({
               axisLine={false}
               tickLine={false}
               tick={{ fill: '#64748b', fontSize: 12 }}
-              tickFormatter={(value: any) => formatCurrency(value, '')}
+              tickFormatter={(value: number) => formatCurrency(value, '')}
               width={50}
             />
             <Tooltip content={<CustomTooltip currency={currency} />} />

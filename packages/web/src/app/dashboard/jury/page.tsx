@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
+import { api } from '@/lib/api';
 import { useAuthStore } from '@/lib/store';
 
 interface JuryDispute {
@@ -27,17 +28,8 @@ export default function JuryPoolPage() {
     setError(null);
 
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'}/v1/disputes/jury-pool`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to load jury pool');
-      }
-
-      const data = await response.json();
+      api.setToken(token);
+      const data = await api.getJuryPool();
       setDisputes(data.disputes);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');

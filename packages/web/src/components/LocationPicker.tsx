@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { NominatimResult } from '@/lib/api';
 import {
   MapContainer as LeafletMapContainer,
   TileLayer as LeafletTileLayer,
@@ -85,7 +86,7 @@ function GeocodingSearch({
   onSelect: (lat: number, lon: number, displayName: string) => void;
 }) {
   const [query, setQuery] = useState('');
-  const [results, setResults] = useState<any[]>([]);
+  const [results, setResults] = useState<NominatimResult[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [showResults, setShowResults] = useState(false);
   const searchTimeout = useRef<NodeJS.Timeout | null>(null);
@@ -129,7 +130,7 @@ function GeocodingSearch({
     }, 300);
   };
 
-  const handleSelectResult = (result: any) => {
+  const handleSelectResult = (result: NominatimResult) => {
     const lat = parseFloat(result.lat);
     const lon = parseFloat(result.lon);
     onSelect(lat, lon, result.display_name);

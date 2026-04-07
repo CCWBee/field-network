@@ -3,9 +3,11 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { api } from '@/lib/api';
 import { useAuthStore } from '@/lib/store';
 import { EvidenceTimeline } from '@/components/disputes/EvidenceTimeline';
 import { AutoScoreBreakdown } from '@/components/disputes/AutoScoreBreakdown';
+import { useToast } from '@/components/ui';
 
 interface Artefact {
   id: string;
@@ -94,6 +96,7 @@ export default function JuryVotePage() {
   const params = useParams();
   const router = useRouter();
   const { token, user } = useAuthStore();
+  const toast = useToast();
   const disputeId = params.disputeId as string;
 
   const [dispute, setDispute] = useState<DisputeDetail | null>(null);
@@ -113,22 +116,10 @@ export default function JuryVotePage() {
     setError(null);
 
     try {
-      const [disputeRes, juryRes] = await Promise.all([
-        fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'}/v1/disputes/${disputeId}`, {
-          headers: { Authorization: `Bearer ${token}` },
-        }),
-        fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'}/v1/disputes/${disputeId}/jury-status`, {
-          headers: { Authorization: `Bearer ${token}` },
-        }),
-      ]);
-
-      if (!disputeRes.ok || !juryRes.ok) {
-        throw new Error('Failed to load dispute');
-      }
-
+      api.setToken(token);
       const [disputeData, juryData] = await Promise.all([
-        disputeRes.json(),
-        juryRes.json(),
+        api.getDispute(disputeId),
+        api.getJuryStatus(disputeId),
       ]);
 
       setDispute(disputeData);
@@ -158,27 +149,18 @@ export default function JuryVotePage() {
     setError(null);
 
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'}/v1/disputes/${disputeId}/vote`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          vote,
-          reason: reason || undefined,
-        }),
+      await api.castJuryVote(disputeId, {
+        vote,
+        reason: reason || undefined,
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to submit vote');
-      }
-
+      toast.success('Vote recorded', 'Thank you for your service');
       // Reload to show updated status
       await loadDispute();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to submit vote');
+      const message = err instanceof Error ? err.message : 'Failed to submit vote';
+      setError(message);
+      toast.error('Failed to submit vote', message);
     } finally {
       setIsVoting(false);
     }

@@ -1,9 +1,146 @@
-import type { TaskStatus, SubmissionStatus, UserRole } from '@field-network/shared';
+import type { TaskStatus, SubmissionStatus, UserRole, GeoPhotoTask } from '@field-network/shared';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
 
 // Re-export shared types for consumers
-export type { TaskStatus, SubmissionStatus, UserRole };
+export type { TaskStatus, SubmissionStatus, UserRole, GeoPhotoTask };
+
+// ── Response interfaces ─────────────────────────────────────────────
+
+/** Saved address in user profile */
+export interface SavedAddress {
+  label: string;
+  address: string;
+  lat?: number;
+  lon?: number;
+}
+
+/** Worker profile summary */
+export interface WorkerProfile {
+  specialties?: string[];
+  availability?: string;
+  preferred_radius_km?: number;
+  equipment?: string[];
+}
+
+/** Task record returned from the API */
+export interface TaskRecord {
+  id: string;
+  title: string;
+  instructions: string;
+  template: string;
+  status: TaskStatus;
+  location: { lat: number; lon: number; radius_m: number };
+  time_window: { start_iso: string; end_iso: string };
+  requirements: Record<string, unknown>;
+  bounty: { amount: number; currency: string };
+  rights: { exclusivity_days: number; allow_resale_after_exclusivity: boolean };
+  policy?: Record<string, unknown>;
+  assurance: { mode: string; quorum?: number | null };
+  requester_id: string;
+  requester?: { id: string; username: string | null; avatar_url?: string | null };
+  worker?: { id: string; username: string | null; avatar_url?: string | null };
+  created_at: string;
+  published_at: string | null;
+  accepted_at?: string | null;
+  [key: string]: unknown;
+}
+
+/** Submission record returned from the API */
+export interface SubmissionRecord {
+  id: string;
+  task_id: string;
+  worker_id: string;
+  status: SubmissionStatus;
+  proof_bundle_hash?: string | null;
+  verification_score?: number | null;
+  capture_claims?: {
+    declared_captured_at?: string;
+    declared_location?: { lat: number; lon: number };
+    declared_bearing?: number;
+  };
+  artefacts?: Array<{
+    id: string;
+    type: string;
+    storage_key: string;
+    sha256?: string;
+    dimensions?: { width: number; height: number };
+  }>;
+  created_at: string;
+  finalised_at?: string | null;
+  [key: string]: unknown;
+}
+
+/** Claim record returned from the API */
+export interface ClaimRecord {
+  id: string;
+  task_id: string;
+  worker_id: string;
+  status: string;
+  claimed_at: string;
+  claimed_until: string;
+  task?: TaskRecord;
+}
+
+/** Dispute record returned from the API */
+export interface DisputeRecord {
+  id: string;
+  submission_id: string;
+  task_id: string;
+  status: string;
+  reason: string;
+  resolution_type?: string | null;
+  worker_payout_percent?: number | null;
+  comment?: string | null;
+  currentTier?: number;
+  tierHistory?: Array<{ tier: number; at: string; reason?: string }>;
+  autoScoreResult?: Record<string, unknown>;
+  created_at: string;
+  resolved_at?: string | null;
+  [key: string]: unknown;
+}
+
+/** Jury status for a dispute */
+export interface JuryStatus {
+  dispute_id: string;
+  tier: number;
+  total_jurors: number;
+  votes_cast: number;
+  deadline: string | null;
+  votes?: Array<{
+    juror_id: string;
+    vote: string;
+    weight: number;
+    reason?: string | null;
+    voted_at: string;
+  }>;
+  [key: string]: unknown;
+}
+
+/** Badge tier definition */
+export interface BadgeTierDef {
+  tier: string;
+  title: string;
+  description: string;
+  threshold: number;
+}
+
+/** Nominatim geocoding result */
+export interface NominatimResult {
+  place_id: number;
+  lat: string;
+  lon: string;
+  display_name: string;
+  type: string;
+  importance: number;
+}
+
+/** Capture claims for submission finalisation */
+export interface CaptureClaims {
+  declared_captured_at?: string;
+  declared_location?: { lat: number; lon: number };
+  declared_bearing?: number;
+}
 
 // Storage keys for tokens
 const ACCESS_TOKEN_KEY = 'field_access_token';
@@ -276,7 +413,7 @@ class ApiClient {
       website: string | null;
       twitter_handle: string | null;
       onboarding_completed: boolean;
-      saved_addresses: any[];
+      saved_addresses: SavedAddress[];
       primary_wallet: string | null;
       wallets: Array<{
         id: string;
@@ -286,7 +423,7 @@ class ApiClient {
         is_primary: boolean;
         label: string | null;
       }>;
-      workerProfile?: any;
+      workerProfile?: WorkerProfile;
       stats?: {
         tasks_posted: number;
         tasks_completed: number;
@@ -438,16 +575,16 @@ class ApiClient {
         if (value !== undefined) params.append(key, String(value));
       });
     }
-    return this.request<{ tasks: any[]; next_cursor: string | null }>(
+    return this.request<{ tasks: TaskRecord[]; next_cursor: string | null }>(
       `/v1/tasks?${params}`
     );
   }
 
   async getTask(taskId: string) {
-    return this.request<any>(`/v1/tasks/${taskId}`);
+    return this.request<TaskRecord>(`/v1/tasks/${taskId}`);
   }
 
-  async createTask(taskData: any) {
+  async createTask(taskData: Partial<GeoPhotoTask> & Record<string, unknown>) {
     return this.request<{ id: string; status: string; created_at: string }>(
       '/v1/tasks',
       {
@@ -476,7 +613,7 @@ class ApiClient {
 
   // Claim endpoints
   async getMyClaims() {
-    return this.request<{ claims: any[] }>('/v1/claims');
+    return this.request<{ claims: ClaimRecord[] }>('/v1/claims');
   }
 
   async claimTask(taskId: string) {
@@ -520,7 +657,67 @@ class ApiClient {
     });
   }
 
-  async finaliseSubmission(submissionId: string, captureClaims?: any) {
+  async uploadArtefact(
+    uploadUrl: string,
+    file: File,
+    headers: Record<string, string> = {},
+    onProgress?: (percent: number) => void
+  ): Promise<void> {
+    return new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+
+      xhr.upload.addEventListener('progress', (event) => {
+        if (event.lengthComputable && onProgress) {
+          onProgress(Math.round((event.loaded / event.total) * 100));
+        }
+      });
+
+      xhr.addEventListener('load', () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          resolve();
+        } else {
+          reject(new Error(`Upload failed: ${xhr.status} ${xhr.statusText}`));
+        }
+      });
+
+      xhr.addEventListener('error', () => reject(new Error('Network error during upload')));
+      xhr.addEventListener('abort', () => reject(new Error('Upload aborted')));
+
+      const formData = new FormData();
+      formData.append('file', file);
+
+      xhr.open('PUT', uploadUrl);
+      // Don't set Content-Type - browser sets it with multipart boundary
+      for (const [key, value] of Object.entries(headers)) {
+        if (key.toLowerCase() !== 'content-type') {
+          xhr.setRequestHeader(key, value);
+        }
+      }
+      xhr.send(formData);
+    });
+  }
+
+  async updateWorkerProfile(data: {
+    displayName?: string;
+    radiusKm?: number;
+    skills?: string[];
+    kit?: string[];
+  }) {
+    return this.request<{
+      display_name: string;
+      radius_km: number;
+      skills: string[];
+      kit: string[];
+      rating: number;
+      completed_count: number;
+      strikes: number;
+    }>('/v1/profile/worker-profile', {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async finaliseSubmission(submissionId: string, captureClaims?: CaptureClaims) {
     return this.request<{
       submission_id: string;
       status: string;
@@ -533,7 +730,27 @@ class ApiClient {
   }
 
   async getSubmission(submissionId: string) {
-    return this.request<any>(`/v1/submissions/${submissionId}`);
+    return this.request<SubmissionRecord>(`/v1/submissions/${submissionId}`);
+  }
+
+  async getArtefactDownloadUrl(artefactId: string, expiresIn = 3600) {
+    return this.request<{ url: string; expires_at: string }>(
+      `/v1/artefacts/${artefactId}/url?expires_in=${expiresIn}`
+    );
+  }
+
+  async getArtefactMetadata(artefactId: string) {
+    return this.request<{
+      id: string;
+      type: string;
+      sha256: string;
+      size_bytes: number;
+      dimensions: { width: number; height: number };
+      location: { lat: number; lon: number; bearing_deg?: number } | null;
+      captured_at?: string;
+      created_at: string;
+      submission_id: string;
+    }>(`/v1/artefacts/${artefactId}`);
   }
 
   async acceptSubmission(submissionId: string, comment?: string) {
@@ -624,8 +841,25 @@ class ApiClient {
       website: string | null;
       twitter_handle: string | null;
       wallet_address: string | null;
-      stats: any;
-      badges: any[];
+      stats: {
+        tasks_completed: number;
+        tasks_posted: number;
+        tasks_accepted: number;
+        reliability_score: number;
+        dispute_rate: number;
+        current_streak: number;
+        longest_streak: number;
+        wallet_verified: boolean;
+        identity_verified: boolean;
+      } | null;
+      badges: Array<{
+        badge_type: string;
+        tier: string;
+        title: string;
+        description: string;
+        icon_url: string | null;
+        earned_at: string;
+      }>;
       member_since: string;
     }>(`/v1/profile/${encodeURIComponent(usernameOrId)}`);
   }
@@ -697,7 +931,7 @@ class ApiClient {
       });
     }
     return this.request<{
-      disputes: any[];
+      disputes: DisputeRecord[];
       total: number;
       limit: number;
       offset: number;
@@ -705,7 +939,7 @@ class ApiClient {
   }
 
   async getDispute(disputeId: string) {
-    return this.request<any>(`/v1/disputes/${disputeId}`);
+    return this.request<DisputeRecord>(`/v1/disputes/${disputeId}`);
   }
 
   async resolveDispute(disputeId: string, data: {
@@ -757,7 +991,7 @@ class ApiClient {
         description: string;
         category: string;
         icon_url: string | null;
-        tiers: any[];
+        tiers: BadgeTierDef[];
       }>;
     }>('/v1/badges');
   }
@@ -1033,7 +1267,7 @@ class ApiClient {
         type: string;
         title: string;
         body: string;
-        data: Record<string, any>;
+        data: Record<string, unknown>;
         read: boolean;
         created_at: string;
       }>;
@@ -1091,7 +1325,7 @@ class ApiClient {
         reason: string;
         task_id: string | null;
         badge_type: string | null;
-        metadata: Record<string, any>;
+        metadata: Record<string, unknown>;
         created_at: string;
       }>;
       total: number;
@@ -1249,6 +1483,62 @@ class ApiClient {
       role: string;
       created_at: string;
     }>(`/v1/users/${encodeURIComponent(usernameOrId)}/reviews`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  // Stake info
+  async getStakeInfo(taskId: string) {
+    return this.request<{
+      task_id: string;
+      bounty_amount: number;
+      currency: string;
+      stake_percentage: number;
+      stake_amount: number;
+      min_stake: number;
+      max_stake: number;
+    }>(`/v1/tasks/${taskId}/stake-info`);
+  }
+
+  // Admin task endpoints
+  async getAdminTasks(params?: { status?: string; page?: number; limit?: number }) {
+    const searchParams = new URLSearchParams();
+    if (params) {
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined && value !== null && value !== '') {
+          searchParams.append(key, String(value));
+        }
+      });
+    }
+    return this.request<{
+      tasks: TaskRecord[];
+      total: number;
+      limit: number;
+      offset: number;
+    }>(`/v1/admin/tasks?${searchParams.toString()}`);
+  }
+
+  async cancelAdminTask(taskId: string, reason?: string) {
+    return this.request<{ id: string; status: string }>(`/v1/admin/tasks/${taskId}/cancel`, {
+      method: 'POST',
+      body: JSON.stringify({ reason }),
+    });
+  }
+
+  // Jury/dispute endpoints
+  async getJuryPool() {
+    return this.request<{
+      disputes: DisputeRecord[];
+    }>('/v1/disputes/jury-pool');
+  }
+
+  async getJuryStatus(disputeId: string) {
+    return this.request<JuryStatus>(`/v1/disputes/${disputeId}/jury-status`);
+  }
+
+  async castJuryVote(disputeId: string, data: { vote: string; reason?: string }) {
+    return this.request<{ vote_id: string; dispute_id: string; vote: string }>(`/v1/disputes/${disputeId}/vote`, {
       method: 'POST',
       body: JSON.stringify(data),
     });

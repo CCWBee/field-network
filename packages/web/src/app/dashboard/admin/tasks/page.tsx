@@ -3,7 +3,9 @@
 import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { api } from '@/lib/api';
 import { useAuthStore } from '@/lib/store';
+import { useToast, ConfirmDialog } from '@/components/ui';
 
 interface Task {
   id: string;
@@ -46,12 +48,14 @@ export default function AdminTasksPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { token, user } = useAuthStore();
+  const toast = useToast();
 
   const [tasks, setTasks] = useState<Task[]>([]);
   const [total, setTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [cancellingTaskId, setCancellingTaskId] = useState<string | null>(null);
+  const [confirmCancelId, setConfirmCancelId] = useState<string | null>(null);
 
   // Filters
   const [statusFilter, setStatusFilter] = useState(searchParams.get('status') || 'all');
@@ -72,28 +76,13 @@ export default function AdminTasksPage() {
     setError(null);
 
     try {
-      const offset = (page - 1) * limit;
+      api.setToken(token);
 
-      const params = new URLSearchParams({
-        limit: limit.toString(),
-        offset: offset.toString(),
+      const data: TasksResponse = await api.getAdminTasks({
+        status: statusFilter !== 'all' ? statusFilter : undefined,
+        limit,
+        page,
       });
-
-      if (statusFilter !== 'all') {
-        params.set('status', statusFilter);
-      }
-
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'}/v1/admin/tasks?${params}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to load tasks');
-      }
-
-      const data: TasksResponse = await response.json();
       setTasks(data.tasks);
       setTotal(data.total);
     } catch (err) {
@@ -117,33 +106,25 @@ export default function AdminTasksPage() {
     router.replace(`/dashboard/admin/tasks${queryString ? `?${queryString}` : ''}`, { scroll: false });
   }, [statusFilter, page, router]);
 
-  const handleCancelTask = async (taskId: string) => {
-    if (!confirm('Are you sure you want to cancel this task? This will refund the escrow to the requester.')) {
-      return;
-    }
+  const handleCancelTask = async () => {
+    const taskId = confirmCancelId;
+    if (!taskId) return;
 
     setCancellingTaskId(taskId);
 
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'}/v1/admin/tasks/${taskId}/cancel`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ reason: 'Admin cancellation' }),
-      });
+      await api.cancelAdminTask(taskId, 'Admin cancellation');
 
-      if (!response.ok) {
-        throw new Error('Failed to cancel task');
-      }
-
+      toast.success('Task cancelled');
       // Reload tasks
       loadTasks();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to cancel task');
+      const message = err instanceof Error ? err.message : 'Failed to cancel task';
+      setError(message);
+      toast.error('Failed to cancel task', message);
     } finally {
       setCancellingTaskId(null);
+      setConfirmCancelId(null);
     }
   };
 
@@ -318,7 +299,7 @@ export default function AdminTasksPage() {
                       </Link>
                       {!['cancelled', 'accepted'].includes(task.status) && (
                         <button
-                          onClick={() => handleCancelTask(task.id)}
+                          onClick={() => setConfirmCancelId(task.id)}
                           disabled={cancellingTaskId === task.id}
                           className="text-signal-red hover:text-signal-red/80 text-sm font-medium disabled:opacity-50"
                         >
@@ -389,6 +370,18 @@ export default function AdminTasksPage() {
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        isOpen={!!confirmCancelId}
+        onClose={() => setConfirmCancelId(null)}
+        onConfirm={handleCancelTask}
+        title="Cancel task as admin?"
+        message="The bounty will be refunded to the requester and this cannot be undone."
+        confirmLabel="Cancel task"
+        cancelLabel="Keep task"
+        variant="danger"
+        isLoading={!!cancellingTaskId}
+      />
     </div>
   );
 }

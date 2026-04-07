@@ -143,7 +143,19 @@ body {
   }
 
   .divider {
-    @apply border-t border-ink-100;
+    @apply my-6 border-t border-ink-100;
+  }
+
+  .list-item {
+    @apply px-4 py-3 hover:bg-ink-50 transition-colors;
+  }
+
+  .stat-label {
+    @apply text-xs uppercase tracking-wider text-ink-500;
+  }
+
+  .stat-value {
+    @apply font-mono text-2xl font-bold text-ink-900;
   }
 
   .ease-field {

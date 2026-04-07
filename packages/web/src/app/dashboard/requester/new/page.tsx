@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/lib/store';
+import { useToast, ConfirmDialog } from '@/components/ui';
+import BearingInput from '@/components/BearingInput';
 
 // Dynamic import for LocationPicker to avoid SSR issues with Leaflet
 const LocationPicker = dynamic(() => import('@/components/LocationPicker'), { ssr: false });
@@ -43,11 +45,13 @@ interface FeePreview {
 export default function CreateTaskPage() {
   const router = useRouter();
   const { token } = useAuthStore();
+  const toast = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [step, setStep] = useState(1);
   const [feePreview, setFeePreview] = useState<FeePreview | null>(null);
   const [feeLoading, setFeeLoading] = useState(false);
+  const [showPublishConfirm, setShowPublishConfirm] = useState(false);
 
   // Get default dates once at initialization
   const defaultDates = getDefaultDates();
@@ -76,9 +80,27 @@ export default function CreateTaskPage() {
     safetyNotes: 'Do not trespass. Photos must be from public land.',
   });
 
-  const updateForm = (field: string, value: any) => {
+  const updateForm = (field: string, value: string | number | boolean) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
+
+  // Try to get the user's location on mount, falling back to London defaults
+  useEffect(() => {
+    if (typeof navigator !== 'undefined' && navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          setFormData(prev => ({
+            ...prev,
+            lat: position.coords.latitude,
+            lon: position.coords.longitude,
+          }));
+        },
+        () => {
+          // Permission denied or error — keep London fallback
+        }
+      );
+    }
+  }, []);
 
   // Debounced fee preview fetch
   const fetchFeePreview = useCallback(async (amount: number) => {
@@ -121,6 +143,40 @@ export default function CreateTaskPage() {
       setError('Instructions must be at least 10 characters');
       setIsLoading(false);
       setStep(1);
+      return;
+    }
+    if (formData.bountyAmount <= 0) {
+      setError('Bounty amount must be greater than 0');
+      setIsLoading(false);
+      setStep(4);
+      return;
+    }
+    if (formData.radius_m < 1 || formData.radius_m > 10000) {
+      setError('Radius must be between 1 and 10,000 metres');
+      setIsLoading(false);
+      setStep(2);
+      return;
+    }
+    if (formData.photoCount < 1) {
+      setError('At least 1 photo is required');
+      setIsLoading(false);
+      setStep(3);
+      return;
+    }
+    if (formData.startDate && formData.endDate) {
+      const start = new Date(`${formData.startDate}T${formData.startTime}:00Z`);
+      const end = new Date(`${formData.endDate}T${formData.endTime}:00Z`);
+      if (end <= start) {
+        setError('End date/time must be after start date/time');
+        setIsLoading(false);
+        setStep(2);
+        return;
+      }
+    }
+    if (formData.bearingRequired && (formData.bearingTolerance < 1 || formData.bearingTolerance > 180)) {
+      setError('Bearing tolerance must be between 1 and 180 degrees');
+      setIsLoading(false);
+      setStep(3);
       return;
     }
 
@@ -179,14 +235,35 @@ export default function CreateTaskPage() {
 
       if (publish) {
         await api.publishTask(result.id);
+        toast.success('Task published', 'Your task is now live on the marketplace');
+      } else {
+        toast.success('Draft saved');
       }
 
       router.push('/dashboard/requester');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to create task');
+      const message = err instanceof Error ? err.message : 'Failed to create task';
+      setError(message);
+      toast.error(publish ? 'Failed to publish' : 'Failed to save draft', message);
     } finally {
       setIsLoading(false);
+      setShowPublishConfirm(false);
     }
+  };
+
+  const requestPublish = () => {
+    // Lightweight pre-check; full validation runs in handleSubmit too
+    if (!formData.title || formData.title.length < 5) {
+      setError('Title must be at least 5 characters');
+      setStep(1);
+      return;
+    }
+    if (formData.bountyAmount <= 0) {
+      setError('Bounty amount must be greater than 0');
+      setStep(4);
+      return;
+    }
+    setShowPublishConfirm(true);
   };
 
   return (
@@ -362,19 +439,15 @@ export default function CreateTaskPage() {
               </label>
             </div>
             {formData.bearingRequired && (
-              <div className="grid grid-cols-2 gap-4 ml-6">
-                <div>
-                  <label className="block text-xs uppercase tracking-wider text-ink-500">Target Bearing (degrees)</label>
-                  <input
-                    type="number"
-                    min="0"
-                    max="360"
-                    value={formData.bearingTarget}
-                    onChange={(e) => updateForm('bearingTarget', parseInt(e.target.value))}
-                    className="mt-1 block w-full px-3 py-2 border border-ink-200 rounded-sm"
-                  />
-                </div>
-                <div>
+              <div className="flex flex-col sm:flex-row gap-6 ml-0 sm:ml-6 items-center sm:items-start">
+                <BearingInput
+                  label="Target Bearing"
+                  value={formData.bearingTarget}
+                  onChange={(deg) => updateForm('bearingTarget', deg)}
+                  tolerance={formData.bearingTolerance}
+                  size={180}
+                />
+                <div className="w-full sm:w-auto">
                   <label className="block text-xs uppercase tracking-wider text-ink-500">Tolerance (degrees)</label>
                   <input
                     type="number"
@@ -382,8 +455,9 @@ export default function CreateTaskPage() {
                     max="180"
                     value={formData.bearingTolerance}
                     onChange={(e) => updateForm('bearingTolerance', parseInt(e.target.value))}
-                    className="mt-1 block w-full px-3 py-2 border border-ink-200 rounded-sm"
+                    className="mt-1 block w-full sm:w-32 px-3 py-2 border border-ink-200 rounded-sm"
                   />
+                  <p className="mt-1 text-xs text-ink-500">Acceptable +/- range shown as the teal cone.</p>
                 </div>
               </div>
             )}
@@ -545,7 +619,7 @@ export default function CreateTaskPage() {
                 Save as Draft
               </button>
               <button
-                onClick={() => handleSubmit(true)}
+                onClick={requestPublish}
                 disabled={isLoading}
                 className="px-4 py-2 bg-field-500 text-white rounded-sm hover:bg-field-600 disabled:opacity-50"
               >
@@ -555,6 +629,36 @@ export default function CreateTaskPage() {
           )}
         </div>
       </div>
+
+      <ConfirmDialog
+        isOpen={showPublishConfirm}
+        onClose={() => setShowPublishConfirm(false)}
+        onConfirm={() => handleSubmit(true)}
+        title="Publish task?"
+        message={
+          <div className="space-y-2">
+            <p>
+              This will fund the escrow and make the task visible to workers. <strong>This cannot be undone.</strong>
+            </p>
+            <div className="bg-ink-50 p-3 rounded-sm border border-ink-200 text-xs space-y-1">
+              <div className="flex justify-between">
+                <span className="text-ink-500">Worker Bounty</span>
+                <span className="font-mono tabular-nums text-ink-900">{formData.currency} {formData.bountyAmount.toFixed(2)}</span>
+              </div>
+              {feePreview && (
+                <div className="flex justify-between font-medium pt-1 border-t border-ink-200">
+                  <span className="text-ink-700">Total Cost</span>
+                  <span className="font-mono tabular-nums text-field-600">{formData.currency} {feePreview.total_cost.toFixed(2)}</span>
+                </div>
+              )}
+            </div>
+          </div>
+        }
+        confirmLabel="Publish & fund escrow"
+        cancelLabel="Cancel"
+        variant="default"
+        isLoading={isLoading}
+      />
     </div>
   );
 }

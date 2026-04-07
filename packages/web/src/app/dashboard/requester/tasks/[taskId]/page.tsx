@@ -8,6 +8,8 @@ import { api } from '@/lib/api';
 import { useAuthStore } from '@/lib/store';
 import PublicProfileCard from '@/components/PublicProfileCard';
 import ReviewSubmitForm from '@/components/ReviewSubmitForm';
+import SubmissionReview from '@/components/SubmissionReview';
+import { useToast, ConfirmDialog } from '@/components/ui';
 
 // Dynamic import for TaskDetailMap to avoid SSR issues with Leaflet
 const TaskDetailMap = dynamic(() => import('@/components/TaskDetailMap'), { ssr: false });
@@ -29,12 +31,27 @@ export default function TaskDetailPage() {
   const params = useParams();
   const router = useRouter();
   const { token } = useAuthStore();
+  const toast = useToast();
   const [task, setTask] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
   const [error, setError] = useState('');
   const [showReviewForm, setShowReviewForm] = useState<string | null>(null); // worker ID to review
   const [reviewedWorkers, setReviewedWorkers] = useState<Set<string>>(new Set());
+  const [confirmCancel, setConfirmCancel] = useState(false);
+  const [acceptingSubId, setAcceptingSubId] = useState<string | null>(null);
+  const [rejectingSubId, setRejectingSubId] = useState<string | null>(null);
+  const [rejectReason, setRejectReason] = useState('');
+  const [expandedSubs, setExpandedSubs] = useState<Set<string>>(new Set());
+
+  const toggleExpanded = (id: string) => {
+    setExpandedSubs((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
 
   useEffect(() => {
     const fetchTask = async () => {
@@ -69,45 +86,58 @@ export default function TaskDetailPage() {
   };
 
   const handleCancel = async () => {
-    if (!confirm('Are you sure you want to cancel this task?')) return;
     setActionLoading(true);
     try {
       api.setToken(token);
       await api.cancelTask(task.id);
+      toast.success('Task cancelled', 'Bounty refunded to your balance');
+      setConfirmCancel(false);
       router.push('/dashboard/requester');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to cancel');
+      const message = err instanceof Error ? err.message : 'Failed to cancel';
+      setError(message);
+      toast.error('Failed to cancel task', message);
       setActionLoading(false);
+      setConfirmCancel(false);
     }
   };
 
-  const handleAcceptSubmission = async (submissionId: string) => {
+  const handleAcceptSubmission = async () => {
+    if (!acceptingSubId) return;
     setActionLoading(true);
     try {
       api.setToken(token);
-      await api.acceptSubmission(submissionId);
+      await api.acceptSubmission(acceptingSubId);
       const updated = await api.getTask(task.id);
       setTask(updated);
+      toast.success('Submission accepted', 'Funds released to worker');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to accept');
+      const message = err instanceof Error ? err.message : 'Failed to accept';
+      setError(message);
+      toast.error('Failed to accept submission', message);
     } finally {
       setActionLoading(false);
+      setAcceptingSubId(null);
     }
   };
 
-  const handleRejectSubmission = async (submissionId: string) => {
-    const reason = prompt('Rejection reason (required):');
-    if (!reason) return;
+  const handleRejectSubmission = async () => {
+    if (!rejectingSubId || !rejectReason.trim()) return;
     setActionLoading(true);
     try {
       api.setToken(token);
-      await api.rejectSubmission(submissionId, 'other', reason);
+      await api.rejectSubmission(rejectingSubId, 'other', rejectReason);
       const updated = await api.getTask(task.id);
       setTask(updated);
+      toast.success('Submission rejected');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to reject');
+      const message = err instanceof Error ? err.message : 'Failed to reject';
+      setError(message);
+      toast.error('Failed to reject submission', message);
     } finally {
       setActionLoading(false);
+      setRejectingSubId(null);
+      setRejectReason('');
     }
   };
 
@@ -157,7 +187,7 @@ export default function TaskDetailPage() {
           )}
           {['draft', 'posted', 'claimed'].includes(task.status) && (
             <button
-              onClick={handleCancel}
+              onClick={() => setConfirmCancel(true)}
               disabled={actionLoading}
               className="px-4 py-2 border border-signal-red/30 text-signal-red rounded-sm hover:bg-signal-red/5 disabled:opacity-50"
             >
@@ -209,11 +239,13 @@ export default function TaskDetailPage() {
 
           {/* Submissions */}
           {task.submissions && task.submissions.length > 0 && (
-            <div className="bg-paper rounded-sm border border-ink-200 p-6">
-              <h2 className="text-lg font-medium text-ink-900 mb-4">Submissions</h2>
-              <div className="space-y-4">
+            <div className="bg-paper rounded-sm border border-ink-200">
+              <div className="p-6 pb-4">
+                <h2 className="text-lg font-medium text-ink-900">Submissions</h2>
+              </div>
+              <div className="divide-y divide-ink-100">
                 {task.submissions.map((sub: any) => (
-                  <div key={sub.id} className="border border-ink-200 rounded-sm p-4">
+                  <div key={sub.id} className="px-6 py-4 hover:bg-ink-50/50 transition-colors">
                     <div className="flex justify-between items-start mb-3">
                       <span className={`px-2 py-1 text-xs rounded-sm ${statusColors[sub.status]}`}>
                         {sub.status}
@@ -221,14 +253,14 @@ export default function TaskDetailPage() {
                       {sub.status === 'finalised' && (
                         <div className="space-x-2">
                           <button
-                            onClick={() => handleAcceptSubmission(sub.id)}
+                            onClick={() => setAcceptingSubId(sub.id)}
                             disabled={actionLoading}
                             className="px-3 py-1 bg-signal-green text-white text-sm rounded-sm hover:bg-signal-green/90 disabled:opacity-50"
                           >
                             Accept
                           </button>
                           <button
-                            onClick={() => handleRejectSubmission(sub.id)}
+                            onClick={() => setRejectingSubId(sub.id)}
                             disabled={actionLoading}
                             className="px-3 py-1 border border-signal-red/30 text-signal-red text-sm rounded-sm hover:bg-signal-red/5 disabled:opacity-50"
                           >
@@ -264,7 +296,21 @@ export default function TaskDetailPage() {
                       {sub.verificationScore !== undefined && (
                         <p>Verification score: <span className="font-mono tabular-nums">{sub.verificationScore}%</span></p>
                       )}
+                      <button
+                        type="button"
+                        onClick={() => toggleExpanded(sub.id)}
+                        className="text-field-500 hover:text-field-600 text-xs"
+                      >
+                        {expandedSubs.has(sub.id) ? 'Hide details' : 'Review artefacts & verification'}
+                      </button>
                     </div>
+
+                    {expandedSubs.has(sub.id) && (
+                      <SubmissionReview
+                        submissionId={sub.id}
+                        inlineArtefacts={sub.artefacts}
+                      />
+                    )}
 
                     {/* Review Section for Accepted Submissions */}
                     {sub.status === 'accepted' && sub.worker && !reviewedWorkers.has(sub.worker.id) && (
@@ -388,6 +434,56 @@ export default function TaskDetailPage() {
           )}
         </div>
       </div>
+
+      <ConfirmDialog
+        isOpen={confirmCancel}
+        onClose={() => setConfirmCancel(false)}
+        onConfirm={handleCancel}
+        title="Cancel task?"
+        message="Your bounty will be refunded. This cannot be undone."
+        confirmLabel="Cancel task"
+        cancelLabel="Keep task"
+        variant="danger"
+        isLoading={actionLoading}
+      />
+
+      <ConfirmDialog
+        isOpen={!!acceptingSubId}
+        onClose={() => setAcceptingSubId(null)}
+        onConfirm={handleAcceptSubmission}
+        title="Accept submission?"
+        message={`This will release ${task.bounty?.currency} ${task.bounty?.amount?.toFixed(2)} to the worker. Cannot be undone.`}
+        confirmLabel="Accept & release"
+        cancelLabel="Cancel"
+        variant="default"
+        isLoading={actionLoading}
+      />
+
+      <ConfirmDialog
+        isOpen={!!rejectingSubId}
+        onClose={() => { setRejectingSubId(null); setRejectReason(''); }}
+        onConfirm={handleRejectSubmission}
+        title="Reject submission?"
+        message={
+          <div className="space-y-3">
+            <p>The worker's stake will be held pending the dispute period.</p>
+            <div>
+              <label className="block text-xs uppercase tracking-wider text-ink-500 mb-1">Rejection reason (required)</label>
+              <textarea
+                value={rejectReason}
+                onChange={(e) => setRejectReason(e.target.value)}
+                rows={3}
+                className="w-full px-3 py-2 border border-ink-200 rounded-sm text-sm"
+                placeholder="Explain why this submission is being rejected..."
+              />
+            </div>
+          </div>
+        }
+        confirmLabel="Reject submission"
+        cancelLabel="Cancel"
+        variant="danger"
+        isLoading={actionLoading}
+      />
     </div>
   );
 }

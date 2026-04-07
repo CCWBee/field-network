@@ -3,7 +3,7 @@
 import { HTMLAttributes, ReactNode } from 'react';
 
 interface CardProps extends HTMLAttributes<HTMLDivElement> {
-  variant?: 'default' | 'glass' | 'elevated';
+  variant?: 'default' | 'glass' | 'elevated' | 'subtle' | 'accent' | 'flush';
   hoverable?: boolean;
   padding?: 'none' | 'sm' | 'md' | 'lg';
   children?: ReactNode;
@@ -13,6 +13,9 @@ const variantStyles = {
   default: 'bg-paper border border-ink-200',
   glass: 'bg-paper border border-ink-200',       // glass is now just default
   elevated: 'bg-paper border border-ink-200 shadow-sm',
+  subtle: 'bg-ink-50/50',
+  accent: 'bg-field-50/30 border border-field-300/50',
+  flush: 'bg-paper border border-ink-200',
 };
 
 const paddingStyles = {
@@ -43,6 +46,7 @@ interface CardHeaderProps extends HTMLAttributes<HTMLDivElement> {
   title?: string;
   description?: string;
   action?: ReactNode;
+  divided?: boolean;
   children?: ReactNode;
 }
 
@@ -50,13 +54,14 @@ function CardHeader({
   title,
   description,
   action,
+  divided = false,
   className = '',
   children,
   ...props
 }: CardHeaderProps) {
   return (
     <div
-      className={`p-4 border-b border-ink-100 ${className}`}
+      className={`p-4 ${divided ? 'border-b border-ink-100' : ''} ${className}`}
       {...props}
     >
       {(title || description || action) ? (

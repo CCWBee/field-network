@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/lib/store';
+import { useToast } from '@/components/ui';
 
 interface WorkerProfile {
   displayName: string;
@@ -17,6 +18,7 @@ interface WorkerProfile {
 
 export default function WorkerProfilePage() {
   const { token, user, loadUser } = useAuthStore();
+  const toast = useToast();
   const [profile, setProfile] = useState<WorkerProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -69,19 +71,21 @@ export default function WorkerProfilePage() {
       const userData = await api.getMe();
       if (userData.workerProfile) {
         const p = userData.workerProfile;
+        const parsedSkills = Array.isArray(p.skills) ? p.skills : [];
+        const parsedKit = Array.isArray(p.kit) ? p.kit : [];
         setProfile({
           displayName: p.displayName,
           radiusKm: p.radiusKm,
-          skills: JSON.parse(p.skills || '[]'),
-          kit: JSON.parse(p.kit || '[]'),
+          skills: parsedSkills,
+          kit: parsedKit,
           rating: p.rating,
           completedCount: p.completedCount,
           strikes: p.strikes,
         });
         setDisplayName(p.displayName);
         setRadiusKm(String(p.radiusKm));
-        setSkills(JSON.parse(p.skills || '[]'));
-        setKit(JSON.parse(p.kit || '[]'));
+        setSkills(parsedSkills);
+        setKit(parsedKit);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load profile');
@@ -96,12 +100,27 @@ export default function WorkerProfilePage() {
     setSuccess('');
 
     try {
-      // In a real app, you'd have a PUT /v1/auth/worker-profile endpoint
-      // For now, we just show a success message
+      api.setToken(token);
+      const updated = await api.updateWorkerProfile({
+        displayName,
+        radiusKm: parseInt(radiusKm, 10),
+        skills,
+        kit,
+      });
+      setProfile(prev => prev ? {
+        ...prev,
+        displayName: updated.display_name,
+        radiusKm: updated.radius_km,
+        skills: updated.skills,
+        kit: updated.kit,
+      } : prev);
       setSuccess('Profile updated successfully!');
       setTimeout(() => setSuccess(''), 3000);
+      toast.success('Profile updated');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to save profile');
+      const message = err instanceof Error ? err.message : 'Failed to save profile';
+      setError(message);
+      toast.error('Failed to save profile', message);
     } finally {
       setIsSaving(false);
     }

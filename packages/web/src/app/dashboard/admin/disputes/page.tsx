@@ -93,28 +93,11 @@ export default function AdminDisputesPage() {
       api.setToken(token);
       const offset = (page - 1) * limit;
 
-      const params = new URLSearchParams({
-        limit: limit.toString(),
-        offset: offset.toString(),
-        sort_by: sortBy,
-        sort_order: sortOrder,
+      const data: DisputesResponse = await api.getDisputes({
+        status: statusFilter !== 'all' ? statusFilter : undefined,
+        limit,
+        offset,
       });
-
-      if (statusFilter !== 'all') {
-        params.set('status', statusFilter);
-      }
-
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'}/v1/admin/disputes?${params}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to load disputes');
-      }
-
-      const data: DisputesResponse = await response.json();
       setDisputes(data.disputes);
       setTotal(data.total);
     } catch (err) {

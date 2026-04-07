@@ -5,6 +5,8 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/lib/store';
+import { useToast } from '@/components/ui';
+import BearingInput from '@/components/BearingInput';
 
 interface UploadedFile {
   id: string;
@@ -12,6 +14,7 @@ interface UploadedFile {
   preview: string;
   artefactId?: string;
   status: 'pending' | 'uploading' | 'uploaded' | 'error';
+  progress: number;
   error?: string;
 }
 
@@ -19,6 +22,7 @@ export default function SubmitTaskPage() {
   const params = useParams();
   const router = useRouter();
   const { token } = useAuthStore();
+  const toast = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [task, setTask] = useState<any>(null);
@@ -32,6 +36,15 @@ export default function SubmitTaskPage() {
     declared_captured_at: new Date().toISOString(),
     declared_bearing: 0,
   });
+
+  // Revoke all object URLs on unmount to prevent memory leaks
+  useEffect(() => {
+    return () => {
+      files.forEach(f => {
+        if (f.preview) URL.revokeObjectURL(f.preview);
+      });
+    };
+  }, [files]);
 
   useEffect(() => {
     fetchTask();
@@ -56,6 +69,7 @@ export default function SubmitTaskPage() {
       file,
       preview: URL.createObjectURL(file),
       status: 'pending',
+      progress: 0,
     }));
     setFiles(prev => [...prev, ...newFiles]);
   };
@@ -88,20 +102,25 @@ export default function SubmitTaskPage() {
     try {
       api.setToken(token);
 
-      // Create submission
-      const subResult = await api.createSubmission(params.taskId as string);
-      setSubmission(subResult);
+      // Reuse existing submission if a previous attempt got partway through
+      let subResult = submission;
+      if (!subResult) {
+        subResult = await api.createSubmission(params.taskId as string);
+        setSubmission(subResult);
+      }
 
-      // Upload each file
-      for (const uploadFile of files) {
+      // Only upload files that haven't already been uploaded successfully
+      const toUpload = files.filter(f => f.status !== 'uploaded');
+      let uploadFailed = false;
+
+      for (const uploadFile of toUpload) {
         setFiles(prev =>
           prev.map(f =>
-            f.id === uploadFile.id ? { ...f, status: 'uploading' } : f
+            f.id === uploadFile.id ? { ...f, status: 'uploading', progress: 0, error: undefined } : f
           )
         );
 
         try {
-          // Init upload
           const initResult = await api.initArtefactUpload(subResult.submission_id, {
             type: 'photo',
             filename: uploadFile.file.name,
@@ -109,16 +128,28 @@ export default function SubmitTaskPage() {
             size_bytes: uploadFile.file.size,
           });
 
-          // In a real app, we'd upload to the signed URL here
-          // For now, we mark as uploaded
+          await api.uploadArtefact(
+            initResult.upload_url,
+            uploadFile.file,
+            {},
+            (percent) => {
+              setFiles(prev =>
+                prev.map(f =>
+                  f.id === uploadFile.id ? { ...f, progress: percent } : f
+                )
+              );
+            }
+          );
+
           setFiles(prev =>
             prev.map(f =>
               f.id === uploadFile.id
-                ? { ...f, status: 'uploaded', artefactId: initResult.artefact_id }
+                ? { ...f, status: 'uploaded', progress: 100, artefactId: initResult.artefact_id }
                 : f
             )
           );
         } catch (err) {
+          uploadFailed = true;
           setFiles(prev =>
             prev.map(f =>
               f.id === uploadFile.id
@@ -129,13 +160,29 @@ export default function SubmitTaskPage() {
         }
       }
 
+      if (uploadFailed) {
+        const msg = 'One or more files failed to upload. Click Submit again to retry the failed uploads.';
+        setError(msg);
+        toast.error('Upload failed', msg);
+        setIsSubmitting(false);
+        return;
+      }
+
       // Finalise submission
       await api.finaliseSubmission(subResult.submission_id, captureClaims);
 
+      // Revoke all preview URLs before navigating away
+      files.forEach(f => {
+        if (f.preview) URL.revokeObjectURL(f.preview);
+      });
+
+      toast.success('Submission sent!', 'Awaiting verification');
       // Success - redirect
       router.push('/dashboard/worker/claims');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to submit');
+      const message = err instanceof Error ? err.message : 'Failed to submit';
+      setError(message);
+      toast.error('Upload failed', message);
     } finally {
       setIsSubmitting(false);
     }
@@ -222,7 +269,7 @@ export default function SubmitTaskPage() {
 
         {/* Uploaded Files Preview */}
         {files.length > 0 && (
-          <div className="mt-4 grid grid-cols-3 gap-4">
+          <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 gap-4">
             {files.map((file) => (
               <div key={file.id} className="relative group">
                 <img
@@ -244,8 +291,14 @@ export default function SubmitTaskPage() {
                   </button>
                 </div>
                 {file.status === 'uploading' && (
-                  <div className="absolute inset-0 bg-white bg-opacity-75 rounded-sm flex items-center justify-center">
+                  <div className="absolute inset-0 bg-white bg-opacity-75 rounded-sm flex flex-col items-center justify-center">
                     <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-field-500"></div>
+                    <div className="mt-2 text-xs font-mono text-ink-700">Uploading {file.progress}%</div>
+                  </div>
+                )}
+                {file.status === 'error' && file.error && (
+                  <div className="absolute bottom-0 left-0 right-0 bg-signal-red/90 text-white text-xs px-1 py-0.5 truncate" title={file.error}>
+                    {file.error}
                   </div>
                 )}
                 {file.status === 'uploaded' && (
@@ -276,18 +329,17 @@ export default function SubmitTaskPage() {
       {task.requirements?.bearing?.required && (
         <div className="bg-paper rounded-sm border border-ink-200 p-6 mb-6">
           <h2 className="font-medium text-ink-900 mb-4">Capture Details</h2>
-          <div>
-            <label className="block text-xs uppercase tracking-wider text-ink-500">Camera Bearing (degrees)</label>
-            <input
-              type="number"
-              min="0"
-              max="360"
+          <div className="flex flex-col items-center sm:items-start">
+            <BearingInput
+              label="Camera Bearing"
               value={captureClaims.declared_bearing}
-              onChange={(e) => setCaptureClaims(prev => ({ ...prev, declared_bearing: parseInt(e.target.value) }))}
-              className="mt-1 block w-full px-3 py-2 border border-ink-200 rounded-sm"
+              onChange={(deg) => setCaptureClaims(prev => ({ ...prev, declared_bearing: deg }))}
+              tolerance={task.requirements.bearing.tolerance_deg}
+              targetBearing={task.requirements.bearing.target_deg}
+              size={180}
             />
-            <p className="mt-1 text-xs text-ink-500">
-              Target: {task.requirements.bearing.target_deg}&deg; (&plusmn;{task.requirements.bearing.tolerance_deg}&deg;)
+            <p className="mt-3 text-xs text-ink-500 text-center sm:text-left">
+              Target: {task.requirements.bearing.target_deg}&deg; (&plusmn;{task.requirements.bearing.tolerance_deg}&deg;). Aim your camera within the highlighted cone.
             </p>
           </div>
         </div>

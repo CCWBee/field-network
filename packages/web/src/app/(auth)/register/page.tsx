@@ -5,6 +5,13 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuthStore } from '@/lib/store';
 
+/** Minimal connector shape used from wagmi's useConnect() */
+interface WalletConnector {
+  id: string;
+  name: string;
+  type: string;
+}
+
 // Content component - only renders after mount
 function RegisterContent() {
   const router = useRouter();
@@ -53,7 +60,7 @@ function RegisterContent() {
     }
   };
 
-  const handleWalletConnect = async (connector: any) => {
+  const handleWalletConnect = async (connector: WalletConnector) => {
     if (connector) {
       connect({ connector });
     }
@@ -70,9 +77,9 @@ function RegisterContent() {
   const error = emailError || walletError || localError;
   const isLoading = isEmailLoading || isConnecting || isAuthenticating;
 
-  const metamaskConnector = connectors.find((c: any) => c.name === 'MetaMask' || c.id === 'injected');
-  const coinbaseConnector = connectors.find((c: any) => c.name === 'Coinbase Wallet' || c.id === 'coinbaseWalletSDK');
-  const walletConnectConnector = connectors.find((c: any) => c.name === 'WalletConnect');
+  const metamaskConnector = connectors.find((c: WalletConnector) => c.name === 'MetaMask' || c.id === 'injected');
+  const coinbaseConnector = connectors.find((c: WalletConnector) => c.name === 'Coinbase Wallet' || c.id === 'coinbaseWalletSDK');
+  const walletConnectConnector = connectors.find((c: WalletConnector) => c.name === 'WalletConnect');
 
   return (
     <>

@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/lib/store';
+import { ConfirmDialog, useToast } from '@/components/ui';
 
 interface AdminUser {
   id: string;
@@ -26,12 +27,14 @@ interface AdminUser {
 export default function AdminUsersPage() {
   const router = useRouter();
   const { token, user } = useAuthStore();
+  const toast = useToast();
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [query, setQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [pendingAction, setPendingAction] = useState<{ userId: string; status: 'suspended' | 'banned'; username: string } | null>(null);
 
   useEffect(() => {
     if (user && user.role !== 'admin') {
@@ -75,11 +78,28 @@ export default function AdminUsersPage() {
     try {
       await api.updateUserStatus(userId, status);
       await loadUsers();
+      toast.success('User status updated');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to update user status');
+      const message = err instanceof Error ? err.message : 'Failed to update user status';
+      setError(message);
+      toast.error('Failed to update user', message);
     } finally {
       setUpdatingId(null);
     }
+  };
+
+  const requestStatus = (userId: string, status: 'active' | 'suspended' | 'banned', username: string) => {
+    if (status === 'active') {
+      updateStatus(userId, status);
+      return;
+    }
+    setPendingAction({ userId, status, username });
+  };
+
+  const confirmStatusChange = async () => {
+    if (!pendingAction) return;
+    await updateStatus(pendingAction.userId, pendingAction.status);
+    setPendingAction(null);
   };
 
   const statusBadge = (status: string) => {
@@ -153,7 +173,7 @@ export default function AdminUsersPage() {
           <p className="text-ink-500">No users found</p>
         </div>
       ) : (
-        <div className="bg-paper rounded-sm border border-ink-200 overflow-hidden">
+        <div className="bg-paper rounded-sm border border-ink-200 overflow-x-auto">
           <table className="min-w-full">
             <thead className="bg-ink-50">
               <tr>
@@ -191,21 +211,21 @@ export default function AdminUsersPage() {
                   <td className="px-6 py-4 text-right">
                     <div className="flex justify-end gap-2">
                       <button
-                        onClick={() => updateStatus(userRow.id, 'active')}
+                        onClick={() => requestStatus(userRow.id, 'active', userRow.username || userRow.email || 'this user')}
                         disabled={updatingId === userRow.id}
                         className="text-xs px-3 py-1 rounded-sm border border-ink-200 hover:bg-paper-warm"
                       >
                         Activate
                       </button>
                       <button
-                        onClick={() => updateStatus(userRow.id, 'suspended')}
+                        onClick={() => requestStatus(userRow.id, 'suspended', userRow.username || userRow.email || 'this user')}
                         disabled={updatingId === userRow.id}
                         className="text-xs px-3 py-1 rounded-sm border border-signal-amber/30 text-signal-amber hover:bg-signal-amber/5"
                       >
                         Suspend
                       </button>
                       <button
-                        onClick={() => updateStatus(userRow.id, 'banned')}
+                        onClick={() => requestStatus(userRow.id, 'banned', userRow.username || userRow.email || 'this user')}
                         disabled={updatingId === userRow.id}
                         className="text-xs px-3 py-1 rounded-sm border border-signal-red/30 text-signal-red hover:bg-signal-red/5"
                       >
@@ -219,6 +239,24 @@ export default function AdminUsersPage() {
           </table>
         </div>
       )}
+
+      <ConfirmDialog
+        isOpen={!!pendingAction}
+        onClose={() => setPendingAction(null)}
+        onConfirm={confirmStatusChange}
+        title={pendingAction?.status === 'banned' ? 'Ban user?' : 'Suspend user?'}
+        message={
+          pendingAction?.status === 'banned'
+            ? `Ban ${pendingAction.username}? They will lose access immediately. This can be reversed.`
+            : pendingAction
+              ? `Suspend ${pendingAction.username}? Their active tasks will be paused.`
+              : ''
+        }
+        confirmLabel={pendingAction?.status === 'banned' ? 'Ban user' : 'Suspend user'}
+        cancelLabel="Cancel"
+        variant="danger"
+        isLoading={!!updatingId}
+      />
     </div>
   );
 }
