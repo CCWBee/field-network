@@ -248,7 +248,7 @@ export default function AdminFeesPage() {
           <div className="bg-paper rounded-sm p-6 border border-ink-200">
             <h2 className="text-xs uppercase tracking-wider font-semibold text-ink-500 mb-4">Platform Fee Tiers</h2>
             {platformConfigs.length === 0 ? (
-              <p className="text-ink-500">No platform fee tiers configured. Click "Seed Default Configs" to create them.</p>
+              <p className="text-ink-500">No platform fee tiers configured. Click &quot;Seed Default Configs&quot; to create them.</p>
             ) : (
               <div className="-mx-6 divide-y divide-ink-100 border-t border-ink-100">
                 {platformConfigs.map((config) => (
@@ -443,7 +443,7 @@ export default function AdminFeesPage() {
                 )}
               </div>
             ) : (
-              <p className="text-ink-500">No arbitration fee configured. Click "Seed Default Configs" to create it.</p>
+              <p className="text-ink-500">No arbitration fee configured. Click &quot;Seed Default Configs&quot; to create it.</p>
             )}
           </div>
         </>

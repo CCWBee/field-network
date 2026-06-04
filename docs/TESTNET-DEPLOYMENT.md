@@ -1,6 +1,6 @@
 # Testnet Deployment Guide
 
-This document describes the process for deploying and testing the GroundTruthEscrow contract on Base Sepolia testnet.
+This document describes the process for deploying and testing the FieldNetworkEscrow contract on Base Sepolia testnet.
 
 ## Prerequisites
 
@@ -34,7 +34,7 @@ cd packages/contracts
 npm run compile
 
 # Verify compilation
-ls artifacts/contracts/GroundTruthEscrow.sol/
+ls artifacts/contracts/FieldNetworkEscrow.sol/
 ```
 
 ### Step 2: Run Local Tests
@@ -43,7 +43,7 @@ ls artifacts/contracts/GroundTruthEscrow.sol/
 npm test
 
 # Expected output:
-# GroundTruthEscrow
+# FieldNetworkEscrow
 #   Deployment
 #     [pass] Should deploy with correct parameters
 #   Deposits
@@ -62,8 +62,8 @@ npx hardhat run scripts/deploy.ts --network base-sepolia
 # Expected output:
 # Deploying contracts with account: 0x...
 # Chain ID: 84532
-# Deploying GroundTruthEscrow...
-# GroundTruthEscrow deployed to: 0x...
+# Deploying FieldNetworkEscrow...
+# FieldNetworkEscrow deployed to: 0x...
 #
 # Deployment summary:
 # -------------------

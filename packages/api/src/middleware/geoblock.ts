@@ -10,19 +10,19 @@
  *   - X-Country-Code        (generic reverse proxy)
  *   - X-Vercel-IP-Country   (Vercel)
  *
- * Fails open if no geo header is present (configure CDN to always send headers in prod).
+ * Behaviour when no geo header is present:
+ *   - GEOBLOCK_FAIL_CLOSED=true → deny (assumes CDN should always send the header,
+ *     so absence means the request bypassed the CDN)
+ *   - default → allow (dev-friendly; set fail-closed in prod)
  */
 
 import { Request, Response, NextFunction } from 'express';
 
-// US territories that have their own ISO 3166-1 codes
 const US_TERRITORIES = new Set(['AS', 'GU', 'MP', 'PR', 'VI', 'UM']);
-
-// Countries to block
 const BLOCKED_COUNTRIES = new Set(['US', 'GB', ...US_TERRITORIES]);
-
-// Crown Dependencies — explicitly allowed even though politically associated with UK
 const ALLOWED_CROWN_DEPENDENCIES = new Set(['JE', 'GG', 'IM']);
+
+const FAIL_CLOSED = process.env.GEOBLOCK_FAIL_CLOSED === 'true';
 
 export function geoblockMiddleware(req: Request, res: Response, next: NextFunction): void {
   // Skip health-check so monitoring still works
@@ -32,9 +32,15 @@ export function geoblockMiddleware(req: Request, res: Response, next: NextFuncti
 
   const country = detectCountry(req);
 
-  // Fail open: if we can't determine country, allow through
-  // (configure your CDN to always inject the header in production)
   if (!country) {
+    if (FAIL_CLOSED) {
+      res.status(451).json({
+        error: 'Unavailable For Legal Reasons',
+        code: 'GEO_UNKNOWN',
+        message: 'Country could not be verified. Requests must arrive via the configured CDN.',
+      });
+      return;
+    }
     return next();
   }
 
@@ -81,4 +87,5 @@ export const geoblockConfig = {
   blocked: Array.from(BLOCKED_COUNTRIES),
   allowedExceptions: Array.from(ALLOWED_CROWN_DEPENDENCIES),
   headers: ['cf-ipcountry', 'x-country-code', 'x-vercel-ip-country'],
+  failClosed: FAIL_CLOSED,
 };

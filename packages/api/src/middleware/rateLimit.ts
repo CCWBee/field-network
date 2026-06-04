@@ -39,24 +39,19 @@ const config = {
 /**
  * Custom key generator
  *
- * Uses a combination of IP and user ID (if authenticated) to prevent
- * bypass attacks where an attacker uses different IPs but same account.
+ * Uses req.ip (which respects the app's trust-proxy configuration) for the IP.
+ * Reading X-Forwarded-For directly is unsafe — if trust proxy is unset (or
+ * misconfigured) the attacker can spoof any IP they want by setting the header.
+ *
+ * For authenticated requests we key by user ID so an attacker rotating IPs
+ * still hits the same bucket.
  */
 function keyGenerator(req: Request): string {
-  // Get IP from various headers (trust proxy must be enabled)
-  const forwarded = req.headers['x-forwarded-for'];
-  const ip = forwarded
-    ? (Array.isArray(forwarded) ? forwarded[0] : forwarded.split(',')[0]).trim()
-    : req.ip || req.socket.remoteAddress || 'unknown';
-
-  // If user is authenticated, include user ID in key
-  // This prevents a single user from making many requests across different IPs
-  const userId = (req as any).user?.id;
+  const userId = (req as any).user?.userId;
   if (userId) {
-    return `${ip}-${userId}`;
+    return `user:${userId}`;
   }
-
-  return ip;
+  return req.ip || req.socket.remoteAddress || 'unknown';
 }
 
 /**

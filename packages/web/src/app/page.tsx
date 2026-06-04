@@ -392,7 +392,7 @@ export default function HomePage() {
             </div>
             <div className="bg-ink-900 text-ink-100 rounded-sm p-8">
               <div className="font-mono text-sm">
-                <div className="text-ink-500 mb-2">// Request observation</div>
+                <div className="text-ink-500 mb-2">{`// Request observation`}</div>
                 <div className="text-ink-100">
                   <span className="text-field-400">POST</span> /v1/tasks
                 </div>

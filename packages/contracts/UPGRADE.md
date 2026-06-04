@@ -1,6 +1,6 @@
 # Contract Upgrade Procedure
 
-The GroundTruthEscrow and WorkerStaking contracts are **non-upgradeable** (no proxy pattern). This is intentional for simplicity and auditability. If a bug is found or new features are needed, deploy a new contract version and migrate.
+The FieldNetworkEscrow and WorkerStaking contracts are **non-upgradeable** (no proxy pattern). This is intentional for simplicity and auditability. If a bug is found or new features are needed, deploy a new contract version and migrate.
 
 ## Upgrade Steps
 
@@ -21,7 +21,7 @@ The admin calls `pause()` on the old contract to prevent new deposits.
 ```bash
 # Via Hardhat console or script
 npx hardhat console --network base-sepolia
-> const escrow = await ethers.getContractAt("GroundTruthEscrow", "OLD_ADDRESS")
+> const escrow = await ethers.getContractAt("FieldNetworkEscrow", "OLD_ADDRESS")
 > await escrow.pause()
 ```
 
@@ -55,7 +55,7 @@ UPDATE "ChainCursor" SET "lastBlock" = NEW_DEPLOY_BLOCK WHERE "chainId" = 84532;
 
 ```bash
 npx hardhat console --network base-sepolia
-> const escrow = await ethers.getContractAt("GroundTruthEscrow", "NEW_ADDRESS")
+> const escrow = await ethers.getContractAt("FieldNetworkEscrow", "NEW_ADDRESS")
 > await escrow.grantRole(await escrow.OPERATOR_ROLE(), "OPERATOR_WALLET")
 > await escrow.grantRole(await escrow.DISPUTE_RESOLVER_ROLE(), "RESOLVER_WALLET")
 ```

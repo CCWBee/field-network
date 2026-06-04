@@ -82,7 +82,7 @@ export function OnboardingModal({ suggestedUsername, onComplete }: OnboardingMod
         {/* Header */}
         <div className="bg-field-500 p-6 text-white">
           <h2 className="text-xl font-bold">Welcome to Field Network</h2>
-          <p className="text-field-100 mt-1">Let's set up your profile</p>
+          <p className="text-field-100 mt-1">Let&apos;s set up your profile</p>
         </div>
 
         {/* Content */}
@@ -173,7 +173,7 @@ export function OnboardingModal({ suggestedUsername, onComplete }: OnboardingMod
                   className="w-full px-4 py-3 border border-ink-200 rounded-sm focus:ring-2 focus:ring-field-500 focus:border-transparent"
                 />
                 <p className="text-xs text-ink-500 mt-1">
-                  For notifications and account recovery. We'll never spam you.
+                  For notifications and account recovery. We&apos;ll never spam you.
                 </p>
               </div>
 

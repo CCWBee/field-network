@@ -122,7 +122,7 @@ npx hardhat run scripts/verify.ts --network base
 npx hardhat console --network base
 
 # In console:
-const contract = await ethers.getContractAt("GroundTruthEscrow", "0x...");
+const contract = await ethers.getContractAt("FieldNetworkEscrow", "0x...");
 const OPERATOR_ROLE = ethers.keccak256(ethers.toUtf8Bytes("OPERATOR_ROLE"));
 await contract.grantRole(OPERATOR_ROLE, "0x...operator-wallet-address...");
 ```
@@ -334,7 +334,7 @@ If critical issue discovered post-deployment:
 # 1. Pause escrow contract immediately
 # Via Basescan or:
 npx hardhat console --network base
-const contract = await ethers.getContractAt("GroundTruthEscrow", "0x...");
+const contract = await ethers.getContractAt("FieldNetworkEscrow", "0x...");
 await contract.pause();
 
 # 2. Roll back API to use mock escrow

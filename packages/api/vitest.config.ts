@@ -4,7 +4,9 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'node',
-    include: ['tests/**/*.test.ts'],
+    // Pick up tests co-located with source (src/**/*.test.ts and
+    // src/**/__tests__/*.test.ts) as well as the dedicated tests/ tree.
+    include: ['tests/**/*.test.ts', 'src/**/*.test.ts', 'src/**/__tests__/*.test.ts'],
     exclude: ['node_modules', 'dist'],
     coverage: {
       provider: 'v8',

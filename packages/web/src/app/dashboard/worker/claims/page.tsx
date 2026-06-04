@@ -108,7 +108,7 @@ export default function WorkerClaimsPage() {
         </div>
       ) : claims.length === 0 ? (
         <div className="bg-paper rounded-sm p-12 text-center border border-ink-200">
-          <p className="text-ink-500 mb-4">You don't have any active claims.</p>
+          <p className="text-ink-500 mb-4">You don&apos;t have any active claims.</p>
           <Link
             href="/dashboard/worker"
             className="text-field-500 hover:text-field-600"

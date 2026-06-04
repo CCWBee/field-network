@@ -1,10 +1,10 @@
 # Contract Operations Manual
 
-This document describes the operational procedures for the GroundTruthEscrow smart contract deployed on Base.
+This document describes the operational procedures for the FieldNetworkEscrow smart contract deployed on Base.
 
 ## Contract Overview
 
-**Contract**: GroundTruthEscrow.sol
+**Contract**: FieldNetworkEscrow.sol
 **Network**: Base (Chain ID: 8453) / Base Sepolia (Chain ID: 84532)
 **Token**: USDC (6 decimals)
 
@@ -53,7 +53,7 @@ This document describes the operational procedures for the GroundTruthEscrow sma
 npx hardhat console --network base
 
 # In console
-const contract = await ethers.getContractAt("GroundTruthEscrow", "0x...");
+const contract = await ethers.getContractAt("FieldNetworkEscrow", "0x...");
 await contract.pause();
 ```
 
@@ -78,7 +78,7 @@ await contract.pause();
 **How to unpause:**
 ```bash
 npx hardhat console --network base
-const contract = await ethers.getContractAt("GroundTruthEscrow", "0x...");
+const contract = await ethers.getContractAt("FieldNetworkEscrow", "0x...");
 await contract.unpause();
 ```
 
@@ -126,7 +126,7 @@ await contract.setFeeRecipient("0x...");
 
 ### Current Contract: Non-Upgradeable
 
-The GroundTruthEscrow contract is NOT upgradeable. This is intentional for:
+The FieldNetworkEscrow contract is NOT upgradeable. This is intentional for:
 - **Security**: No admin key can modify contract logic
 - **Trust**: Users know exactly what code governs their funds
 - **Simplicity**: No proxy patterns to audit
@@ -291,13 +291,13 @@ The contract does not support batching. For multiple operations:
 ### Production (Base Mainnet)
 | Contract | Address | Verified |
 |----------|---------|----------|
-| GroundTruthEscrow | TBD | TBD |
+| FieldNetworkEscrow | TBD | TBD |
 | USDC | 0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913 | Yes |
 
 ### Staging (Base Sepolia)
 | Contract | Address | Verified |
 |----------|---------|----------|
-| GroundTruthEscrow | TBD | TBD |
+| FieldNetworkEscrow | TBD | TBD |
 | Test USDC | 0x036CbD53842c5426634e7929541eC2318f3dCF7e | Yes |
 
 ---

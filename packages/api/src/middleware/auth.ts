@@ -12,6 +12,11 @@ import {
 
 // JWT_SECRET enforcement: no fallback in production
 const JWT_SECRET = getJwtSecret();
+
+// Algorithm allowlist - HS256 only. Without this, jwt.verify accepts whatever
+// the token header says, which opens up alg=none and HS/RSA confusion attacks.
+const JWT_ALGORITHMS: jwt.Algorithm[] = ['HS256'];
+
 const ADMIN_SESSION_TIMEOUT_MS = 60 * 60 * 1000; // 1 hour
 const MAX_ADMIN_SESSIONS_PER_USER = 3;
 
@@ -86,7 +91,7 @@ export async function optionalAuth(req: Request, res: Response, next: NextFuncti
   if (authHeader.startsWith('Bearer ')) {
     const token = authHeader.substring(7);
     try {
-      const payload = jwt.verify(token, JWT_SECRET) as TokenPayload & { iat?: number };
+      const payload = jwt.verify(token, JWT_SECRET, { algorithms: JWT_ALGORITHMS }) as TokenPayload & { iat?: number };
 
       const blacklisted = await isTokenBlacklisted(token);
       if (!blacklisted) {
@@ -127,7 +132,7 @@ export async function authenticate(req: Request, res: Response, next: NextFuncti
   const token = authHeader.substring(7);
 
   try {
-    const payload = jwt.verify(token, JWT_SECRET) as TokenPayload & { iat?: number };
+    const payload = jwt.verify(token, JWT_SECRET, { algorithms: JWT_ALGORITHMS }) as TokenPayload & { iat?: number };
 
     // Check if token is blacklisted
     const blacklisted = await isTokenBlacklisted(token);

@@ -15,8 +15,12 @@ import { ethers } from "hardhat";
  *   NEW_CONTRACT_ADDRESS - Address of the newly deployed escrow contract
  */
 
+// Note: FieldNetworkEscrow stores escrows in a `mapping(bytes32 => Escrow)`,
+// which Solidity does not expose an enumerator for. The previous version of
+// this ABI declared `escrowCount()` which does not exist on the contract;
+// calling it would revert. Active-escrow enumeration must come from off-chain
+// event indexing (the chain indexer in packages/api/src/services/chainIndexer.ts).
 const ESCROW_ABI = [
-  "function escrowCount() external view returns (uint256)",
   "function paused() external view returns (bool)",
   "function platformFeeBps() external view returns (uint256)",
   "function autoReleaseDelay() external view returns (uint256)",

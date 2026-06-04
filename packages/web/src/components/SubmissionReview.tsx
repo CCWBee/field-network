@@ -168,7 +168,9 @@ export default function SubmissionReview({ submissionId, inlineArtefacts }: Subm
   if (rawProof) {
     try {
       proofBundle = typeof rawProof === 'string' ? JSON.parse(rawProof) : rawProof;
-    } catch {}
+    } catch {
+      // Ignore malformed proof bundles; they render as "no proof available".
+    }
   }
 
   return (

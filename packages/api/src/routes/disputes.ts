@@ -1017,12 +1017,23 @@ router.post('/:disputeId/resolve', authenticate, requireRole('admin'), async (re
       },
     });
 
-    // Handle stake based on resolution type
-    // Get requester wallet for slash recipient
-    const requesterWallet = await prisma.walletLink.findFirst({
-      where: { userId: dispute.submission.task.requesterId, isPrimary: true },
+    // Handle stake based on resolution type.
+    // Slash recipient: prefer the requester wallet snapshotted on the escrow
+    // (set when the bounty was deposited). Falls back to the current primary
+    // wallet only if no escrow snapshot exists yet (e.g. mock-mode tasks).
+    // Using the live primary-wallet lookup would let a requester switch their
+    // primary wallet between dispute open and resolution to redirect funds.
+    const escrowForWallet = await prisma.escrow.findFirst({
+      where: { taskId: dispute.submission.taskId },
+      orderBy: { createdAt: 'desc' },
     });
-    const requesterAddress = requesterWallet?.walletAddress || '';
+    let requesterAddress = escrowForWallet?.requesterWallet || '';
+    if (!requesterAddress) {
+      const requesterWallet = await prisma.walletLink.findFirst({
+        where: { userId: dispute.submission.task.requesterId, isPrimary: true },
+      });
+      requesterAddress = requesterWallet?.walletAddress || '';
+    }
 
     let stakeResult;
     switch (data.resolution_type) {

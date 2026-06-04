@@ -239,7 +239,10 @@ export default function DisputeDetailPage() {
 
     try {
       api.setToken(token);
-      const data: DisputeDetail = await api.getDispute(disputeId);
+      // api.getDispute returns the index-signature DisputeRecord; the admin
+      // detail view consumes the richer DisputeDetail shape, which is filled
+      // in server-side. Cast via unknown so structural narrowing isn't blocked.
+      const data = (await api.getDispute(disputeId)) as unknown as DisputeDetail;
       setDispute(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
@@ -262,7 +265,7 @@ export default function DisputeDetailPage() {
     setError(null);
 
     try {
-      const resolveData: Record<string, any> = {
+      const resolveData: { resolution_type: string; comment: string; worker_payout_percent?: number } = {
         resolution_type: outcome,
         comment: reason,
       };

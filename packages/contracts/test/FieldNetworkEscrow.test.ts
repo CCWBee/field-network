@@ -1,10 +1,10 @@
 import { expect } from "chai";
 import { ethers } from "hardhat";
 import { loadFixture, time } from "@nomicfoundation/hardhat-toolbox/network-helpers";
-import { GroundTruthEscrow, MockERC20 } from "../typechain-types";
+import { FieldNetworkEscrow, MockERC20 } from "../typechain-types";
 import { HardhatEthersSigner } from "@nomicfoundation/hardhat-ethers/signers";
 
-describe("GroundTruthEscrow", function () {
+describe("FieldNetworkEscrow", function () {
   // Constants
   const PLATFORM_FEE_BPS = 250n; // 2.5%
   const AUTO_RELEASE_DELAY = 24n * 60n * 60n; // 24 hours in seconds
@@ -38,8 +38,8 @@ describe("GroundTruthEscrow", function () {
     const usdc = await MockERC20Factory.deploy("USD Coin", "USDC", USDC_DECIMALS);
     await usdc.waitForDeployment();
 
-    // Deploy GroundTruthEscrow
-    const EscrowFactory = await ethers.getContractFactory("GroundTruthEscrow");
+    // Deploy FieldNetworkEscrow
+    const EscrowFactory = await ethers.getContractFactory("FieldNetworkEscrow");
     const escrow = await EscrowFactory.deploy(
       await usdc.getAddress(),
       feeRecipient.address,
@@ -384,8 +384,21 @@ describe("GroundTruthEscrow", function () {
       expect(workerBalanceAfter).to.be.greaterThan(workerBalanceBefore);
     });
 
-    it("should allow worker to release immediately", async function () {
+    it("should NOT allow worker to release before delay (would bypass dispute window)", async function () {
+      const { escrow, worker, escrowId } = await loadFixture(acceptedEscrowFixture);
+
+      // Worker cannot self-release while the dispute window is still open;
+      // doing so would let the worker collect before the requester has a
+      // chance to dispute. Only the requester (waiving their own window)
+      // or anyone after the auto-release delay can trigger release.
+      await expect(escrow.connect(worker).release(escrowId))
+        .to.be.revertedWithCustomError(escrow, "ReleaseNotReady");
+    });
+
+    it("should allow worker to release after delay passes", async function () {
       const { escrow, usdc, worker, escrowId } = await loadFixture(acceptedEscrowFixture);
+
+      await time.increase(AUTO_RELEASE_DELAY + 1n);
 
       const workerBalanceBefore = await usdc.balanceOf(worker.address);
       await escrow.connect(worker).release(escrowId);

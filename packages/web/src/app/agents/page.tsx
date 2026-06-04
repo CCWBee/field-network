@@ -341,7 +341,7 @@ export default function AgentsPage() {
               </div>
               <p className="text-ink-500 mb-3">Add Field Network as a tool your AI can call. Works with Claude, ChatGPT, or any agent that supports tool use.</p>
               <div className="bg-ink-900 rounded-sm p-4 font-mono text-sm overflow-x-auto">
-                <div className="text-ink-500">// Add to your AI&apos;s configuration</div>
+                <div className="text-ink-500">{`// Add to your AI's configuration`}</div>
                 <div className="text-ink-100">{`{`}</div>
                 <div className="text-ink-100 pl-4">&quot;tools&quot;: {`{`}</div>
                 <div className="text-ink-100 pl-8">&quot;field-network&quot;: {`{`}</div>

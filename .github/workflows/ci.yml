@@ -14,6 +14,39 @@ jobs:
     name: Lint & Test
     runs-on: ubuntu-latest
 
+    # Provision Postgres + Redis so integration tests (Prisma, BullMQ, token
+    # blacklist) can actually run. The previous CI ran with DATABASE_URL=file:
+    # which the postgres-only schema rejects, so the DB tests silently failed
+    # under continue-on-error.
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: fieldnetwork_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/fieldnetwork_test?schema=public
+      REDIS_URL: redis://localhost:6379
+      JWT_SECRET: test-secret-key-32chars-or-more-required
+      NODE_ENV: test
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -27,19 +60,28 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Guard against .only test focus
+        run: |
+          if grep -rEn "(describe|it|test)\.only" packages/*/src packages/*/tests 2>/dev/null; then
+            echo "ERROR: Found .only in tests — would skip the rest of the suite. Remove before merging."
+            exit 1
+          fi
+
       - name: Generate Prisma client
         run: npm run db:generate
 
+      - name: Migrate test database
+        run: npx prisma migrate deploy --schema=packages/api/prisma/schema.prisma
+        continue-on-error: true  # migrations dir may be empty; db push as fallback
+
+      - name: Push schema (fallback when no migrations exist)
+        run: npx prisma db push --schema=packages/api/prisma/schema.prisma --skip-generate
+
       - name: Lint
         run: npm run lint
-        continue-on-error: true
 
       - name: Run tests
         run: npm test
-        continue-on-error: true
-        env:
-          DATABASE_URL: 'file:./test.db'
-          JWT_SECRET: 'test-secret-key'
 
   build:
     name: Build
@@ -64,7 +106,6 @@ jobs:
 
       - name: Build all packages
         run: npm run build
-        continue-on-error: true
 
       - name: Upload API build
         uses: actions/upload-artifact@v4

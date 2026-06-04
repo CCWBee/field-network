@@ -534,7 +534,7 @@ export default function RequesterDashboard() {
             </div>
           ) : tasks.length === 0 ? (
             <div className="bg-paper rounded-sm p-12 text-center border border-ink-200">
-              <p className="text-ink-500 mb-4">You haven't created any tasks yet.</p>
+              <p className="text-ink-500 mb-4">You haven&apos;t created any tasks yet.</p>
               <Link
                 href="/dashboard/requester/new"
                 className="text-field-500 hover:text-field-600"

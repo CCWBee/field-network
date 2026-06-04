@@ -1,207 +1,140 @@
-# Security Policy
+# Security
 
-## Security Practices
+## Status
 
-Field Network follows security best practices to protect user data and prevent common vulnerabilities.
+**Not audited.** There has been no third-party security audit of this codebase
+or the deployed contracts. Use at your own risk on mainnet.
 
-### Architecture
+The codebase has been through internal review and the Phase 1 + Phase 4
+remediation pass (see git history for `Phase 1` and `Phase 4` commits) closed
+the issues found there. Known gaps and limitations are listed below.
 
-- **API-First Design**: Frontend never connects directly to the database. All data access goes through the Express.js REST API with proper authentication and authorization.
-- **Server-Side Logic**: All sensitive calculations (bounty amounts, fees, verification scoring) are performed server-side only.
+## Threat model
 
-### Authentication & Authorization
+### In scope (defended against)
 
-- **JWT-based authentication** with secure token handling
-- **SIWE (Sign-In with Ethereum)** for wallet authentication
-- **Granular permissions** via `requireScope` middleware on all protected endpoints
-- **Role-based access control** for admin-only operations (dispute resolution)
-- **Delegated API tokens** with configurable scopes, spend caps, and expiry
+- **Token forgery** — JWT verification is pinned to HS256 only; rejects `alg=none`
+  and HS/RSA confusion attacks (`packages/api/src/middleware/auth.ts`).
+- **SIWE replay** — verify pins domain, nonce, time, and chain ID. The nonce
+  is consumed atomically before signature verification (`packages/api/src/routes/auth.ts`).
+- **Spoofed IPs** — rate limiter uses `req.ip` (respecting `trust proxy`), not raw
+  `X-Forwarded-For`. Operator must set `TRUST_PROXY` correctly for the deployment
+  (`packages/api/src/middleware/rateLimit.ts`, `packages/api/src/index.ts`).
+- **Common web vulnerabilities** — helmet, CORS allowlist (required in prod), zod
+  input validation, parameterised queries (Prisma).
+- **Reentrancy on the contracts** — OpenZeppelin `ReentrancyGuard`, checks-effects-
+  interactions respected.
+- **Stake redirect via primary-wallet swap** — slash recipient comes from the
+  escrow's snapshotted `requesterWallet` (set at deposit time), not the requester's
+  current primary wallet.
+- **Bypassing the dispute window** — workers can no longer self-release before the
+  auto-release delay. Only the requester (waiving their own window) or anyone
+  after the delay can trigger release.
 
-### Input Validation
+### Out of scope (you bear the risk)
 
-- **Zod schema validation** on all API inputs
-- **Safe URL validation** - URLs must use `http://` or `https://` protocols (prevents `javascript:`, `data:` URI injection)
-- **Safe JSON parsing** - All JSON data from database is parsed with schema validation
-- **File upload restrictions** - JPEG/PNG only, 10MB max size
-- **Username sanitization** - Alphanumeric and underscore only
+- **Compromised operator key** — the API holds an operator wallet that can call
+  `assignWorker`, `release`, `refund`, and `markStakeDisputed` on-chain. Key
+  compromise = ability to move funds within the constraints of those functions.
+  Mitigation: minimal balance, key rotation procedure below.
+- **Compromised admin (multisig) key** — admin can change fees, pause contracts,
+  set recipient addresses. Use a multisig with >1 signer; rotate signers if any
+  device is suspected compromised.
+- **Bugs in the API HTTP layer** — there is no formal verification, no fuzzing
+  CI step beyond `npm audit`, and route-level integration tests are limited.
+- **Off-chain reputation manipulation** — reputation/strike counts are computed
+  by the API. The contract reads on-chain strike counts directly, but the
+  initial population of strikes happens via API-initiated slashes.
 
-### Rate Limiting
+### Known unmitigated centralisation
 
-- Global rate limiting: 100 requests per 15 minutes per IP
-- Applied to all API endpoints via `express-rate-limit`
+The contracts are **operator-custodial**, not "permissionless". `assignWorker`,
+the staking entry points (`stake`, `stakeFor`), and dispute resolution all
+require an operator or resolver role held by a Field Network wallet. Workers
+cannot stake themselves directly. This is a deliberate design choice for
+mk0; the docs (`PRODUCT-PLAN.md`, `docs/CONTRACT-OPERATIONS.md`) reflect it
+honestly. A future "actually permissionless" version would require contract
+rewrites.
 
-### Secrets Management
+## Reporting a vulnerability
 
-- **Server-side only**: API keys, JWT secrets, and private keys are never exposed to the browser
-- **Environment variables**: All secrets stored in `.env` files (excluded from git)
-- **`NEXT_PUBLIC_` prefix**: Only used for non-sensitive configuration
+Please do not open a public GitHub issue.
 
-### Error Handling
+1. Email the project owner directly (see `package.json` author or repo owner).
+2. Include reproduction steps and the affected file/line if possible.
+3. Allow at least 14 days for a fix before public disclosure.
 
-- Generic error messages returned to clients (no stack traces or internal details)
-- Detailed errors logged server-side only
-- Proper HTTP status codes without revealing resource existence (404 vs 403)
+## Wallet operations
 
-### Logging
+### Operator wallet (API hot wallet)
 
-- Request metadata logged (method, path, status, duration)
-- No sensitive data logged (passwords, tokens, request bodies)
-- Error details logged privately for debugging
+The API uses an operator wallet to submit on-chain transactions. Treat it as a
+hot wallet with minimal funds and minimal privileges.
 
-## Dependency Management
+- Key loaded only from `OPERATOR_PRIVATE_KEY` env. Never logged. Validated
+  format before use.
+- Holds **only** `OPERATOR_ROLE` on each contract — cannot change fees, pause,
+  grant roles, or move funds outside the role's allowed functions.
+- Keep ~0.05 ETH for gas. Top up via monitoring alerts.
+- Do NOT store USDC in this wallet.
 
-Dependencies are regularly updated to patch security vulnerabilities. Current versions (as of Jan 2025):
+### Multisig (admin)
 
-| Package | Version | Notes |
-|---------|---------|-------|
-| Prisma | 6.3.0 | Database ORM |
-| Express | 4.21.2 | API framework |
-| Next.js | 15.1.6 | Frontend framework |
-| helmet | 8.0.0 | Security headers |
-| express-rate-limit | 7.5.0 | Rate limiting |
-| zod | 3.24.1 | Input validation |
+`DEFAULT_ADMIN_ROLE` and `DISPUTE_RESOLVER_ROLE` must be transferred to a
+multisig (Gnosis Safe recommended) as part of deployment. The deploy scripts
+refuse to leave the deployer EOA in control on live networks unless
+`ALLOW_DEPLOYER_ADMIN=true` is set explicitly. See `packages/contracts/scripts/deploy.ts`.
 
-## Reporting Security Issues
+### Key rotation (operator)
 
-If you discover a security vulnerability, please report it responsibly:
+1. Pause the relevant contract from the multisig.
+2. Generate a new operator wallet on an air-gapped machine.
+3. From the multisig, `grantRole(OPERATOR_ROLE, newWallet)`.
+4. Update `OPERATOR_PRIVATE_KEY` in the API environment, restart API.
+5. From the multisig, `revokeRole(OPERATOR_ROLE, oldWallet)`.
+6. Unpause.
+7. Audit recent transactions on Basescan for unauthorised activity.
 
-1. **Do not** create a public GitHub issue
-2. Email security concerns to the project maintainers
-3. Include detailed steps to reproduce the issue
-4. Allow reasonable time for a fix before public disclosure
+### Key rotation (admin / multisig signer)
 
-## Security Checklist for Contributors
+If a multisig signer is compromised, replace the signer through the multisig's
+own rotation flow. The contracts' `DEFAULT_ADMIN_ROLE` is held by the multisig
+address, not the individual signer, so the contract role doesn't change.
 
-When submitting code, ensure:
+## Configuration that affects security
 
-- [ ] No secrets or API keys in source code
-- [ ] All user inputs validated with Zod schemas
-- [ ] URLs validated to only allow http/https protocols
-- [ ] No direct database access from frontend code
-- [ ] Sensitive calculations performed server-side
-- [ ] Error messages don't expose internal details
-- [ ] No sensitive data logged to console
-- [ ] Rate limiting in place for new endpoints
-- [ ] Authentication required on protected routes
+These environment variables change the security posture and should be set
+deliberately:
 
-## Wallet Security
+| Variable | Effect of misconfiguration |
+|----------|----------------------------|
+| `JWT_SECRET` | Fewer than 32 chars in production refuses to start. Required. |
+| `CORS_ORIGINS` | Production refuses to start without it. |
+| `TRUST_PROXY` | Unset behind a CDN means `req.ip` falls back to socket address; X-Forwarded-For is ignored (rate limiter cannot be bypassed by spoofing). Set to `true` or a CIDR list when actually behind a proxy. |
+| `SIWE_DOMAIN` | Production requires this. Pins SIWE signatures to your domain. |
+| `SIWE_CHAIN_ID` (or `CHAIN_ID`) | Production requires this. Pins SIWE signatures to your chain. |
+| `BLACKLIST_FAIL_MODE` | `closed` (prod default) rejects tokens during Redis outages; `open` allows them. |
+| `GEOBLOCK_FAIL_CLOSED` | Set `true` if you require all traffic to arrive via your geo-aware CDN. |
+| `MULTISIG_ADDRESS` (deploy time) | Required for live-net contract deploys. Without it, deployer EOA retains godmode. |
 
-### Operator Wallet
+## Contributor checklist
 
-The operator wallet is used by the API to execute escrow operations on-chain (assign workers, accept submissions, release funds, process refunds).
+When opening a PR, verify:
 
-#### Key Requirements
+- [ ] No secrets in code or commit history.
+- [ ] User input validated with zod.
+- [ ] URLs validated to allow only http/https (use `safeUrl` from `packages/api/src/utils/validation.ts`).
+- [ ] No direct DB access from the web package (CI enforces this).
+- [ ] No `it.only` or `describe.only` in tests (CI enforces this).
+- [ ] No `continue-on-error` added to CI gates.
+- [ ] Changes to auth, rate limit, or any money-moving path include tests.
 
-1. **Never log or expose the private key**
-   - Key is loaded only from environment variable `OPERATOR_PRIVATE_KEY`
-   - Never logged to console, files, or external services
-   - Not included in error messages or stack traces
+## Audit history
 
-2. **Minimal permissions**
-   - Operator wallet has only `OPERATOR_ROLE` on the escrow contract
-   - Cannot modify contract parameters (admin only)
-   - Cannot grant/revoke roles (admin only)
+This file used to contain a "9/10 audit passed" claim. It was self-grading
+masquerading as third-party validation. There has been no audit. Removed in
+the Phase 6 docs honesty pass.
 
-3. **Minimal balance**
-   - Keep only enough ETH for gas (~0.05 ETH)
-   - Top up periodically via monitoring alerts
-   - Do not store USDC in operator wallet
-
-4. **Separate from deployer**
-   - Deployer wallet used only for deployment
-   - Operator wallet used only for runtime operations
-   - Different keys reduces blast radius
-
-#### Code Review Checklist
-
-The escrow service (`packages/api/src/services/escrow.ts`) has been reviewed for:
-
-- [x] Private key loaded only from `process.env.OPERATOR_PRIVATE_KEY`
-- [x] No logging of private key or wallet client
-- [x] No exposure of key in error messages
-- [x] Key validated before use (proper format check)
-- [x] Wallet client created lazily on first use
-- [x] No hardcoded keys in source code
-
-#### Key Rotation Procedure
-
-If operator key is compromised:
-
-1. **Immediately pause contract** (admin action via Basescan or script)
-2. **Generate new operator wallet**
-3. **Revoke old wallet's OPERATOR_ROLE** on contract
-4. **Grant OPERATOR_ROLE to new wallet** on contract
-5. **Update `OPERATOR_PRIVATE_KEY`** in Railway environment
-6. **Restart API** to pick up new key
-7. **Unpause contract** after verification
-8. **Audit recent transactions** for unauthorized actions
-
-### Deployer Wallet
-
-The deployer wallet is used only for contract deployment and admin operations.
-
-#### Security Requirements
-
-1. **Use hardware wallet** for mainnet deployments (Ledger, Trezor)
-2. **Geographic key distribution** - Keep backup in separate location
-3. **Never store on server** - Deploy from local machine only
-4. **Consider multisig** for admin role (Gnosis Safe)
-
-#### Admin Key Compromise
-
-If admin key is compromised:
-
-1. **Deploy new contract immediately** (attacker can pause, change fees, etc.)
-2. **Pause old contract** to prevent new deposits
-3. **Migrate API** to point to new contract
-4. **Allow existing escrows to complete** on old contract
-5. **Conduct full security audit** before resuming operations
-
-### Production Wallet Setup
-
-```bash
-# Generate operator wallet (do this on secure, air-gapped machine)
-node -e "const w = require('ethers').Wallet.createRandom(); console.log('Address:', w.address); console.log('Private Key:', w.privateKey);"
-
-# Store the private key securely (password manager, hardware backup)
-# Add to Railway environment as OPERATOR_PRIVATE_KEY
-
-# Fund operator wallet with ~0.05 ETH for gas
-# Monitor balance and top up when < 0.01 ETH
-```
-
-### Monitoring
-
-Set up alerts for:
-
-| Event | Threshold | Action |
-|-------|-----------|--------|
-| Operator ETH balance | < 0.01 ETH | Fund wallet |
-| Unexpected role changes | Any | Investigate immediately |
-| Failed transactions | > 3/hour | Check wallet status |
-| Contract paused | Any | Alert on-call |
-
----
-
-## Audit Trail
-
-### January 2025 Security Audit
-
-Based on security guidelines review, the following improvements were made:
-
-1. **URL Validation** - Added protocol whitelist to prevent `javascript:` URI injection
-2. **JSON Parsing** - Added schema validation to all `JSON.parse()` calls
-3. **Dependencies** - Updated Prisma, Next.js, Express to latest stable versions
-4. **Documentation** - Added this SECURITY.md file
-
-Security score: **9/10** - See audit report for details.
-
-### January 2026 Wallet Security Audit
-
-Added comprehensive wallet security documentation:
-
-1. **Operator wallet guidelines** - Key handling, minimal permissions
-2. **Key rotation procedure** - Step-by-step compromise response
-3. **Code review checklist** - Verified escrow service key handling
-4. **Production wallet setup** - Secure generation and storage
-5. **Monitoring recommendations** - Balance and role change alerts
+The Phase 1 + Phase 2 + Phase 4 remediation closed the specific issues found
+during a multi-agent internal review (see commits in `git log` for that
+branch). The remediation did not include external review.

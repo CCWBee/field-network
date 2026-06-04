@@ -137,15 +137,15 @@ export class ChainIndexer {
   }
 
   private async processLogs(logs: Log[]): Promise<void> {
-    for (const log of logs) {
+    for (const entry of logs) {
       try {
         // Store raw event
         const existingEvent = await prisma.chainEvent.findUnique({
           where: {
             chainId_txHash_logIndex: {
               chainId: this.chainId,
-              txHash: log.transactionHash!,
-              logIndex: log.logIndex!,
+              txHash: entry.transactionHash!,
+              logIndex: entry.logIndex!,
             },
           },
         });
@@ -158,12 +158,12 @@ export class ChainIndexer {
         try {
           decoded = decodeEventLog({
             abi: ESCROW_ABI,
-            data: log.data,
-            topics: log.topics,
+            data: entry.data,
+            topics: entry.topics,
           });
           eventName = decoded.eventName;
         } catch {
-          log.warn(`[ChainIndexer] Could not decode event in tx ${log.transactionHash}`);
+          log.warn(`[ChainIndexer] Could not decode event in tx ${entry.transactionHash}`);
           continue;
         }
 
@@ -171,17 +171,17 @@ export class ChainIndexer {
         await prisma.chainEvent.create({
           data: {
             chainId: this.chainId,
-            blockNumber: Number(log.blockNumber),
-            txHash: log.transactionHash!,
-            logIndex: log.logIndex!,
-            contractAddress: log.address,
+            blockNumber: Number(entry.blockNumber),
+            txHash: entry.transactionHash!,
+            logIndex: entry.logIndex!,
+            contractAddress: entry.address,
             eventName,
             eventData: JSON.stringify(decoded.args),
           },
         });
 
         // Process event
-        await this.handleEvent(eventName, decoded.args, log);
+        await this.handleEvent(eventName, decoded.args, entry);
       } catch (error) {
         log.error('[ChainIndexer] Error processing log', error);
       }
@@ -200,7 +200,7 @@ export class ChainIndexer {
     });
   }
 
-  private async handleEvent(eventName: string, args: any, log: Log): Promise<void> {
+  private async handleEvent(eventName: string, args: any, entry: Log): Promise<void> {
     const escrowIdHex = args.escrowId as string;
     // Convert bytes32 to UUID format if needed (or use as-is for lookup)
     const escrowIdLookup = this.bytes32ToUuid(escrowIdHex);
@@ -222,8 +222,8 @@ export class ChainIndexer {
             where: { id: escrow.id },
             data: {
               status: 'funded',
-              depositTxHash: log.transactionHash,
-              depositBlock: Number(log.blockNumber),
+              depositTxHash: entry.transactionHash,
+              depositBlock: Number(entry.blockNumber),
               requesterWallet: requester,
               fundedAt: new Date(),
             },
@@ -238,8 +238,8 @@ export class ChainIndexer {
               currency: 'USDC',
               direction: 'credit',
               walletAddress: requester,
-              txHash: log.transactionHash,
-              blockNumber: Number(log.blockNumber),
+              txHash: entry.transactionHash,
+              blockNumber: Number(entry.blockNumber),
               chainId: this.chainId,
             },
           });
@@ -274,7 +274,7 @@ export class ChainIndexer {
             where: { id: escrow.id },
             data: {
               status: 'released',
-              releaseTxHash: log.transactionHash,
+              releaseTxHash: entry.transactionHash,
               workerWallet: worker,
               releasedAt: new Date(),
             },
@@ -290,8 +290,8 @@ export class ChainIndexer {
                 currency: 'USDC',
                 direction: 'debit',
                 walletAddress: worker,
-                txHash: log.transactionHash,
-                blockNumber: Number(log.blockNumber),
+                txHash: entry.transactionHash,
+                blockNumber: Number(entry.blockNumber),
                 chainId: this.chainId,
               },
               {
@@ -300,8 +300,8 @@ export class ChainIndexer {
                 amount: fee,
                 currency: 'USDC',
                 direction: 'debit',
-                txHash: log.transactionHash,
-                blockNumber: Number(log.blockNumber),
+                txHash: entry.transactionHash,
+                blockNumber: Number(entry.blockNumber),
                 chainId: this.chainId,
               },
             ],
@@ -335,7 +335,7 @@ export class ChainIndexer {
             where: { id: escrow.id },
             data: {
               status: 'refunded',
-              refundTxHash: log.transactionHash,
+              refundTxHash: entry.transactionHash,
               refundedAt: new Date(),
             },
           });
@@ -348,8 +348,8 @@ export class ChainIndexer {
               currency: 'USDC',
               direction: 'debit',
               walletAddress: requester,
-              txHash: log.transactionHash,
-              blockNumber: Number(log.blockNumber),
+              txHash: entry.transactionHash,
+              blockNumber: Number(entry.blockNumber),
               chainId: this.chainId,
             },
           });
@@ -404,7 +404,7 @@ export class ChainIndexer {
             where: { id: resolvedEscrow.id },
             data: {
               status: 'released',
-              releaseTxHash: log.transactionHash,
+              releaseTxHash: entry.transactionHash,
               releasedAt: new Date(),
             },
           });
@@ -419,8 +419,8 @@ export class ChainIndexer {
               currency: 'USDC',
               direction: 'debit' as const,
               walletAddress: winner,
-              txHash: log.transactionHash,
-              blockNumber: Number(log.blockNumber),
+              txHash: entry.transactionHash,
+              blockNumber: Number(entry.blockNumber),
               chainId: this.chainId,
             });
           }

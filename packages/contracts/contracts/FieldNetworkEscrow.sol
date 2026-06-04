@@ -8,11 +8,11 @@ import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/utils/Pausable.sol";
 
 /**
- * @title GroundTruthEscrow
- * @notice Escrow contract for Ground Truth bounty payments on Base
+ * @title FieldNetworkEscrow
+ * @notice Escrow contract for Field Network bounty payments on Base
  * @dev Supports USDC deposits, releases, refunds, and disputes
  */
-contract GroundTruthEscrow is AccessControl, ReentrancyGuard, Pausable {
+contract FieldNetworkEscrow is AccessControl, ReentrancyGuard, Pausable {
     using SafeERC20 for IERC20;
 
     bytes32 public constant OPERATOR_ROLE = keccak256("OPERATOR_ROLE");
@@ -75,6 +75,10 @@ contract GroundTruthEscrow is AccessControl, ReentrancyGuard, Pausable {
         uint256 _platformFeeBps,
         uint256 _autoReleaseDelay
     ) {
+        require(_usdc != address(0), "Zero USDC address");
+        require(_feeRecipient != address(0), "Zero fee recipient");
+        require(_platformFeeBps <= 1000, "Fee too high");
+
         usdc = IERC20(_usdc);
         feeRecipient = _feeRecipient;
         platformFeeBps = _platformFeeBps;
@@ -141,7 +145,7 @@ contract GroundTruthEscrow is AccessControl, ReentrancyGuard, Pausable {
      * @dev Only the requester can accept a submission
      * @param escrowId Escrow identifier
      */
-    function accept(bytes32 escrowId) external {
+    function accept(bytes32 escrowId) external whenNotPaused {
         Escrow storage escrow = escrows[escrowId];
         if (escrow.createdAt == 0) revert EscrowNotFound();
         if (escrow.status != EscrowStatus.Funded) revert InvalidEscrowStatus();
@@ -156,7 +160,11 @@ contract GroundTruthEscrow is AccessControl, ReentrancyGuard, Pausable {
     }
 
     /**
-     * @notice Release funds to worker (after auto-release delay or immediately by requester/worker)
+     * @notice Release funds to worker. Can be called immediately by the requester
+     *         (waiving the dispute window) or by anyone after the auto-release delay.
+     * @dev Worker can NOT self-release before the delay. Doing so would bypass
+     *      the dispute window and let the worker collect before the requester
+     *      has a chance to dispute.
      * @param escrowId Escrow identifier
      */
     function release(bytes32 escrowId) external nonReentrant {
@@ -164,12 +172,12 @@ contract GroundTruthEscrow is AccessControl, ReentrancyGuard, Pausable {
         if (escrow.createdAt == 0) revert EscrowNotFound();
         if (escrow.status != EscrowStatus.Accepted) revert InvalidEscrowStatus();
 
-        // Allow immediate release by requester or worker, or anyone after delay
+        // Requester may release immediately (waiving their own dispute window).
+        // Anyone else (including the worker) must wait until the delay has passed.
         bool isRequester = msg.sender == escrow.requester;
-        bool isWorker = msg.sender == escrow.worker;
         bool delayPassed = block.timestamp >= escrow.releaseAfter;
 
-        if (!isRequester && !isWorker && !delayPassed) {
+        if (!isRequester && !delayPassed) {
             revert ReleaseNotReady();
         }
 
@@ -281,6 +289,7 @@ contract GroundTruthEscrow is AccessControl, ReentrancyGuard, Pausable {
     }
 
     function setFeeRecipient(address _feeRecipient) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        require(_feeRecipient != address(0), "Zero fee recipient");
         feeRecipient = _feeRecipient;
     }
 

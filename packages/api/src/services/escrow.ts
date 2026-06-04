@@ -347,7 +347,7 @@ class MockEscrowProvider implements EscrowProvider {
 
 /**
  * On-Chain Escrow Provider
- * Interacts with GroundTruthEscrow.sol contract on Base.
+ * Interacts with FieldNetworkEscrow.sol contract on Base.
  */
 class OnChainEscrowProvider implements EscrowProvider {
   private publicClient;

@@ -4,9 +4,7 @@ import { prisma } from '../services/database';
 import { authenticate, requireRole, adminAuthHardening, logAdminAction, getClientIp } from '../middleware/auth';
 import { NotFoundError, ValidationError } from '../middleware/errorHandler';
 import { log } from '../lib/logger';
-import { splitEscrow, refundEscrow, releaseEscrow } from '../services/escrow';
-import { recalculateUserStats } from '../services/reputation';
-import { deleteArtefacts } from '../services/storage';
+import { refundEscrow } from '../services/escrow';
 
 // Helper to safely extract string from query param
 function qs(param: any): string | undefined {
@@ -537,257 +535,28 @@ router.get('/disputes/:disputeId', async (req: Request, res: Response, next: Nex
   }
 });
 
-// Resolve dispute schema
-const ResolveDisputeSchema = z.object({
-  outcome: z.enum(['worker_wins', 'requester_wins', 'split']),
-  split_percentage: z.number().min(0).max(100).optional(),
-  reason: z.string().min(20).max(2000),
-});
-
-// POST /v1/admin/disputes/:disputeId/resolve - Resolve a dispute
+// DEPRECATED: /v1/admin/disputes/:disputeId/resolve is removed.
+//
+// This route had its own resolution code path that did NOT call releaseTaskStake
+// or slashTaskStake — so disputes resolved via the admin UI never released or
+// slashed the worker's stake. The canonical resolution endpoint is now:
+//
+//     POST /v1/disputes/:disputeId/resolve
+//
+// which handles escrow split, arbitration fee, stake slash/release, and ledger
+// entries in one place. Admin role is still required there (requireRole('admin')).
+//
+// The endpoint below returns 410 Gone with a pointer for any caller still on
+// the old path, then exits. Remove this block once we've confirmed no caller
+// hits it (server log scan).
 router.post('/disputes/:disputeId/resolve', async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const disputeId = req.params.disputeId as string;
-    const data = ResolveDisputeSchema.parse(req.body);
-
-    // Validate split percentage is only provided for 'split' outcome
-    if (data.outcome === 'split' && (data.split_percentage === undefined || data.split_percentage === null)) {
-      throw new ValidationError('split_percentage is required when outcome is "split"');
-    }
-    if (data.outcome !== 'split' && data.split_percentage !== undefined) {
-      throw new ValidationError('split_percentage should only be provided when outcome is "split"');
-    }
-
-    const disputeRaw = await prisma.dispute.findUnique({
-      where: { id: disputeId },
-      include: {
-        submission: {
-          include: {
-            task: true,
-            worker: {
-              include: {
-                walletLinks: { where: { isPrimary: true } },
-              },
-            },
-            artefacts: true,
-          },
-        },
-      },
-    });
-
-    if (!disputeRaw) {
-      throw new NotFoundError('Dispute');
-    }
-
-    const dispute = disputeRaw as any;
-
-    if (dispute.status === 'resolved') {
-      throw new ValidationError('Dispute already resolved');
-    }
-
-    // Map outcome to resolution type
-    const resolutionTypeMap: Record<string, string> = {
-      worker_wins: 'accept_pay',
-      requester_wins: 'reject_refund',
-      split: 'partial_pay',
-    };
-
-    // Calculate escrow split amounts
-    const bountyAmount = dispute.submission.task.bountyAmount;
-    let workerAmount = 0;
-    let requesterAmount = 0;
-
-    switch (data.outcome) {
-      case 'worker_wins':
-        workerAmount = bountyAmount;
-        requesterAmount = 0;
-        break;
-      case 'requester_wins':
-        workerAmount = 0;
-        requesterAmount = bountyAmount;
-        break;
-      case 'split':
-        const splitPct = data.split_percentage!;
-        workerAmount = (bountyAmount * splitPct) / 100;
-        requesterAmount = bountyAmount - workerAmount;
-        break;
-    }
-
-    // Get worker wallet address if available
-    const workerWalletAddress = dispute.submission.worker.walletLinks[0]?.walletAddress;
-
-    // Execute escrow split/release/refund based on outcome
-    let escrowResult;
-    if (data.outcome === 'worker_wins') {
-      escrowResult = await releaseEscrow(
-        dispute.submission.taskId,
-        dispute.submission.workerId,
-        workerWalletAddress
-      );
-    } else if (data.outcome === 'requester_wins') {
-      escrowResult = await refundEscrow(dispute.submission.taskId);
-    } else {
-      // Split payment
-      escrowResult = await splitEscrow(
-        dispute.submission.taskId,
-        dispute.submission.workerId,
-        workerWalletAddress,
-        data.split_percentage!
-      );
-    }
-
-    if (!escrowResult.success) {
-      log.error(`Escrow operation failed for dispute ${disputeId}: ${escrowResult.error}`);
-      // Continue with resolution even if escrow fails - can be retried
-    }
-
-    // Determine new submission status
-    let submissionStatus: string;
-    switch (data.outcome) {
-      case 'worker_wins':
-        submissionStatus = 'accepted';
-        break;
-      case 'requester_wins':
-        submissionStatus = 'rejected';
-        break;
-      case 'split':
-        submissionStatus = 'resolved';
-        break;
-    }
-
-    // Update dispute and submission in transaction
-    const updatedDispute = await prisma.$transaction(async (tx) => {
-      // Update dispute
-      const resolved = await tx.dispute.update({
-        where: { id: disputeId },
-        data: {
-          status: 'resolved',
-          resolutionType: resolutionTypeMap[data.outcome],
-          resolutionComment: data.reason,
-          splitPercentage: data.outcome === 'split' ? data.split_percentage : null,
-          resolverId: req.user!.userId,
-          resolvedAt: new Date(),
-        },
-      });
-
-      // Update submission
-      await tx.submission.update({
-        where: { id: dispute.submissionId },
-        data: { status: submissionStatus },
-      });
-
-      // Update task status if worker wins
-      if (data.outcome === 'worker_wins') {
-        await tx.task.update({
-          where: { id: dispute.submission.taskId },
-          data: { status: 'accepted' },
-        });
-      }
-
-      // Create dispute audit log entry
-      await tx.disputeAuditLog.create({
-        data: {
-          disputeId,
-          action: 'resolved',
-          actorId: req.user!.userId,
-          detailsJson: JSON.stringify({
-            outcome: data.outcome,
-            split_percentage: data.split_percentage,
-            worker_amount: workerAmount,
-            requester_amount: requesterAmount,
-            escrow_success: escrowResult.success,
-            escrow_tx_hash: escrowResult.txHash,
-          }),
-        },
-      });
-
-      // Create ledger entries for the split
-      if (workerAmount > 0) {
-        await tx.ledgerEntry.create({
-          data: {
-            taskId: dispute.submission.taskId,
-            submissionId: dispute.submissionId,
-            entryType: 'release',
-            amount: workerAmount,
-            currency: dispute.submission.task.currency,
-            direction: 'debit',
-            counterpartyId: dispute.submission.workerId,
-            walletAddress: workerWalletAddress,
-            metadata: JSON.stringify({
-              dispute_id: disputeId,
-              resolution: data.outcome,
-              split_percentage: data.split_percentage,
-            }),
-          },
-        });
-      }
-
-      if (requesterAmount > 0) {
-        await tx.ledgerEntry.create({
-          data: {
-            taskId: dispute.submission.taskId,
-            submissionId: dispute.submissionId,
-            entryType: 'refund',
-            amount: requesterAmount,
-            currency: dispute.submission.task.currency,
-            direction: 'debit',
-            counterpartyId: dispute.submission.task.requesterId,
-            metadata: JSON.stringify({
-              dispute_id: disputeId,
-              resolution: data.outcome,
-              split_percentage: data.split_percentage,
-            }),
-          },
-        });
-      }
-
-      return resolved;
-    });
-
-    // If requester wins, clean up artefacts
-    if (data.outcome === 'requester_wins') {
-      const artefactKeys = dispute.submission.artefacts.map((a) => a.storageKey);
-      if (artefactKeys.length > 0) {
-        deleteArtefacts(artefactKeys).catch((err) => {
-          log.error(`Failed to delete artefacts for dispute ${disputeId}`, err);
-        });
-      }
-    }
-
-    // Recalculate user stats
-    await Promise.all([
-      recalculateUserStats(dispute.submission.workerId),
-      recalculateUserStats(dispute.submission.task.requesterId),
-    ]);
-
-    // Log admin action
-    await logAdminAction(req, 'dispute_resolved', {
-      dispute_id: disputeId,
-      outcome: data.outcome,
-      split_percentage: data.split_percentage,
-      worker_amount: workerAmount,
-      requester_amount: requesterAmount,
-    });
-
-    res.json({
-      dispute_id: updatedDispute.id,
-      status: updatedDispute.status,
-      resolution_type: updatedDispute.resolutionType,
-      split_percentage: updatedDispute.splitPercentage,
-      resolved_at: updatedDispute.resolvedAt?.toISOString(),
-      escrow: {
-        success: escrowResult.success,
-        tx_hash: escrowResult.txHash,
-        error: escrowResult.error,
-      },
-      amounts: {
-        worker: workerAmount,
-        requester: requesterAmount,
-      },
-    });
-  } catch (error) {
-    next(error);
-  }
+  void req;
+  void next;
+  res.status(410).json({
+    error: 'Gone',
+    code: 'ENDPOINT_REMOVED',
+    message: 'Use POST /v1/disputes/:disputeId/resolve instead.',
+  });
 });
 
 // ============================================================================
