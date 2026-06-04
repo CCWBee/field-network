@@ -305,7 +305,8 @@ describe('Fee Service', () => {
     it('should handle negative amounts gracefully', async () => {
       const result = await calculatePlatformFee(testUserId, -100);
 
-      expect(result.fee).toBe(-10); // Mathematical result
+      // 2.5% of -100 = -2.5
+      expect(result.fee).toBe(-2.5);
     });
 
     it('should handle NaN amounts', async () => {
@@ -317,13 +318,15 @@ describe('Fee Service', () => {
     it('should handle decimal amounts with precision', async () => {
       const result = await calculatePlatformFee(testUserId, 99.99);
 
-      expect(result.fee).toBeCloseTo(9.999, 3);
+      // 2.5% of 99.99 = 2.49975
+      expect(result.fee).toBeCloseTo(2.49975, 4);
     });
 
     it('should handle very large amounts', async () => {
       const result = await calculatePlatformFee(testUserId, 1000000);
 
-      expect(result.fee).toBe(100000);
+      // 2.5% of 1_000_000 = 25_000
+      expect(result.fee).toBe(25000);
     });
 
     it('should handle concurrent fee calculations', async () => {

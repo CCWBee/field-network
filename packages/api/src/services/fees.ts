@@ -99,9 +99,16 @@ export async function getNextFeeTier(userId: string): Promise<FeeTierInfo | null
   const tiers = await getPlatformFeeTiers();
   const currentTier = await getUserFeeTier(userId);
 
-  // Find the next tier (lower tierOrder = better tier)
-  const nextTier = tiers.find(t => t.tierOrder < currentTier.tierOrder);
-  return nextTier || null;
+  // Find the immediately-better tier (lower tierOrder = better tier).
+  // The previous version returned the first tier with tierOrder < current,
+  // which depending on iteration order could skip to the top tier (e.g.
+  // Standard -> Elite). The user-visible "next tier" should be the one
+  // immediately above them.
+  const candidates = tiers.filter(t => t.tierOrder < currentTier.tierOrder);
+  if (candidates.length === 0) return null;
+  // Pick the candidate with the HIGHEST tierOrder (closest to current).
+  const nextTier = candidates.reduce((best, t) => (t.tierOrder > best.tierOrder ? t : best));
+  return nextTier;
 }
 
 // Get progress toward next tier

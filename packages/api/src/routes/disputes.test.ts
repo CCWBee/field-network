@@ -77,40 +77,37 @@ describe('Dispute Resolution', () => {
   });
 
   afterAll(async () => {
-    // Clean up in reverse order of dependencies
-    await prisma.disputeAuditLog.deleteMany({
-      where: { disputeId },
+    // Clean up in reverse order of dependencies. beforeEach creates a fresh
+    // task per test, so we need to sweep ALL tasks for these users, not just
+    // the one from beforeAll. Same for everything chained off those tasks.
+    const userIds = [adminUserId, requesterId, workerId];
+    const userTasks = await prisma.task.findMany({
+      where: { requesterId: { in: userIds } },
+      select: { id: true },
     });
-    await prisma.dispute.deleteMany({
-      where: { submissionId },
+    const userTaskIds = userTasks.map(t => t.id);
+    const userSubmissions = await prisma.submission.findMany({
+      where: { OR: [{ taskId: { in: userTaskIds } }, { workerId: { in: userIds } }] },
+      select: { id: true },
     });
-    await prisma.ledgerEntry.deleteMany({
-      where: { taskId },
+    const userSubmissionIds = userSubmissions.map(s => s.id);
+    const userDisputes = await prisma.dispute.findMany({
+      where: { submissionId: { in: userSubmissionIds } },
+      select: { id: true },
     });
-    await prisma.escrow.deleteMany({
-      where: { taskId },
-    });
-    await prisma.artefact.deleteMany({
-      where: { submissionId },
-    });
-    await prisma.submission.deleteMany({
-      where: { taskId },
-    });
-    await prisma.taskClaim.deleteMany({
-      where: { taskId },
-    });
-    await prisma.task.deleteMany({
-      where: { id: taskId },
-    });
-    await prisma.walletLink.deleteMany({
-      where: { userId: workerId },
-    });
-    await prisma.userStats.deleteMany({
-      where: { userId: { in: [workerId, requesterId] } },
-    });
-    await prisma.user.deleteMany({
-      where: { id: { in: [adminUserId, requesterId, workerId] } },
-    });
+    const userDisputeIds = userDisputes.map(d => d.id);
+
+    await prisma.disputeAuditLog.deleteMany({ where: { disputeId: { in: userDisputeIds } } });
+    await prisma.dispute.deleteMany({ where: { id: { in: userDisputeIds } } });
+    await prisma.ledgerEntry.deleteMany({ where: { taskId: { in: userTaskIds } } });
+    await prisma.escrow.deleteMany({ where: { taskId: { in: userTaskIds } } });
+    await prisma.artefact.deleteMany({ where: { submissionId: { in: userSubmissionIds } } });
+    await prisma.submission.deleteMany({ where: { id: { in: userSubmissionIds } } });
+    await prisma.taskClaim.deleteMany({ where: { taskId: { in: userTaskIds } } });
+    await prisma.task.deleteMany({ where: { id: { in: userTaskIds } } });
+    await prisma.walletLink.deleteMany({ where: { userId: { in: userIds } } });
+    await prisma.userStats.deleteMany({ where: { userId: { in: userIds } } });
+    await prisma.user.deleteMany({ where: { id: { in: userIds } } });
   });
 
   beforeEach(async () => {
