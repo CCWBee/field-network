@@ -220,13 +220,75 @@ async function main() {
     console.log("");
   }
 
+  // Role handoff: transfer admin to multisig and renounce deployer admin.
+  // Mirrors deploy.ts so live deployments don't leave the deployer EOA in
+  // control. See deploy.ts for full context.
+  const isLiveNetwork = chainId !== 31337;
+  const allowDeployerAdmin = process.env.ALLOW_DEPLOYER_ADMIN === "true";
+  const multisigAddress = process.env.MULTISIG_ADDRESS;
+  const operatorWallet = process.env.OPERATOR_WALLET || deployer.address;
+  const disputeResolverAddr = process.env.DISPUTE_RESOLVER_WALLET || multisigAddress;
+
+  if (isLiveNetwork && !multisigAddress && !allowDeployerAdmin) {
+    console.error("");
+    console.error("ERROR: MULTISIG_ADDRESS is required for live deployments.");
+    console.error("Set MULTISIG_ADDRESS=<safe-address> or ALLOW_DEPLOYER_ADMIN=true.");
+    process.exitCode = 1;
+    return;
+  }
+
+  if (multisigAddress) {
+    console.log("");
+    console.log("Role handoff:");
+    console.log("-".repeat(40));
+    console.log("Multisig admin:", multisigAddress);
+    console.log("Operator wallet:", operatorWallet);
+    console.log("Dispute resolver:", disputeResolverAddr);
+
+    const adminRole = await staking.DEFAULT_ADMIN_ROLE();
+    const operatorRole = await staking.OPERATOR_ROLE();
+    const resolverRole = await staking.DISPUTE_RESOLVER_ROLE();
+
+    console.log("Granting DEFAULT_ADMIN_ROLE to multisig...");
+    await (await staking.grantRole(adminRole, multisigAddress)).wait();
+
+    if (disputeResolverAddr && disputeResolverAddr !== deployer.address) {
+      console.log("Granting DISPUTE_RESOLVER_ROLE...");
+      await (await staking.grantRole(resolverRole, disputeResolverAddr)).wait();
+    }
+    if (operatorWallet !== deployer.address) {
+      console.log("Granting OPERATOR_ROLE to operator wallet...");
+      await (await staking.grantRole(operatorRole, operatorWallet)).wait();
+    }
+
+    console.log("Renouncing deployer roles...");
+    await (await staking.renounceRole(resolverRole, deployer.address)).wait();
+    if (operatorWallet !== deployer.address) {
+      await (await staking.renounceRole(operatorRole, deployer.address)).wait();
+    }
+    await (await staking.renounceRole(adminRole, deployer.address)).wait();
+
+    const deployerStillAdmin = await staking.hasRole(adminRole, deployer.address);
+    const multisigIsAdmin = await staking.hasRole(adminRole, multisigAddress);
+    console.log("");
+    console.log("Post-handoff state:");
+    console.log("  Deployer admin:", deployerStillAdmin, "(want false)");
+    console.log("  Multisig admin:", multisigIsAdmin, "(want true)");
+    if (deployerStillAdmin || !multisigIsAdmin) {
+      console.error("ERROR: Role handoff did not produce the expected state.");
+      process.exitCode = 1;
+      return;
+    }
+  }
+
   // Post-deployment checklist
   console.log("");
   console.log("Post-Deployment Checklist:");
   console.log("-".repeat(40));
   console.log("[ ] Verify contract on Basescan");
-  console.log("[ ] Grant OPERATOR_ROLE to API operator wallet");
-  console.log("[ ] Grant DISPUTE_RESOLVER_ROLE to dispute resolver address");
+  if (!multisigAddress) {
+    console.log("[ ] DEPLOYER STILL HAS ADMIN — handoff to multisig before mainnet use");
+  }
   console.log("[ ] Update API environment variables");
   console.log("[ ] Test stake/release/slash flow");
   console.log("[ ] Monitor first few transactions");

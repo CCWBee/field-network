@@ -384,8 +384,21 @@ describe("GroundTruthEscrow", function () {
       expect(workerBalanceAfter).to.be.greaterThan(workerBalanceBefore);
     });
 
-    it("should allow worker to release immediately", async function () {
+    it("should NOT allow worker to release before delay (would bypass dispute window)", async function () {
+      const { escrow, worker, escrowId } = await loadFixture(acceptedEscrowFixture);
+
+      // Worker cannot self-release while the dispute window is still open;
+      // doing so would let the worker collect before the requester has a
+      // chance to dispute. Only the requester (waiving their own window)
+      // or anyone after the auto-release delay can trigger release.
+      await expect(escrow.connect(worker).release(escrowId))
+        .to.be.revertedWithCustomError(escrow, "ReleaseNotReady");
+    });
+
+    it("should allow worker to release after delay passes", async function () {
       const { escrow, usdc, worker, escrowId } = await loadFixture(acceptedEscrowFixture);
+
+      await time.increase(AUTO_RELEASE_DELAY + 1n);
 
       const workerBalanceBefore = await usdc.balanceOf(worker.address);
       await escrow.connect(worker).release(escrowId);

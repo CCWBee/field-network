@@ -114,6 +114,8 @@ contract WorkerStaking is AccessControl, ReentrancyGuard, Pausable {
         uint256 _minStakeBps,
         uint256 _maxStakeBps
     ) {
+        require(_usdc != address(0), "Zero USDC address");
+        require(_platformRecipient != address(0), "Zero platform recipient");
         require(_minStakeBps <= _baseStakeBps, "Min must be <= base");
         require(_baseStakeBps <= _maxStakeBps, "Base must be <= max");
         require(_maxStakeBps <= 5000, "Max stake cannot exceed 50%");
@@ -190,11 +192,15 @@ contract WorkerStaking is AccessControl, ReentrancyGuard, Pausable {
     }
 
     /**
-     * @notice Worker stakes USDC when claiming a task
+     * @notice Worker stakes USDC when claiming a task.
+     * @dev `strikeCount` is IGNORED — the contract reads `workerStrikes[msg.sender]`
+     *      directly. The parameter is kept for ABI/test backwards compatibility
+     *      and may be removed in a future version. `reputationScore` is an
+     *      operator-trusted advisory input (no on-chain reputation exists).
      * @param taskId Off-chain task UUID as bytes32
      * @param bountyAmount Task bounty for calculating minimum stake
-     * @param strikeCount Worker's strike count (passed from off-chain)
-     * @param reputationScore Worker's reputation (0-10000)
+     * @param strikeCount (ignored) — was caller-supplied strike count
+     * @param reputationScore Worker's reputation (0-10000), operator-supplied
      */
     function stake(
         bytes32 taskId,
@@ -202,13 +208,20 @@ contract WorkerStaking is AccessControl, ReentrancyGuard, Pausable {
         uint256 strikeCount,
         uint256 reputationScore
     ) external nonReentrant whenNotPaused onlyRole(OPERATOR_ROLE) {
+        strikeCount; // silence unused-parameter warning
         bytes32 stakeId = keccak256(abi.encodePacked(taskId, msg.sender));
 
         if (stakes[stakeId].createdAt != 0) {
             revert StakeAlreadyExists();
         }
 
-        uint256 requiredAmount = calculateRequiredStake(bountyAmount, strikeCount, reputationScore);
+        // Use on-chain strike count, not the caller-supplied value, so a
+        // compromised operator can't suppress strikes to lower the stake.
+        uint256 requiredAmount = calculateRequiredStake(
+            bountyAmount,
+            workerStrikes[msg.sender],
+            reputationScore
+        );
         if (requiredAmount == 0) {
             revert InsufficientAmount();
         }
@@ -230,7 +243,8 @@ contract WorkerStaking is AccessControl, ReentrancyGuard, Pausable {
 
     /**
      * @notice Operator stakes on behalf of worker (for gasless UX)
-     * @dev Worker must have pre-approved this contract for USDC
+     * @dev Worker must have pre-approved this contract for USDC.
+     *      `strikeCount` is IGNORED — see stake() doc.
      */
     function stakeFor(
         address worker,
@@ -239,13 +253,18 @@ contract WorkerStaking is AccessControl, ReentrancyGuard, Pausable {
         uint256 strikeCount,
         uint256 reputationScore
     ) external onlyRole(OPERATOR_ROLE) nonReentrant whenNotPaused {
+        strikeCount; // silence unused-parameter warning
         bytes32 stakeId = keccak256(abi.encodePacked(taskId, worker));
 
         if (stakes[stakeId].createdAt != 0) {
             revert StakeAlreadyExists();
         }
 
-        uint256 requiredAmount = calculateRequiredStake(bountyAmount, strikeCount, reputationScore);
+        uint256 requiredAmount = calculateRequiredStake(
+            bountyAmount,
+            workerStrikes[worker],
+            reputationScore
+        );
         if (requiredAmount == 0) {
             revert InsufficientAmount();
         }

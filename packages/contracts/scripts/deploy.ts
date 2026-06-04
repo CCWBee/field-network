@@ -17,6 +17,14 @@ import { ethers } from "hardhat";
  *   FEE_RECIPIENT - Address to receive platform fees (optional, defaults to deployer)
  *   PLATFORM_FEE_BPS - Platform fee in basis points (optional, defaults to 250 = 2.5%)
  *   AUTO_RELEASE_HOURS - Auto-release delay in hours (optional, defaults to 24)
+ *   MULTISIG_ADDRESS - REQUIRED for live deployments. Receives DEFAULT_ADMIN_ROLE
+ *                      and DISPUTE_RESOLVER_ROLE; deployer renounces admin.
+ *                      Without this, the deployer EOA retains godmode over the
+ *                      contract. Pass a Safe (Gnosis) multisig address.
+ *   OPERATOR_WALLET - Address granted OPERATOR_ROLE (the API's hot wallet).
+ *                     Defaults to deployer if unset (local dev only).
+ *   ALLOW_DEPLOYER_ADMIN - Set to "true" to skip the multisig handoff for
+ *                          local testing. Required to be unset/false on live nets.
  *   DRY_RUN - Set to "true" to estimate gas without deploying
  */
 
@@ -214,12 +222,80 @@ async function main() {
     console.log(`  npx hardhat run scripts/verify.ts --network ${networkFlag}`);
   }
 
+  // Role handoff: transfer admin to multisig, grant operator role, then renounce
+  // the deployer's admin role. This eliminates the centralisation risk of the
+  // deployer EOA retaining godmode after deployment.
+  const isLiveNetwork = chainId !== 31337;
+  const allowDeployerAdmin = process.env.ALLOW_DEPLOYER_ADMIN === "true";
+  const multisigAddress = process.env.MULTISIG_ADDRESS;
+  const operatorWallet = process.env.OPERATOR_WALLET || deployer.address;
+
+  if (isLiveNetwork && !multisigAddress && !allowDeployerAdmin) {
+    console.error("");
+    console.error("ERROR: MULTISIG_ADDRESS is required for live deployments.");
+    console.error("Set MULTISIG_ADDRESS=<safe-address> to hand admin to a multisig,");
+    console.error("or set ALLOW_DEPLOYER_ADMIN=true to explicitly accept deployer-as-admin.");
+    console.error("");
+    console.error("Without a multisig handoff, the deployer EOA can:");
+    console.error("  - drain the contract via self-opened disputes");
+    console.error("  - pause it indefinitely");
+    console.error("  - replace the fee recipient");
+    process.exitCode = 1;
+    return;
+  }
+
+  if (multisigAddress) {
+    console.log("");
+    console.log("Role handoff:");
+    console.log("-".repeat(40));
+    console.log("Multisig admin:", multisigAddress);
+    console.log("Operator wallet:", operatorWallet);
+
+    const adminRole = await escrow.DEFAULT_ADMIN_ROLE();
+    const operatorRole = await escrow.OPERATOR_ROLE();
+    const resolverRole = await escrow.DISPUTE_RESOLVER_ROLE();
+
+    console.log("Granting DEFAULT_ADMIN_ROLE to multisig...");
+    await (await escrow.grantRole(adminRole, multisigAddress)).wait();
+
+    console.log("Granting DISPUTE_RESOLVER_ROLE to multisig...");
+    await (await escrow.grantRole(resolverRole, multisigAddress)).wait();
+
+    if (operatorWallet !== deployer.address) {
+      console.log("Granting OPERATOR_ROLE to operator wallet...");
+      await (await escrow.grantRole(operatorRole, operatorWallet)).wait();
+    }
+
+    console.log("Renouncing deployer roles...");
+    await (await escrow.renounceRole(resolverRole, deployer.address)).wait();
+    if (operatorWallet !== deployer.address) {
+      await (await escrow.renounceRole(operatorRole, deployer.address)).wait();
+    }
+    // Renounce admin LAST so we can still grant other roles above.
+    await (await escrow.renounceRole(adminRole, deployer.address)).wait();
+
+    // Read back to confirm
+    const deployerStillAdmin = await escrow.hasRole(adminRole, deployer.address);
+    const multisigIsAdmin = await escrow.hasRole(adminRole, multisigAddress);
+    console.log("");
+    console.log("Post-handoff state:");
+    console.log("  Deployer admin:", deployerStillAdmin, "(want false)");
+    console.log("  Multisig admin:", multisigIsAdmin, "(want true)");
+    if (deployerStillAdmin || !multisigIsAdmin) {
+      console.error("ERROR: Role handoff did not produce the expected state. Investigate before using this contract.");
+      process.exitCode = 1;
+      return;
+    }
+  }
+
   // Post-deployment checklist
   console.log("");
   console.log("Post-Deployment Checklist:");
   console.log("-".repeat(40));
   console.log("[ ] Verify contract on Basescan");
-  console.log("[ ] Grant OPERATOR_ROLE to API operator wallet");
+  if (!multisigAddress) {
+    console.log("[ ] DEPLOYER STILL HAS ADMIN — handoff to multisig before mainnet use");
+  }
   console.log("[ ] Update API environment variables");
   console.log("[ ] Test deposit/release flow");
   console.log("[ ] Monitor first few transactions");
