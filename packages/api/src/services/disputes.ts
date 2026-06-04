@@ -52,7 +52,8 @@ interface TierTransition {
   from: number;
   to: number;
   reason: string;
-  actorId?: string;
+  // null = system-triggered (e.g. auto-escalation when jury produced no signal)
+  actorId?: string | null;
   timestamp: string;
   details?: Record<string, unknown>;
 }
@@ -519,14 +520,25 @@ export async function checkJuryVotingComplete(disputeId: string): Promise<void> 
     // Abstain votes don't count
   }
 
-  // Determine winner
+  // Zero-vote case: no juror cast a non-abstain vote (either nobody voted at
+  // all, or everyone abstained). Auto-paying the worker by default lets a
+  // worker collect on an unscrutinised submission as long as no juror engages.
+  // Escalate to admin appeal instead so the resolution gets human review.
+  if (workerWeight === 0 && requesterWeight === 0) {
+    await escalateZeroVoteJury(disputeId, jurors.length, votedJurors.length);
+    return;
+  }
+
+  // Determine winner from weighted votes
   let outcome: 'worker_wins' | 'requester_wins';
   if (workerWeight > requesterWeight) {
     outcome = 'worker_wins';
   } else if (requesterWeight > workerWeight) {
     outcome = 'requester_wins';
   } else {
-    // Tie goes to worker (benefit of the doubt for completed work)
+    // True weighted tie (both sides got equal non-abstain weight). Worker
+    // wins as a tiebreaker, on the principle that completed work shouldn't
+    // be denied payment without a clear majority against it.
     outcome = 'worker_wins';
   }
 
@@ -541,6 +553,78 @@ export async function checkJuryVotingComplete(disputeId: string): Promise<void> 
       votedJurors: votedJurors.length,
     },
   });
+}
+
+/**
+ * Escalate a Tier 2 dispute to Tier 3 when the jury produced no signal
+ * (zero participation or universal abstention). No appeal stake is required
+ * — the parties did not request escalation, the system did, because the
+ * jury process failed to produce a verdict.
+ */
+async function escalateZeroVoteJury(
+  disputeId: string,
+  totalJurors: number,
+  votedJurors: number
+): Promise<void> {
+  const dispute = await prisma.dispute.findUnique({
+    where: { id: disputeId },
+    include: { submission: { include: { task: true } } },
+  });
+  if (!dispute) return;
+  const disputeAny = dispute as any;
+
+  const now = new Date();
+  const tier3Deadline = new Date(now.getTime() + TIER3_DURATION_HOURS * 60 * 60 * 1000);
+  const currentHistory = (disputeAny.tierHistory as TierTransition[]) || [];
+  const newTransition: TierTransition = {
+    from: 2,
+    to: 3,
+    reason: 'No jury verdict produced (zero non-abstain votes). Auto-escalated for admin review.',
+    actorId: null,
+    timestamp: now.toISOString(),
+    details: { totalJurors, votedJurors, autoEscalated: true },
+  };
+
+  await prisma.$transaction(async (tx) => {
+    await tx.dispute.update({
+      where: { id: disputeId },
+      data: {
+        currentTier: 3,
+        status: 'tier3_appeal',
+        tierHistory: [...currentHistory, newTransition] as any,
+        tier3Deadline,
+        escalatedAt: now,
+        // No escalationStake — the system escalated, not a party.
+        escalationStake: null,
+      },
+    });
+    await tx.disputeAuditLog.create({
+      data: {
+        disputeId,
+        action: 'auto_escalated_to_tier3',
+        actorId: null,
+        detailsJson: JSON.stringify({
+          reason: 'jury_no_signal',
+          totalJurors,
+          votedJurors,
+          deadline: tier3Deadline.toISOString(),
+        }),
+      },
+    });
+  });
+
+  await notifyDisputeEscalated(
+    dispute.submission.workerId,
+    disputeId,
+    dispute.submission.task.title,
+    3
+  );
+  await notifyDisputeEscalated(
+    dispute.submission.task.requesterId,
+    disputeId,
+    dispute.submission.task.title,
+    3
+  );
 }
 
 /**
@@ -633,6 +717,27 @@ export async function escalateToTier3(
         },
       },
     });
+
+    // Record the appeal stake as a holding ledger entry. This is the audit
+    // trail for the obligation; the actual USDC pull is the responsibility
+    // of the route handler / staking provider before this is called.
+    // Resolved by a matching `appeal_stake_refund` (appeal won) or
+    // `appeal_stake_forfeit` (appeal lost) entry at resolveAdminAppeal time.
+    await tx.ledgerEntry.create({
+      data: {
+        taskId: dispute.submission.taskId,
+        submissionId: dispute.submissionId,
+        entryType: 'appeal_stake_held',
+        amount: appealStake,
+        currency: dispute.submission.task.currency,
+        direction: 'credit', // platform-side: stake comes in
+        counterpartyId: appellantId,
+        metadata: JSON.stringify({
+          dispute_id: disputeId,
+          appellant_role: appellantRole,
+        }),
+      },
+    });
   });
 
   // Notify parties
@@ -711,6 +816,34 @@ export async function resolveAdminAppeal(
     appealReversed: reverseDecision,
     escalationStake: disputeAny.escalationStake,
   });
+
+  // Resolve the appeal stake obligation. If the appellant won (decision
+  // reversed), they get their stake back. If they lost, the stake is
+  // forfeited to the platform. Auto-escalated disputes have no stake.
+  const stakeAmount = disputeAny.escalationStake as number | null;
+  if (stakeAmount && stakeAmount > 0) {
+    const tierHistory2 = (disputeAny.tierHistory as TierTransition[]) || [];
+    const appealTransition = tierHistory2.find(t => t.to === 3 && !(t.details as any)?.autoEscalated);
+    const appellantId = appealTransition?.actorId;
+    if (appellantId) {
+      await prisma.ledgerEntry.create({
+        data: {
+          taskId: dispute.submission.taskId,
+          submissionId: dispute.submissionId,
+          entryType: reverseDecision ? 'appeal_stake_refund' : 'appeal_stake_forfeit',
+          amount: stakeAmount,
+          currency: dispute.submission.task.currency,
+          direction: 'debit', // platform-side: stake leaves either back to appellant or forfeited
+          counterpartyId: appellantId,
+          metadata: JSON.stringify({
+            dispute_id: disputeId,
+            outcome: reverseDecision ? 'appellant_won' : 'appellant_lost',
+            forfeit_reason: reverseDecision ? null : 'Tier 3 appeal lost',
+          }),
+        },
+      });
+    }
+  }
 }
 
 /**
