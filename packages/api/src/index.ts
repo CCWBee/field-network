@@ -66,17 +66,34 @@ if (process.env.SENTRY_DSN) {
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Parse CORS origins (supports comma-separated list or single origin)
+// Trust proxy must be configured BEFORE rate limiting / IP detection.
+// Required when behind a load balancer or CDN (Railway, Vercel, Cloudflare).
+// Without this, req.ip falls back to the socket IP and X-Forwarded-For is unsafe.
+// Values: 'true' (trust one hop), a number (count of trusted hops), an IP/CIDR list, or unset (off).
+const trustProxyRaw = process.env.TRUST_PROXY;
+if (trustProxyRaw === 'true') {
+  app.set('trust proxy', 1);
+} else if (trustProxyRaw && /^\d+$/.test(trustProxyRaw)) {
+  app.set('trust proxy', parseInt(trustProxyRaw, 10));
+} else if (trustProxyRaw && trustProxyRaw !== 'false') {
+  app.set('trust proxy', trustProxyRaw);
+}
+
 function parseCorsOrigins(): string | string[] {
-  // Support both CORS_ORIGINS (preferred) and CORS_ORIGIN (legacy)
-  const origins = process.env.CORS_ORIGINS || process.env.CORS_ORIGIN || 'http://localhost:3001';
+  const origins = process.env.CORS_ORIGINS || process.env.CORS_ORIGIN;
+  if (!origins) {
+    if (process.env.NODE_ENV === 'production') {
+      logger.fatal('FATAL: CORS_ORIGINS must be set in production');
+      process.exit(1);
+    }
+    return 'http://localhost:3001';
+  }
   if (origins.includes(',')) {
     return origins.split(',').map(o => o.trim());
   }
   return origins;
 }
 
-// Security middleware
 app.use(helmet());
 app.use(cors({
   origin: parseCorsOrigins(),

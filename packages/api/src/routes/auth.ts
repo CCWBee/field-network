@@ -27,6 +27,41 @@ const router = Router();
 // SIWE Nonce expiry (10 minutes)
 const NONCE_EXPIRY_MS = 10 * 60 * 1000;
 
+// Expected SIWE chain ID. In production must match the wallet network the user
+// is signing on (e.g. 8453 = Base Mainnet). 0 disables chain pinning (dev only).
+function getExpectedSiweChainId(): number {
+  const raw = process.env.SIWE_CHAIN_ID || process.env.CHAIN_ID;
+  if (!raw) {
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error('FATAL: CHAIN_ID must be set in production for SIWE chain pinning');
+    }
+    return 0;
+  }
+  return parseInt(raw, 10);
+}
+
+// Expected SIWE domain. The signed message's domain must match what we serve from,
+// otherwise an attacker can replay a signature intended for a different dApp.
+function getExpectedSiweDomain(req: Request): string {
+  const configured = process.env.SIWE_DOMAIN;
+  if (configured) return configured;
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error('FATAL: SIWE_DOMAIN must be set in production');
+  }
+  return req.get('host') || 'localhost:3000';
+}
+
+// Atomically consume a SIWE nonce: returns true if it was found unused and not
+// yet expired, false otherwise. Atomic via updateMany so two parallel requests
+// can never both consume the same nonce.
+async function consumeNonce(nonce: string): Promise<boolean> {
+  const result = await prisma.siweNonce.updateMany({
+    where: { nonce, usedAt: null, expiresAt: { gt: new Date() } },
+    data: { usedAt: new Date() },
+  });
+  return result.count === 1;
+}
+
 const RegisterSchema = z.object({
   email: z.string().email(),
   password: z.string().min(8),
@@ -186,10 +221,10 @@ router.post('/refresh', async (req: Request, res: Response, next: NextFunction) 
       throw new UnauthorizedError('Refresh token has been revoked');
     }
 
-    // Verify refresh token
+    // Verify refresh token (HS256 only - prevents alg confusion attacks)
     let payload: { userId: string; type: string };
     try {
-      payload = jwt.verify(refreshToken, getJwtSecretForSigning()) as any;
+      payload = jwt.verify(refreshToken, getJwtSecretForSigning(), { algorithms: ['HS256'] }) as any;
     } catch {
       throw new UnauthorizedError('Invalid or expired refresh token');
     }
@@ -382,31 +417,40 @@ router.post('/siwe/verify', async (req: Request, res: Response, next: NextFuncti
   try {
     const { message, signature, role } = SiweVerifySchema.parse(req.body);
 
-    // Parse and verify the SIWE message
     const siweMessage = new SiweMessage(message);
-    const fields = await siweMessage.verify({ signature });
+    const expectedChainId = getExpectedSiweChainId();
+    const expectedDomain = getExpectedSiweDomain(req);
+
+    // Atomically consume the nonce. Done BEFORE signature verify so an attacker
+    // probing valid signatures can't drain the nonce table.
+    const nonceConsumed = await consumeNonce(siweMessage.nonce);
+    if (!nonceConsumed) {
+      throw new UnauthorizedError('Invalid or expired nonce');
+    }
+
+    // Verify signature with domain + nonce + time pinning.
+    // Domain pinning prevents replay of signatures intended for another dApp.
+    // Time pinning enforces the message's expirationTime/notBefore claims.
+    const fields = await siweMessage.verify({
+      signature,
+      domain: expectedDomain,
+      nonce: siweMessage.nonce,
+      time: new Date().toISOString(),
+    });
 
     if (!fields.success) {
       throw new UnauthorizedError('Invalid signature');
     }
 
-    const address = fields.data.address.toLowerCase();
-    const chainId = fields.data.chainId;
-
-    // Check nonce validity
-    const nonceRecord = await prisma.siweNonce.findUnique({
-      where: { nonce: fields.data.nonce },
-    });
-
-    if (!nonceRecord || nonceRecord.usedAt || nonceRecord.expiresAt < new Date()) {
-      throw new UnauthorizedError('Invalid or expired nonce');
+    // Pin chain ID: the signed message must declare the chain we expect.
+    // Without this, a signature for chain 1 (Ethereum) is indistinguishable
+    // from one for Base on the wire.
+    if (expectedChainId !== 0 && fields.data.chainId !== expectedChainId) {
+      throw new UnauthorizedError(`SIWE chain mismatch: got ${fields.data.chainId}, expected ${expectedChainId}`);
     }
 
-    // Mark nonce as used
-    await prisma.siweNonce.update({
-      where: { id: nonceRecord.id },
-      data: { usedAt: new Date() },
-    });
+    const address = fields.data.address.toLowerCase();
+    const chainId = fields.data.chainId;
 
     // Find existing wallet link
     let walletLink = await prisma.walletLink.findUnique({
@@ -546,10 +590,30 @@ router.post('/wallet/link', authenticate, async (req: Request, res: Response, ne
     }).parse(req.body);
 
     const siweMessage = new SiweMessage(message);
-    const fields = await siweMessage.verify({ signature });
+    const expectedChainId = getExpectedSiweChainId();
+    const expectedDomain = getExpectedSiweDomain(req);
+
+    // Wallet link requires the same nonce protection as login - otherwise an
+    // attacker can replay any signature matching the wallet address to bind
+    // the wallet to their account.
+    const nonceConsumed = await consumeNonce(siweMessage.nonce);
+    if (!nonceConsumed) {
+      throw new UnauthorizedError('Invalid or expired nonce');
+    }
+
+    const fields = await siweMessage.verify({
+      signature,
+      domain: expectedDomain,
+      nonce: siweMessage.nonce,
+      time: new Date().toISOString(),
+    });
 
     if (!fields.success) {
       throw new UnauthorizedError('Invalid signature');
+    }
+
+    if (expectedChainId !== 0 && fields.data.chainId !== expectedChainId) {
+      throw new UnauthorizedError(`SIWE chain mismatch: got ${fields.data.chainId}, expected ${expectedChainId}`);
     }
 
     const address = fields.data.address.toLowerCase();

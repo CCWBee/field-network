@@ -18,6 +18,26 @@ const REFRESH_BLACKLIST_PREFIX = 'blacklist:refresh:';
 const USER_SESSIONS_PREFIX = 'user:sessions:';
 
 /**
+ * Fail-mode policy when Redis is unreachable.
+ *
+ * fail-closed: treat unknown tokens as blacklisted (every check during outage
+ *   returns true). Safer because revoked tokens can never sneak past during
+ *   an outage. Risk: a Redis outage takes the whole authenticated surface down.
+ * fail-open: ignore Redis errors and let the token through. Risk: revoked
+ *   tokens are usable during a Redis outage.
+ *
+ * Default: fail-closed in production, fail-open in dev/test.
+ * Override with BLACKLIST_FAIL_MODE=open|closed.
+ */
+function resolveFailMode(): 'open' | 'closed' {
+  const explicit = process.env.BLACKLIST_FAIL_MODE?.toLowerCase();
+  if (explicit === 'open' || explicit === 'closed') return explicit;
+  return process.env.NODE_ENV === 'production' ? 'closed' : 'open';
+}
+const FAIL_MODE = resolveFailMode();
+const FAIL_CLOSED = FAIL_MODE === 'closed';
+
+/**
  * Check if Redis is available for blacklist operations
  */
 export function isBlacklistAvailable(): boolean {
@@ -132,9 +152,9 @@ export async function isTokenBlacklisted(token: string): Promise<boolean> {
     const result = await redis.exists(`${BLACKLIST_PREFIX}${hash}`);
     return result === 1;
   } catch (error) {
-    log.error('Failed to check token blacklist', error);
-    // On error, allow the token (fail open) - but log for monitoring
-    return false;
+    log.error('Failed to check token blacklist', error, { failMode: FAIL_MODE });
+    // Fail-mode policy: closed = treat as blacklisted, open = allow through.
+    return FAIL_CLOSED;
   }
 }
 
@@ -157,8 +177,8 @@ export async function isRefreshTokenBlacklisted(token: string): Promise<boolean>
     const result = await redis.exists(`${REFRESH_BLACKLIST_PREFIX}${hash}`);
     return result === 1;
   } catch (error) {
-    log.error('Failed to check refresh token blacklist', error);
-    return false;
+    log.error('Failed to check refresh token blacklist', error, { failMode: FAIL_MODE });
+    return FAIL_CLOSED;
   }
 }
 
@@ -215,8 +235,8 @@ export async function wasTokenInvalidatedForUser(userId: string, issuedAt: numbe
     // Token was issued before invalidation time = invalid
     return issuedAt * 1000 < invalidatedAt;
   } catch (error) {
-    log.error('Failed to check user token invalidation', error);
-    return false;
+    log.error('Failed to check user token invalidation', error, { failMode: FAIL_MODE });
+    return FAIL_CLOSED;
   }
 }
 
