@@ -126,21 +126,21 @@ describe('Fee Service', () => {
       const tier = await getUserFeeTier(testUserId);
 
       expect(tier.name).toBe('Standard');
-      expect(tier.rate).toBe(0.1); // 10%
+      expect(tier.rate).toBe(0.025); // 2.5% (matches on-chain platformFeeBps default)
     });
 
     it('should return Established tier for qualifying users', async () => {
       const tier = await getUserFeeTier(establishedUserId);
 
       expect(tier.name).toBe('Established');
-      expect(tier.rate).toBe(0.08); // 8%
+      expect(tier.rate).toBe(0.0225); // 2.25%
     });
 
     it('should return Elite tier for top users', async () => {
       const tier = await getUserFeeTier(eliteUserId);
 
       expect(tier.name).toBe('Elite');
-      expect(tier.rate).toBe(0.05); // 5%
+      expect(tier.rate).toBe(0.015); // 1.5%
     });
 
     it('should return default tier for non-existent user', async () => {
@@ -154,24 +154,24 @@ describe('Fee Service', () => {
     it('should calculate correct fee for Standard tier', async () => {
       const result = await calculatePlatformFee(testUserId, 100);
 
-      expect(result.rate).toBe(0.1);
-      expect(result.fee).toBe(10);
+      expect(result.rate).toBe(0.025);
+      expect(result.fee).toBe(2.5);
       expect(result.tierName).toBe('Standard');
     });
 
     it('should calculate correct fee for Established tier', async () => {
       const result = await calculatePlatformFee(establishedUserId, 100);
 
-      expect(result.rate).toBe(0.08);
-      expect(result.fee).toBe(8);
+      expect(result.rate).toBe(0.0225);
+      expect(result.fee).toBe(2.25);
       expect(result.tierName).toBe('Established');
     });
 
     it('should calculate correct fee for Elite tier', async () => {
       const result = await calculatePlatformFee(eliteUserId, 100);
 
-      expect(result.rate).toBe(0.05);
-      expect(result.fee).toBe(5);
+      expect(result.rate).toBe(0.015);
+      expect(result.fee).toBe(1.5);
       expect(result.tierName).toBe('Elite');
     });
 
@@ -184,13 +184,15 @@ describe('Fee Service', () => {
     it('should handle very small amounts', async () => {
       const result = await calculatePlatformFee(testUserId, 0.01);
 
-      expect(result.fee).toBe(0.001);
+      // 2.5% of 0.01 = 0.00025
+      expect(result.fee).toBeCloseTo(0.00025, 6);
     });
 
     it('should handle large amounts', async () => {
       const result = await calculatePlatformFee(testUserId, 10000);
 
-      expect(result.fee).toBe(1000);
+      // 2.5% of 10000 = 250
+      expect(result.fee).toBe(250);
     });
   });
 
@@ -229,11 +231,11 @@ describe('Fee Service', () => {
       const preview = await previewFees(testUserId, 100);
 
       expect(preview.bounty).toBe(100);
-      expect(preview.platformFee).toBe(10);
-      expect(preview.platformFeeRate).toBe(0.1);
+      expect(preview.platformFee).toBe(2.5);
+      expect(preview.platformFeeRate).toBe(0.025);
       expect(preview.platformFeeTier).toBe('Standard');
       expect(preview.arbitrationFee).toBe(2); // min fee
-      expect(preview.totalCost).toBe(112); // 100 + 10 + 2
+      expect(preview.totalCost).toBe(104.5); // 100 + 2.5 + 2
       expect(preview.workerPayout).toBe(100);
     });
 
