@@ -1058,9 +1058,10 @@ router.post('/:disputeId/resolve', authenticate, requireRole('admin'), async (re
           log.error(`Stake slash failed for dispute ${disputeId}: ${stakeResult.error}`);
         }
         break;
-      case 'partial_pay':
-        // Partial resolution - partial slash based on payout percentage
-        // Worker return = their payout percentage, rest split between requester and platform
+      case 'partial_pay': {
+        // Partial resolution - partial slash based on payout percentage.
+        // Block-scoped to keep `const` declarations out of the bare switch case
+        // (lint: no-case-declarations).
         const workerReturnBps = (splitPercentage || 0) * 100; // Convert percentage to basis points
         const requesterShareBps = Math.floor((10000 - workerReturnBps) / 2); // Half of remainder to requester
         stakeResult = await stakingProvider.partialSlash(
@@ -1074,6 +1075,7 @@ router.post('/:disputeId/resolve', authenticate, requireRole('admin'), async (re
           log.error(`Partial stake slash failed for dispute ${disputeId}: ${stakeResult.error}`);
         }
         break;
+      }
     }
 
     await Promise.all([
