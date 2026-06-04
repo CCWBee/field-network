@@ -1,10 +1,10 @@
 import { expect } from "chai";
 import { ethers } from "hardhat";
 import { loadFixture, time } from "@nomicfoundation/hardhat-toolbox/network-helpers";
-import { GroundTruthEscrow, MockERC20 } from "../typechain-types";
+import { FieldNetworkEscrow, MockERC20 } from "../typechain-types";
 import { HardhatEthersSigner } from "@nomicfoundation/hardhat-ethers/signers";
 
-describe("GroundTruthEscrow", function () {
+describe("FieldNetworkEscrow", function () {
   // Constants
   const PLATFORM_FEE_BPS = 250n; // 2.5%
   const AUTO_RELEASE_DELAY = 24n * 60n * 60n; // 24 hours in seconds
@@ -38,8 +38,8 @@ describe("GroundTruthEscrow", function () {
     const usdc = await MockERC20Factory.deploy("USD Coin", "USDC", USDC_DECIMALS);
     await usdc.waitForDeployment();
 
-    // Deploy GroundTruthEscrow
-    const EscrowFactory = await ethers.getContractFactory("GroundTruthEscrow");
+    // Deploy FieldNetworkEscrow
+    const EscrowFactory = await ethers.getContractFactory("FieldNetworkEscrow");
     const escrow = await EscrowFactory.deploy(
       await usdc.getAddress(),
       feeRecipient.address,

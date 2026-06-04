@@ -1,7 +1,7 @@
 import { ethers } from "hardhat";
 
 /**
- * GroundTruthEscrow Deployment Script
+ * FieldNetworkEscrow Deployment Script
  *
  * Supports:
  * - Local (Hardhat): Deploys mock USDC
@@ -47,7 +47,7 @@ async function main() {
   const [deployer] = await ethers.getSigners();
 
   console.log("=".repeat(60));
-  console.log("GroundTruthEscrow Deployment");
+  console.log("FieldNetworkEscrow Deployment");
   console.log("=".repeat(60));
   console.log("");
   console.log("Deployer address:", deployer.address);
@@ -136,7 +136,7 @@ async function main() {
 
   // Estimate gas
   console.log("Estimating deployment gas...");
-  const Escrow = await ethers.getContractFactory("GroundTruthEscrow");
+  const Escrow = await ethers.getContractFactory("FieldNetworkEscrow");
   const deployTx = await Escrow.getDeployTransaction(
     usdcAddress,
     feeRecipient,
@@ -179,7 +179,7 @@ async function main() {
   }
 
   // Deploy
-  console.log("Deploying GroundTruthEscrow...");
+  console.log("Deploying FieldNetworkEscrow...");
   const escrow = await Escrow.deploy(
     usdcAddress,
     feeRecipient,

@@ -38,7 +38,7 @@ quick smoke runs, `docker compose up postgres redis minio` brings them up.
 packages/
 ├── api/          # Express + Prisma REST API (port 3000)
 ├── web/          # Next.js 15 frontend (port 3001)
-├── contracts/    # GroundTruthEscrow.sol + WorkerStaking.sol (Base L2)
+├── contracts/    # FieldNetworkEscrow.sol + WorkerStaking.sol (Base L2)
 ├── mcp/          # MCP server exposing the API as tool calls
 └── shared/       # Shared TypeScript types
 ```
@@ -170,9 +170,3 @@ For contract deploys: `MULTISIG_ADDRESS` is required for live nets unless
   aspirational, not implemented).
 - `docs/CONTRACT-OPERATIONS.md` — on-chain operations runbook.
 
-## Branding note
-
-The on-chain contracts are still named `GroundTruthEscrow` and `WorkerStaking`
-(historical name). Renaming them to `FieldNetworkEscrow` is a pending
-remediation phase. The events and ABIs you'll see on Basescan reference the
-old name; the product UI uses "Field Network" throughout.

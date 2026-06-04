@@ -8,11 +8,11 @@ import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/utils/Pausable.sol";
 
 /**
- * @title GroundTruthEscrow
- * @notice Escrow contract for Ground Truth bounty payments on Base
+ * @title FieldNetworkEscrow
+ * @notice Escrow contract for Field Network bounty payments on Base
  * @dev Supports USDC deposits, releases, refunds, and disputes
  */
-contract GroundTruthEscrow is AccessControl, ReentrancyGuard, Pausable {
+contract FieldNetworkEscrow is AccessControl, ReentrancyGuard, Pausable {
     using SafeERC20 for IERC20;
 
     bytes32 public constant OPERATOR_ROLE = keccak256("OPERATOR_ROLE");

@@ -3,7 +3,7 @@ import { run, ethers } from "hardhat";
 /**
  * Contract Verification Script
  *
- * Verifies the GroundTruthEscrow contract on Basescan.
+ * Verifies the FieldNetworkEscrow contract on Basescan.
  *
  * Usage:
  *   npx hardhat run scripts/verify.ts --network base-sepolia

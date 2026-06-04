@@ -61,7 +61,7 @@ One-page mental model of how Field Network is wired up.
 
 There are three movements to keep clean in your head:
 
-1. **Bounty escrow** (`GroundTruthEscrow.sol`):
+1. **Bounty escrow** (`FieldNetworkEscrow.sol`):
    - Requester `deposit`s USDC into the escrow at task publish.
    - On `accept` → 24h auto-release window starts.
    - `release` (requester immediately, or anyone after the window) sends USDC
@@ -140,7 +140,7 @@ Tier transitions are recorded in `Dispute.tierHistory` (Json array of `TierTrans
 
 ### `packages/contracts`
 
-- `contracts/GroundTruthEscrow.sol` — USDC escrow (deposit, accept, release,
+- `contracts/FieldNetworkEscrow.sol` — USDC escrow (deposit, accept, release,
   refund, dispute, resolveDispute).
 - `contracts/WorkerStaking.sol` — Worker stake (stake/stakeFor, release,
   slash, partialSlash, workerStrikes counter).

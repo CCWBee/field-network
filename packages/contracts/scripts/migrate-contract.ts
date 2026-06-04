@@ -15,7 +15,7 @@ import { ethers } from "hardhat";
  *   NEW_CONTRACT_ADDRESS - Address of the newly deployed escrow contract
  */
 
-// Note: GroundTruthEscrow stores escrows in a `mapping(bytes32 => Escrow)`,
+// Note: FieldNetworkEscrow stores escrows in a `mapping(bytes32 => Escrow)`,
 // which Solidity does not expose an enumerator for. The previous version of
 // this ABI declared `escrowCount()` which does not exist on the contract;
 // calling it would revert. Active-escrow enumeration must come from off-chain
