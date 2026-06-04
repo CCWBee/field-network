@@ -1,12 +1,13 @@
+'use client';
+
 import Link from 'next/link';
 
-// Skip static prerender for this page. The default 404 prerender path with
-// React 19 + next/font + the wagmi Web3Provider in the root layout has been
-// observed to fail with React error #31 ("object with keys {$$typeof, ...}")
-// in CI on Linux while passing on local Windows. Rendering on-demand sidesteps
-// the prerender phase entirely; the cost is one extra render per 404 hit,
-// which is fine.
-export const dynamic = 'force-dynamic';
+// Marked 'use client' to avoid an SSR prerender bug seen in CI (Linux) where
+// /404 prerender failed with React error #31 even though the local build
+// (Windows) succeeded. The root layout has client-only providers
+// (Web3Provider, ToastProvider) and the 404 prerender path with React 19
+// composes those in a way that throws during static export. Forcing the 404
+// page to be a client component sidesteps the prerender entirely.
 
 export default function NotFound() {
   return (
