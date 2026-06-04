@@ -1,5 +1,13 @@
 import Link from 'next/link';
 
+// Skip static prerender for this page. The default 404 prerender path with
+// React 19 + next/font + the wagmi Web3Provider in the root layout has been
+// observed to fail with React error #31 ("object with keys {$$typeof, ...}")
+// in CI on Linux while passing on local Windows. Rendering on-demand sidesteps
+// the prerender phase entirely; the cost is one extra render per 404 hit,
+// which is fine.
+export const dynamic = 'force-dynamic';
+
 export default function NotFound() {
   return (
     <div className="min-h-screen bg-paper flex items-center justify-center">
