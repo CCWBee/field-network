@@ -1,6 +1,11 @@
-# Field Network Terms of Service (Draft)
+# Field Network Terms of Service (Pre-launch draft)
 
-This document is a draft. It does not constitute legal advice.
+**This document is a pre-launch draft. It has NOT been reviewed by a lawyer.**
+**It does not constitute legal advice, and Field Network does not yet have a**
+**published governing-law jurisdiction or controller of record.** This file is
+maintained to make the product's operating model legible to users while we
+finalise the legal review. The data controller, contact email, and jurisdiction
+will be filled in before public launch.
 
 ## 1. Overview
 Field Network is a marketplace for verifiable real-world observations. Users may post tasks (requesters) and complete tasks (collectors). The platform uses Web3 for authentication and payment rails, but accounts function like a standard marketplace profile.
@@ -15,8 +20,17 @@ Field Network is a marketplace for verifiable real-world observations. Users may
 - Accounts can act as both requester and collector.
 
 ## 4. Fees
-- Platform fees start at 10% and may decrease to 5% based on account age, reliability, and fulfillment history.
-- Fees are deducted from payouts and recorded in the platform ledger.
+- Platform fees are tiered by account reputation. Current tiers (subject to
+  change; the API endpoint `GET /v1/fees` is authoritative):
+  - New: 2.5% (`250` bps)
+  - Established: 2.25%
+  - Trusted: 2.0%
+  - Elite: 1.5%
+- Tier progression depends on account age, completed tasks, and reliability score.
+- A dispute resolution fee may apply on top of the platform fee. The fee is
+  paid by the losing party on a clear-outcome resolution, and split
+  proportionally on a partial-payout resolution.
+- All fees are deducted from payouts and recorded in the platform ledger.
 
 ## 5. Escrow and Payments
 - Bounties are held in escrow until acceptance or dispute resolution.

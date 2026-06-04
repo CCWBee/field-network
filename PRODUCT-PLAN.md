@@ -26,10 +26,11 @@ Solutions:
 Problem: Fee structure, resell rights, royalties, and dispute costs need clarity.
 
 Solutions:
-- Start platform fee at 10%, reduce to 5% for trusted users with high completion and low dispute rates.
+- Tiered platform fee. Current tiers (subject to change; `GET /v1/fees` is authoritative):
+  2.5% (new), 2.25% (established), 2.0% (trusted), 1.5% (elite).
 - Resale rights: platform retains perpetual resell rights after 90 days; collector receives a royalty.
 - Dispute arbitration: loser pays arbitration fee; small claims can use a fixed fee, higher claims use a percentage.
-- Slashing: both sides place a small stake that can be slashed for bad behavior.
+- Slashing: worker places a stake (15% base, clamped to [5%, 30%]) that can be slashed on dispute loss.
 
 ### 3) Verification and Anti-Fraud
 
@@ -82,7 +83,7 @@ P0 - Launch blockers
 
 P1 - Trust and economics
 - Reputation and trust scoring system.
-- Progressive fee reduction (10% down to 5%).
+- Progressive fee tier-up (new → elite, 2.5% → 1.5%).
 - Arbitration fee logic and loser-pays enforcement.
 - Slashing for bad behavior (claim abandonment, fraud, or malicious disputes).
 
