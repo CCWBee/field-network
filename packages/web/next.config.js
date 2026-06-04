@@ -1,9 +1,16 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  transpilePackages: ['@ground-truth/shared'],
-  // Enable standalone output for Docker deployments
-  output: 'standalone',
+  // transpilePackages references the legacy @ground-truth/shared package name;
+  // kept commented as a reminder that the shared package was renamed to
+  // @field-network/shared and no longer needs transpilation here.
+  // transpilePackages: ['@field-network/shared'],
+  //
+  // output: 'standalone' was removed because it forces static export of the
+  // synthetic /_error fallback, which fails with React error #31 in CI on
+  // Linux when the root layout includes the wagmi Web3Provider. Re-add it
+  // when the wagmi + React 19 SSR composition is fixed (upstream issue).
+  // output: 'standalone',
   // Skip type checking during build (already done in CI)
   typescript: {
     ignoreBuildErrors: false,
