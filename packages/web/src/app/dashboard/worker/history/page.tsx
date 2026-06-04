@@ -99,12 +99,12 @@ export default function WorkerHistoryPage() {
     try {
       api.setToken(token);
       const result = await api.getSubmission(submissionId);
-      if (result.verification_details && result.verification_score !== undefined) {
+      if (result.verification_details && result.verification_score !== undefined && result.verification_score !== null) {
         setVerificationData(prev => ({
           ...prev,
           [submissionId]: {
-            score: result.verification_score,
-            checks: result.verification_details,
+            score: result.verification_score as number,
+            checks: result.verification_details as VerificationCheck[],
           },
         }));
       }

@@ -466,7 +466,7 @@ export default function TaskDetailPage() {
         title="Reject submission?"
         message={
           <div className="space-y-3">
-            <p>The worker's stake will be held pending the dispute period.</p>
+            <p>The worker&apos;s stake will be held pending the dispute period.</p>
             <div>
               <label className="block text-xs uppercase tracking-wider text-ink-500 mb-1">Rejection reason (required)</label>
               <textarea

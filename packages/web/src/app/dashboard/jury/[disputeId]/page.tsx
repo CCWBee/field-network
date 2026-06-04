@@ -122,11 +122,13 @@ export default function JuryVotePage() {
         api.getJuryStatus(disputeId),
       ]);
 
-      setDispute(disputeData);
-      setJuryStatus(juryData);
+      const dispute = disputeData as unknown as DisputeDetail;
+      const jury = juryData as unknown as JuryStatus;
+      setDispute(dispute);
+      setJuryStatus(jury);
 
-      if (juryData.user_vote) {
-        setVote(juryData.user_vote);
+      if (jury.user_vote === 'worker' || jury.user_vote === 'requester' || jury.user_vote === 'abstain') {
+        setVote(jury.user_vote);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');

@@ -78,11 +78,11 @@ export default function AdminTasksPage() {
     try {
       api.setToken(token);
 
-      const data: TasksResponse = await api.getAdminTasks({
+      const data = (await api.getAdminTasks({
         status: statusFilter !== 'all' ? statusFilter : undefined,
         limit,
         page,
-      });
+      })) as unknown as TasksResponse;
       setTasks(data.tasks);
       setTotal(data.total);
     } catch (err) {

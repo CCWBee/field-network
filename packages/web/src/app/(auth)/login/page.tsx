@@ -213,7 +213,7 @@ function LoginContent() {
       )}
 
       <p className="mt-6 text-center text-sm text-ink-500">
-        Don't have an account?{' '}
+        Don&apos;t have an account?{' '}
         <Link href="/register" className="text-field-500 hover:text-field-600 transition-colors">
           Register here
         </Link>

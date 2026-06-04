@@ -30,7 +30,7 @@ export default function JuryPoolPage() {
     try {
       api.setToken(token);
       const data = await api.getJuryPool();
-      setDisputes(data.disputes);
+      setDisputes(data.disputes as unknown as Parameters<typeof setDisputes>[0]);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {

@@ -93,11 +93,14 @@ export default function AdminDisputesPage() {
       api.setToken(token);
       const offset = (page - 1) * limit;
 
-      const data: DisputesResponse = await api.getDisputes({
+      // api.getDisputes returns DisputeRecord[] (index-signature shape); the
+      // admin list view consumes the richer local Dispute shape filled in by
+      // the server. Cast via unknown so structural narrowing isn't blocked.
+      const data = (await api.getDisputes({
         status: statusFilter !== 'all' ? statusFilter : undefined,
         limit,
         offset,
-      });
+      })) as unknown as DisputesResponse;
       setDisputes(data.disputes);
       setTotal(data.total);
     } catch (err) {
@@ -245,7 +248,7 @@ export default function AdminDisputesPage() {
               <EmptyDisputeList />
               {statusFilter !== 'all' && (
                 <p className="text-center text-sm text-ink-500 -mt-4">
-                  No disputes with status "{statusFilter.replace(/_/g, ' ')}"
+                  No disputes with status &quot;{statusFilter.replace(/_/g, ' ')}&quot;
                 </p>
               )}
             </div>

@@ -17,6 +17,15 @@ export interface SavedAddress {
 
 /** Worker profile summary */
 export interface WorkerProfile {
+  displayName: string;
+  radiusKm: number;
+  // skills / kit are stored as JSON in the DB - may arrive as parsed array or raw string
+  skills: string[] | string;
+  kit: string[] | string;
+  rating: number;
+  completedCount: number;
+  strikes: number;
+  // Legacy/optional fields kept for forward-compat with future schema
   specialties?: string[];
   availability?: string;
   preferred_radius_km?: number;
@@ -467,9 +476,14 @@ class ApiClient {
       user: {
         id: string;
         email: string | null;
+        username: string | null;
         role: string;
         wallet_address: string;
+        ens_name?: string | null;
+        ens_avatar_url?: string | null;
         is_new_user: boolean;
+        onboarding_completed?: boolean;
+        suggested_username?: string | null;
       };
       token: string;
       refreshToken: string;
